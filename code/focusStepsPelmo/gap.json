@@ -1,0 +1,13 @@
+{"modelCrop": "ND",
+    "application": {
+      "number": 1,
+      "interval": 1,
+      "rate": 1
+    },
+    "cropCover": {
+      "Spring": "No"
+    },
+    "regions": [
+      "South"
+    ]
+  }

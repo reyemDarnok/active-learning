@@ -1,0 +1,9 @@
+Universe            = Vanilla
+Executable          = {% executable|default("Unknown") %}
+
+{% for packageNumber in range(0, 99) %}
+Arguments   = {% packageNumber * packageSize + 1 %} 
+transfer_input_files = data.csv, FOCUS.zip, parsePELMOout.exe, PELMO500.EXE, FOCUSPELMO664.PSM
+transfer_output_files = 
+Queue
+{% endfor %}
