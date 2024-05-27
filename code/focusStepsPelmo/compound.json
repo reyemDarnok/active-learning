@@ -1,9 +1,9 @@
 {
     "parent": null,
-    "molarMass": 100,
+    "molarMass": 300,
     "waterSolubility": 6000.0,
     "sorption": {
-        "koc": 344.0,
+        "koc": 1724,
         "freundlich": 0.9,
         "pH": -99,
         "pKa": 20,
@@ -16,19 +16,98 @@
         "f_neq": 0,
         "kdes": 0
     },
+
     "plant_uptake": 0,
     "volatizations": [
         {
             "henry": 0,
             "solubility": 0.1,
             "vaporization_pressure": 1e-7,
-            "diff_air": 0.05
+            "diff_air": 0.05,
+            "temperature": 20
+        },
+        {
+            "henry": 0,
+            "solubility": 0.2,
+            "vaporization_pressure": 4e-7,
+            "diff_air": 0.05,
+            "temperature": 30
         }
     ],
     "degradation": {
-        "metabolites": [
+        "photo": [
             {
-                "rate": 9.5e-4,
+                "inverse_rate": 0,
+                "i_ref": 500
+            },
+            {
+                "inverse_rate": 0,
+                "i_ref": 500
+            },
+            {
+                "inverse_rate": 0,
+                "i_ref": 500
+            },
+            {
+                "inverse_rate": 0,
+                "i_ref": 500
+            },
+            {
+                "inverse_rate": 0,
+                "i_ref": 500
+            }
+        ],
+        "metabolites": {
+            "A1": {
+                "rate": 0.00E+00,
+                "temperature": 20,
+                "q10": 2.58,
+                "moisture": {
+                    "absolute": 0,
+                    "relative": 100,
+                    "exp": 0.7
+                },
+                "stochiometric_factor": 1,
+                "rel_deg_new_sites": 0
+            },
+            "B1": {
+                "rate": 0.00E+00,
+                "temperature": 20,
+                "q10": 2.58,
+                "moisture": {
+                    "absolute": 0,
+                    "relative": 100,
+                    "exp": 0.7
+                },
+                "stochiometric_factor": 1,
+                "rel_deg_new_sites": 0
+            },
+            "C1": {
+                "rate": 0.00E+00,
+                "temperature": 20,
+                "q10": 2.58,
+                "moisture": {
+                    "absolute": 0,
+                    "relative": 100,
+                    "exp": 0.7
+                },
+                "stochiometric_factor": 1,
+                "rel_deg_new_sites": 0
+            },
+            "D1": {
+                "rate": 0.00E+00,
+                "temperature": 20,
+                "q10": 2.58,
+                "moisture": {
+                    "absolute": 0,
+                    "relative": 100,
+                    "exp": 0.7
+                },
+                "stochiometric_factor": 1,
+                "rel_deg_new_sites": 0
+            },
+            "BRCO2": {
+                "rate": 9.50E-04,
                 "temperature": 20,
                 "q10": 2.58,
                 "moisture": {
@@ -39,7 +118,7 @@
                 "stochiometric_factor": 1,
                 "rel_deg_new_sites": 0
             }
-        ],
+        },
         "type": 0,
       "system": 6,
       "soil": 6,

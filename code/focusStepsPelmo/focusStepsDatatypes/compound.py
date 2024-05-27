@@ -41,17 +41,24 @@ class MetaboliteDegradation:
         self.rel_deg_new_sites = rel_deg_new_sites
 
 @dataclass
+class Photodegradation:
+    inverse_rate: float
+    i_ref: float
+
+@dataclass
 class Degradation:
     system: float
     soil: float
     surfaceWater: float
     sediment: float
     type: DegradationType = DegradationType.FACTORS
-    metabolites: List[MetaboliteDegradation] = field(default_factory=list)
+    metabolites: Dict[str, MetaboliteDegradation] = field(default_factory=dict)
+    photo: List[Photodegradation] = field(default_factory=list)
     
     def __init__(self, system: float, soil: float, surfaceWater: float, sediment: float,
                  type: Union[DegradationType, int] = DegradationType.FACTORS,
-                 metabolites: List[Union[MetaboliteDegradation, Dict[str, Union[float, int, Dict[str, float]]]]] = None):
+                 metabolites: Dict[str, Union[MetaboliteDegradation, Dict[str, Union[float, int, Dict[str, float]]]]] = None,
+                 photo: List[Union[Photodegradation, Dict[str, float]]] = None):
         self.system = system
         self.soil = soil
         self.surfaceWater = surfaceWater
@@ -60,9 +67,13 @@ class Degradation:
         if metabolites is None:
             self.metabolites = []
         else:
-            self.metabolites = [map_to_class(x, MetaboliteDegradation) for x in metabolites] 
+            self.metabolites = {key: map_to_class(value, MetaboliteDegradation) for key, value in metabolites.items()} 
         if len(self.metabolites) < 5:
             self.metabolites += self.metabolites * (5 - len(self.metabolites))
+        if photo is None:
+            self.photo = []
+        else:
+            self.photo = [map_to_class(x, Photodegradation) for x in photo]
 
 @dataclass
 class Volatization:
@@ -70,6 +81,7 @@ class Volatization:
     solubility: float
     vaporization_pressure: float
     diff_air: float
+    temperature: float
 
 @dataclass
 class Sorption:

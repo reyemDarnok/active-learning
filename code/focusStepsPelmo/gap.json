@@ -1,13 +1,26 @@
-{"modelCrop": "ND",
+{"modelCrop": "MZ",
     "application": {
       "number": 1,
       "interval": 1,
       "rate": 1
     },
     "cropCover": {
-      "Spring": "No"
+      "Spring": "Average",
+      "Summer": "Full"
     },
     "regions": [
       "South"
+    ],
+    "timings": [
+        {
+            "emergence": "first_maturation",
+            "offset": 3,
+            "season": "Spring"
+        },
+        {
+            "emergence": "second_maturation",
+            "offset": 2,
+            "season": "Summer"
+        }
     ]
   }
