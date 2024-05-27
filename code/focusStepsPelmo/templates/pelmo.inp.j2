@@ -1,33 +1,9 @@
 026 01 01 31 12 Version 6
-..\..\..\C.soi
-..\..\..\C_apples.crp
+{% if scenario.name != 'G' %}..\..\{{ scenario.value }}.soi
+{% endif %}..\..\{{ crop.display_name }}.crp
 {{ psm_file.name }}
-..\..\..\C_01.cli
-..\..\..\C_02.cli
-..\..\..\C_03.cli
-..\..\..\C_04.cli
-..\..\..\C_05.cli
-..\..\..\C_06.cli
-..\..\..\C_07.cli
-..\..\..\C_08.cli
-..\..\..\C_09.cli
-..\..\..\C_10.cli
-..\..\..\C_11.cli
-..\..\..\C_12.cli
-..\..\..\C_13.cli
-..\..\..\C_14.cli
-..\..\..\C_15.cli
-..\..\..\C_16.cli
-..\..\..\C_17.cli
-..\..\..\C_18.cli
-..\..\..\C_19.cli
-..\..\..\C_20.cli
-..\..\..\C_21.cli
-..\..\..\C_22.cli
-..\..\..\C_23.cli
-..\..\..\C_24.cli
-..\..\..\C_25.cli
-..\..\..\C_26.cli
+{% for index in range(1,27) %}..\..\{{ "%02d" % index }}.cli{% if not loop.last %}
+{% endif %}{% endfor %}
 00000015  99.0    0000000000000000
     PRSN    TSER  000.0     1.0 00000001
     TETD    TSER  000.0     1.0 00000001

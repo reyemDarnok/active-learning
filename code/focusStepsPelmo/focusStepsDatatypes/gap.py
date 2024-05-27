@@ -138,35 +138,54 @@ class Crop(CropDataMixin, Enum):
     def from_acronym( acronym: str) -> 'Crop':
         return Crop[acronym]
 
-class PelmoCrop(Enum):
-    AP = "Apples"
-    BB = "Bush_-_berries"
-    BF = "Beans_-_(field)"
-    BV = "Beans_-_(vegetables)"
-    CA = "Carrots"
-    CB = "Cabbage"
-    CO = "Cotton"
-    GA = "Grass_-_and_-_alfalfa"
-    LS = "Linseed"
-    MZ = "Maize"
-    ON = "Onions"
-    OS = "Oilseed_-_rape_-_(summer)"
-    OW = "Oilseed_-_rape_-_(winter)"
-    PE = "Peas"
-    PO = "Postatoes"
-    SB = "Sugar_-_beets"
-    SC = "Spring_-_cereals"
-    SF = "Sunflower"
-    SO = "Soybeans"
-    SW = "Strawberries"
-    TB = "Tobacco"
-    TM = "Tomatoes"
-    VI = "Vines"
-    WC = "Winter_-_cereals"
+class Scenario(Enum):
+    C = "Châteaudun"
+    G = "Greenhouse"
+    H = "Hamburg"
+    J = "Jokioinen"
+    K = "Kremsmünster"
+    N = "Okehampton"
+    P = "Piacenza"
+    O = "Porto"
+    S = "Sevilla"
+    T = "Thiva"
+
+class PelmoCropMixin(NamedTuple):
+    display_name: str
+    defined_scenarios: List[Scenario]
+
+class PelmoCrop(PelmoCropMixin, Enum):
+    AP = PelmoCropMixin(display_name= "Apples", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    BB = PelmoCropMixin(display_name= "Bush berries", defined_scenarios=[Scenario.J])
+    BF = PelmoCropMixin(display_name= "Beans (field)", defined_scenarios=[Scenario.H, Scenario.K, Scenario.N])
+    BV = PelmoCropMixin(display_name= "Beans (vegetables)", defined_scenarios=[Scenario.O, Scenario.T])
+    CA = PelmoCropMixin(display_name= "Carrots", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O, Scenario.T])
+    CB = PelmoCropMixin(display_name= "Cabbage", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O, Scenario.S, Scenario.T])
+    # Unknown errors CI = PelmoCropMixin(display_name= "Citrus", defined_scenarios=[Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    CO = PelmoCropMixin(display_name= "Cotton", defined_scenarios=[Scenario.S, Scenario.T])
+    GA = PelmoCropMixin(display_name= "Grass and alfalfa", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    IV = PelmoCropMixin(display_name= "Individual crop", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    LS = PelmoCropMixin(display_name= "Linseed", defined_scenarios=[Scenario.N])
+    MZ = PelmoCropMixin(display_name= "Maize", defined_scenarios=[Scenario.C, Scenario.H, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    NC = PelmoCropMixin(display_name= "No crop (fallow)", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    ON = PelmoCropMixin(display_name= "Onions", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O, Scenario.T])
+    OS = PelmoCropMixin(display_name= "Oilseed rape (summer)", defined_scenarios=[Scenario.J, Scenario.N, Scenario.O])
+    OW = PelmoCropMixin(display_name= "Oilseed rape (winter)", defined_scenarios=[Scenario.C, Scenario.H, Scenario.K, Scenario.N, Scenario.P, Scenario.O])
+    PE = PelmoCropMixin(display_name= "Peas (animals)", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.N])
+    PO = PelmoCropMixin(display_name= "Potatoes", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    SB = PelmoCropMixin(display_name= "Sugar beets", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    SC = PelmoCropMixin(display_name= "Spring cereals", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.O])
+    SF = PelmoCropMixin(display_name= "Sunflower", defined_scenarios=[Scenario.P, Scenario.S])
+    SO = PelmoCropMixin(display_name= "Soybeans", defined_scenarios=[Scenario.P])
+    SW = PelmoCropMixin(display_name= "Strawberries", defined_scenarios=[Scenario.H, Scenario.J, Scenario.K, Scenario.S])
+    TB = PelmoCropMixin(display_name= "Tobacco", defined_scenarios=[Scenario.P, Scenario.T])
+    TM = PelmoCropMixin(display_name= "Tomatoes", defined_scenarios=[Scenario.C, Scenario.P, Scenario.O, Scenario.S, Scenario.T]) # , Scenario.G Greenhouse makes problems (missing soil file)
+    VI = PelmoCropMixin(display_name= "Vines", defined_scenarios=[Scenario.C, Scenario.H, Scenario.K, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    WC = PelmoCropMixin(display_name= "Winter cereals", defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
 
     @staticmethod
     def from_acronym( acronym: str) -> 'Crop':
-        return Crop[acronym]
+        return PelmoCrop[acronym]
     
 class Region(Enum):
     NoRunoff = 0
