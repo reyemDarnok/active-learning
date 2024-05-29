@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
 from argparse import ArgumentParser, Namespace
 import logging
+import jsonLogger
 from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape, StrictUndefined
 from enum import Enum
 import json
 from focusStepsDatatypes import compound, gap, scenario
 from decimal import Decimal
-
-logging.basicConfig(level=logging.DEBUG)
 jinja_env = Environment(loader=PackageLoader("main"), autoescape=select_autoescape(), undefined=StrictUndefined)
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+logger.handlers = [jsonLogger.get_json_handler('log.json')]
 
 class ApplicationType(Enum):
     soil = 1
@@ -28,18 +31,18 @@ def generate_psm_files(output_dir: Path, compound_file: Path, gap_file: Path):
         if gap_file.is_dir():
             for actual_compound_file in compound_file.glob('*.json'):
                 for actual_gap_file in gap_file.glob('*.json'):
-                    generate_psms(actual_compound_file, actual_gap_file, output_dir)
+                    _generate_psms(actual_compound_file, actual_gap_file, output_dir)
         else:
             for actual_compound_file in compound_file.glob('*.json'):
-                generate_psms(actual_compound_file, gap_file, output_dir)
+                _generate_psms(actual_compound_file, gap_file, output_dir)
     else:
         if gap_file.is_dir():
             for actual_gap_file in gap_file.glob('*.json'):
-                generate_psms(compound_file, actual_gap_file, output_dir)
+                _generate_psms(compound_file, actual_gap_file, output_dir)
         else:
-            generate_psms(compound_file, gap_file, output_dir)
+            _generate_psms(compound_file, gap_file, output_dir)
 
-def generate_psms(compound_file: Path, gap_file: Path, output_dir: Path):
+def _generate_psms(compound_file: Path, gap_file: Path, output_dir: Path):
     psm_compound = compound.Substance(**json.loads(compound_file.read_text()))
     psm_gap = gap.GAP(**json.loads(gap_file.read_text()))
     psm_template = jinja_env.get_template('general.psm.j2')
