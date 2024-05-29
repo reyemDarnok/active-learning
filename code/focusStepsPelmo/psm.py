@@ -7,10 +7,9 @@ from pathlib import Path
 from focusStepsDatatypes import helperfunctions
 from focusStepsDatatypes.gap import PelmoCrop, Scenario
 from psm_creator import generate_psm_files
-from psm_runner import extract_zip, run_psms
+from psm_runner import run_psms, extract_zip
 from shutil import copytree, rmtree
 from multiprocessing import cpu_count
-from dataclasses import asdict
 import json
 
 logger = logging.getLogger()

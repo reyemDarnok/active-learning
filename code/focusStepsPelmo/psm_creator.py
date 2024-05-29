@@ -6,9 +6,8 @@ from pathlib import Path
 from jinja2 import Environment, PackageLoader, select_autoescape, StrictUndefined
 from enum import Enum
 import json
-from focusStepsDatatypes import compound, gap, scenario
-from decimal import Decimal
-jinja_env = Environment(loader=PackageLoader("main"), autoescape=select_autoescape(), undefined=StrictUndefined)
+from focusStepsDatatypes import compound, gap
+jinja_env = Environment(loader=PackageLoader("psm_creator"), autoescape=select_autoescape(), undefined=StrictUndefined)
 
 logger = logging.getLogger()
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+from focusStepsDatatypes.pelmo import ChemPLM, PelmoResult, WaterPLM
 import jsonLogger
 from argparse import Namespace, ArgumentParser
 from multiprocessing import cpu_count
@@ -10,16 +11,14 @@ from zipfile import ZipFile
 from shutil import copytree, rmtree
 from concurrent.futures import Future, ThreadPoolExecutor
 from threading import current_thread
-import re
 
 from jinja2 import Environment, PackageLoader, StrictUndefined, Template, select_autoescape
 from focusStepsDatatypes import helperfunctions
-from focusStepsDatatypes.gap import Crop, PelmoCrop, Scenario
+from focusStepsDatatypes.gap import PelmoCrop, Scenario
 from focusStepsDatatypes import gap
 from contextlib import suppress
-from dataclasses import dataclass
 
-jinja_env = Environment(loader=PackageLoader("main"), autoescape=select_autoescape(), undefined=StrictUndefined)
+jinja_env = Environment(loader=PackageLoader("psm_runner"), autoescape=select_autoescape(), undefined=StrictUndefined)
 
 logger = logging.getLogger()
 
@@ -92,58 +91,24 @@ def single_pelmo_run(pelmo_exe: Path, psm_file: Path, working_dir: Path, inp_fil
 
     return parse_pelmo_result(psm_file)
 
-class WaterPLM():
-    def __init__(self, file: Path) -> None:
-        self.years = [[[line for line in section.splitlines()[:-1] if line] for section in re.split(r"---+", year)[1:]] for year in file.read_text().split("ANNUAL WATER OUTPUT")[1:]]
-        self.horizons = [WaterHorizons(year[2][:-1]) for year in self.years]
-
-class WaterHorizon():
-    def __init__(self, line: str):
-        segments = line.split()
-        self.horizon = int(segments[0])
-        self.compartment = int(segments[1])
-        if len(segments) < 10 and '(' in segments[2]:
-            self.previous_storage = float(segments[2].split('(')[0])
-            self.previous_storage_factor = float(segments[2].split('(')[1].replace(')', ''))
-            segments = segments[3:]
-        else:
-            self.previous_storage = float(segments[2])
-            self.previous_storage_factor = float(segments[3].replace('(', '').replace(')', ''))
-            segments = segments[4:]
-        self.leaching_input = float(segments[0])
-        self.transpiration = float(segments[1])
-        self.leaching_output = float(segments[2])
-        if len(segments) < 6:
-            self.current_storage = float(segments[3].split('(')[0])
-            self.current_storage_factor = float(segments[3].split('(')[1].replace(')', ''))
-            segments = segments[4:]
-        else:
-            self.current_storage = float(segments[3])
-            self.current_storage_factor = float(segments[4].replace('(', '').replace(')', ''))
-            segments = segments[5:]
-        self.temperature = segments[0]
-
-class WaterHorizons():
-    def __init__(self, lines: List[str]):
-        self.horizons = [WaterHorizon(line) for line in lines]
 
 
 
-def parse_pelmo_result(psm_file: Path, target_compartment = 21) -> float:
+
+def parse_pelmo_result(psm_file: Path, target_compartment = 21) -> List[PelmoResult]:
     run_dir = psm_file.parent
     water_file = run_dir / "WASSER.PLM"
     chem_files = run_dir.glob("CHEM*.PLM")
 
     water_plm = WaterPLM(water_file)
-    # Read horizons with a comparment of target_compartment
-    water_horizons = [horizon for year in water_plm.horizons for horizon in year.horizons if horizon.compartment == target_compartment]
+    results = []
+    for chem_file in chem_files:
+        chem_plm = ChemPLM(chem_file)
+        p = PelmoResult(water_plm, chem_plm)
+        results.append(p)
 
-    percolations_in_mm = [x * 10 for x in water_horizons]
 
-    #for chem_file in chem_files:
-    #    chem_plm = ChemPLM(chem_file)
-    #    chem_horizons = [horizon for year in chem_plm.horizons for horizon in year.horizons if horizon.compartment == target_compartment]
-    #    flux_in_gperha = [x * 1000 for x in chem_horizons]
+    return results
 
 
 
