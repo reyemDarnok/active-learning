@@ -73,7 +73,7 @@ def parse_args() -> Namespace:
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     jsonLogger.configure_logger_from_argparse(logger, args)
-    return parser.parse_args()
+    return args
 
 if __name__ == '__main__':
     main()

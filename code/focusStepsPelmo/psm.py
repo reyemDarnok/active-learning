@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from dataclasses import asdict
 import jsonLogger
 import logging
 from argparse import ArgumentParser, Namespace
@@ -33,7 +34,7 @@ def main():
     logger.info('Starting to run Pelmo')
     results = run_psms(psm_files=psm_dir.glob('*.psm'), working_dir=focus_dir, crops=args.crop, scenarios=args.scenario, pelmo_exe=args.pelmo_exe, max_workers=args.threads)
     logger.info('Dumping results of Pelmo runs to %s', args.output_file)
-    args.output_file.write_text(json.dumps(results))
+    args.output_file.write_text(json.dumps([asdict(result) for result in results]))
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
@@ -49,6 +50,7 @@ def parse_args() -> Namespace:
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     jsonLogger.configure_logger_from_argparse(logger, args)
+    return args
 
 if __name__ == '__main__':
     main()

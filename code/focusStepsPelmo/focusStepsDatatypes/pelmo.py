@@ -83,19 +83,3 @@ class ChemPLM:
     def __init__(self, file: Path) -> None:
         years = [[[line for line in section.splitlines()[:-1] if line] for section in re.split(r"---+", year)[1:]] for year in file.read_text().split("ANNUAL")[1:]]
         self.horizons = [[ChemHorizon(line) for line in year[2][:-1] if not '*' in line] for year in years]
-
-@dataclass
-class PelmoResult:
-    pecs: List[float]
-    PECgw: float
-    def __init__(self, water: WaterPLM, chem: ChemPLM, target_compartment: int = 21) -> None:
-        chem_horizons = [horizon for year in chem.horizons for horizon in year if horizon.compartment == target_compartment]
-        water_horizons = [horizon for year in water.horizons for horizon in year if horizon.compartment == target_compartment]
-        # mass in g/ha / water in mm
-        # input is in kg/ha and cm
-        self.pecs = [chem_horizons[i].leaching_output * 1000 / (water_horizons[i].leaching_output * 10 ) * 100 for i in range(len(chem_horizons))]
-        self.pecs.sort()
-        percentile = 0.8
-        lower = int((len(self.pecs) - 1) * percentile) + 1
-        self.PECgw = (self.pecs[lower] + self.pecs[lower + 1]) / 2
-

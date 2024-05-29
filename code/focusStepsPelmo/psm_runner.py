@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
+from dataclasses import dataclass
 import logging
-from focusStepsDatatypes.pelmo import ChemPLM, PelmoResult, WaterPLM
+from focusStepsDatatypes.pelmo import ChemPLM, WaterPLM
 import jsonLogger
 from argparse import Namespace, ArgumentParser
 from multiprocessing import cpu_count
@@ -21,6 +22,13 @@ from contextlib import suppress
 jinja_env = Environment(loader=PackageLoader("psm_runner"), autoescape=select_autoescape(), undefined=StrictUndefined)
 
 logger = logging.getLogger()
+
+@dataclass
+class PelmoResult:
+    psm: str
+    scenario: str
+    crop: str
+    pec: List[float]
 
 def _init_thread(working_dir: Path):
         # PELMO can't run multiple times in the same directory at the same time
@@ -44,7 +52,7 @@ def main():
 
             
 
-def run_psms(psm_files: Iterable[Path], working_dir: Path, crops: Iterable[PelmoCrop] = PelmoCrop, scenarios: Iterable[Scenario] = Scenario, pelmo_exe: Path = Path('C:/FOCUS_PELMO.664/PELMO500.exe'), max_workers: int = cpu_count() - 1) -> List[float]:
+def run_psms(psm_files: Iterable[Path], working_dir: Path, crops: Iterable[PelmoCrop] = PelmoCrop, scenarios: Iterable[Scenario] = Scenario, pelmo_exe: Path = Path('C:/FOCUS_PELMO.664/PELMO500.exe'), max_workers: int = cpu_count() - 1) -> List[PelmoResult]:
     pool = ThreadPoolExecutor(max_workers=max_workers, initializer=_init_thread, initargs=(working_dir,))
     futures: List[Future] = []
     for psm_file in psm_files:
@@ -62,7 +70,7 @@ def run_psms(psm_files: Iterable[Path], working_dir: Path, crops: Iterable[Pelmo
     pool.shutdown()
     return result
 
-def single_pelmo_run(pelmo_exe: Path, psm_file: Path, working_dir: Path, inp_file_template: Template, dat_file_template: Template, crop: PelmoCrop, scenario: Scenario) -> float:
+def single_pelmo_run(pelmo_exe: Path, psm_file: Path, working_dir: Path, inp_file_template: Template, dat_file_template: Template, crop: PelmoCrop, scenario: Scenario) -> List[PelmoResult]:
     scenario_dirs = working_dir / current_thread().name
     scenario_dir = scenario_dirs / scenario.value
     run_dir = scenario_dir / f'{psm_file.stem}.run'
@@ -89,14 +97,13 @@ def single_pelmo_run(pelmo_exe: Path, psm_file: Path, working_dir: Path, inp_fil
     if b"F A T A L   E R R O R" in process.stdout:
         raise ValueError(f"Pelmo completed with error while calculating {psm_file.name} {crop.display_name} {scenario.value}. The Pelmo output was {process.stdout.decode(errors='backslashreplace')}")
 
-    return parse_pelmo_result(psm_file)
+    return PelmoResult(psm = psm_file.name, scenario=scenario.value, crop=crop.display_name, pec=parse_pelmo_result(crop_dir))
 
 
 
 
 
-def parse_pelmo_result(psm_file: Path, target_compartment = 21) -> List[PelmoResult]:
-    run_dir = psm_file.parent
+def parse_pelmo_result(run_dir: Path, target_compartment = 21) -> List[float]:
     water_file = run_dir / "WASSER.PLM"
     chem_files = run_dir.glob("CHEM*.PLM")
 
@@ -104,8 +111,16 @@ def parse_pelmo_result(psm_file: Path, target_compartment = 21) -> List[PelmoRes
     results = []
     for chem_file in chem_files:
         chem_plm = ChemPLM(chem_file)
-        p = PelmoResult(water_plm, chem_plm)
-        results.append(p)
+        chem_horizons = [horizon for year in chem_plm.horizons for horizon in year if horizon.compartment == target_compartment]
+        water_horizons = [horizon for year in water_plm.horizons for horizon in year if horizon.compartment == target_compartment]
+        # mass in g/ha / water in mm
+        # input is in kg/ha and cm
+        pecs = [(chem_horizons[i].leaching_output * 1000 / (water_horizons[i].leaching_output * 10 ) * 100 ) if water_horizons[i].leaching_output > 0 else 0 for i in range(len(chem_horizons))]
+        pecs.sort()
+        percentile = 0.8
+        lower = int((len(pecs) - 1) * percentile) + 1
+        PECgw = (pecs[lower] + pecs[lower + 1]) / 2
+        results.append(PECgw)
 
 
     return results
@@ -134,6 +149,7 @@ def parse_args() -> Namespace:
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     jsonLogger.configure_logger_from_argparse(logger, args)
+    return args
 
 if __name__ == '__main__':
     main()
