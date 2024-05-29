@@ -22,8 +22,6 @@ from dataclasses import dataclass
 jinja_env = Environment(loader=PackageLoader("main"), autoescape=select_autoescape(), undefined=StrictUndefined)
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-logger.handlers = [jsonLogger.get_json_handler('log.json')]
 
 def _init_thread(working_dir: Path):
         # PELMO can't run multiple times in the same directory at the same time
@@ -168,8 +166,9 @@ def parse_args() -> Namespace:
     parser.add_argument('-c', '--crop', nargs='*', type=gap.PelmoCrop.from_acronym, default=list(gap.PelmoCrop), help="The crops to simulate. Can be specified multiple times. Should be listed as a two letter acronym. The selected crops have to be present in the FOCUS zip, the bundled zip includes all crops. Defaults to all crops.")
     parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: helperfunctions.str_to_enum(x, Scenario), default=list(gap.Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1, help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
-    return parser.parse_args()
-
+    jsonLogger.add_log_args(parser)
+    args = parser.parse_args()
+    jsonLogger.configure_logger_from_argparse(logger, args)
 
 if __name__ == '__main__':
     main()

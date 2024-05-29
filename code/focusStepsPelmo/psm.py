@@ -14,8 +14,6 @@ from dataclasses import asdict
 import json
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-logger.handlers = [jsonLogger.get_json_handler('log.json')]
 
 def main():
     args = parse_args()
@@ -49,7 +47,9 @@ def parse_args() -> Namespace:
     parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1, help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
     parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: helperfunctions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('-f', '--focus', type=Path, default=Path('FOCUS.zip', help="The Focus data to use. Unzips it if it is a zip. Defaults to a bundled zip"))
-    return parser.parse_args()
+    jsonLogger.add_log_args(parser)
+    args = parser.parse_args()
+    jsonLogger.configure_logger_from_argparse(logger, args)
 
 if __name__ == '__main__':
     main()

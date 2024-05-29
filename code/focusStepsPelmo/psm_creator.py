@@ -11,8 +11,6 @@ from decimal import Decimal
 jinja_env = Environment(loader=PackageLoader("main"), autoescape=select_autoescape(), undefined=StrictUndefined)
 
 logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
-logger.handlers = [jsonLogger.get_json_handler('log.json')]
 
 class ApplicationType(Enum):
     soil = 1
@@ -73,6 +71,9 @@ def parse_args() -> Namespace:
     parser.add_argument('-c', '--compound-file', required=True, type=Path, help='The compound to create a psm file for. If this is a directory, create psm files for every compound file in the directory, with .json files assumed to be compound files and no recursion')
     parser.add_argument('-g', '--gap-file', required=True, type=Path, help='The gap to create a psm file for. If this is a directory, create psm files for every gap file in the directory, with .json files assumed to be compound files and no recursion')
     parser.add_argument('-o', '--output-dir', required=True, type=Path, help='The directory for output files. The files will be named {COMPOUND_FILE}-{GAP_FILE}-{MATURATION}-{DAY}.psm')
+    jsonLogger.add_log_args(parser)
+    args = parser.parse_args()
+    jsonLogger.configure_logger_from_argparse(logger, args)
     return parser.parse_args()
 
 if __name__ == '__main__':
