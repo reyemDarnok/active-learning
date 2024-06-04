@@ -40,7 +40,7 @@ def parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument('-c', '--compound-file', required=True, type=Path, help='The compound to create a psm file for. If this is a directory, create psm files for every compound file in the directory, with .json files assumed to be compound files and no recursion')
     parser.add_argument('-g', '--gap-file', required=True, type=Path, help='The gap to create a psm file for. If this is a directory, create psm files for every gap file in the directory, with .json files assumed to be compound files and no recursion')
-    parser.add_argument('-w', '--work-dir', default=Path().cwd(), type=Path, help='The directory in which files for Pelmo will be created. Defaults to the current directory')
+    parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path, help='The directory in which files for Pelmo will be created. Defaults to the current directory')
     parser.add_argument('-o', '--output-file', default=Path('output.json'), type=Path, help='Where to output the collected results of the Pelmo runs. Defaults to "output.json"')
     parser.add_argument(      '--crop', nargs='*', default=list(PelmoCrop), type=PelmoCrop.from_acronym, help="Which crops to run. Defaults to all crops")
     parser.add_argument('-e', '--pelmo-exe', type=Path, default=Path('C:/FOCUS_PELMO.664') / 'PELMO500.exe', help="The PELMO executable to use for running. Defaults to the default PELMO installation. This should point to the CLI EXE, usually named PELMO500.EXE NOT to the GUI EXE usually named wpelmo.exe.")

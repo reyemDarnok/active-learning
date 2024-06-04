@@ -1,3 +1,7 @@
+# custom excludes
+**/test.py
+workdir/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

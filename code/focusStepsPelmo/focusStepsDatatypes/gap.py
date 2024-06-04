@@ -6,17 +6,23 @@ from typing import Dict, List, Optional, Type, Union, NamedTuple
 from .helperfunctions import map_to_class, str_to_enum
 
 class Coverage(Enum):
+    '''Coverage categories for Steps12'''
     No = 0
     Minimal = auto()
     Average = auto()
     Full = auto()
 
 class CropDataMixin(NamedTuple):
+    '''Crop Information for Steps12'''
     display_name: str
+    '''The name of the crop for display purposes'''
     driftValues: List[float]
+    '''How much substance drifts into the water'''
     interception: Dict[Coverage, float]
+    '''At which coverage level, how much substance does the plant intercept?'''
 
 class Crop(CropDataMixin, Enum):
+    '''The crops defined for Steps12, each defined as a CropDataMixin'''
     AA = CropDataMixin(
         display_name = "Aerial appln",
         driftValues= [33.2, 33.2, 33.2, 33.2, 33.2, 33.2, 33.2, 33.2],
@@ -139,6 +145,7 @@ class Crop(CropDataMixin, Enum):
         return Crop[acronym]
 
 class Scenario(Enum):
+    '''The Pelmo Scenarios. The key is the one letter shorthand and the value the full name'''
     C = "Châteaudun"
     H = "Hamburg"
     J = "Jokioinen"
@@ -150,10 +157,14 @@ class Scenario(Enum):
     T = "Thiva"
 
 class PelmoCropMixin(NamedTuple):
+    '''Crop information for Pelmo'''
     display_name: str
+    '''The name to use for display'''
     defined_scenarios: List[Scenario]
+    '''The scenarios that are defined for this Crop in Pelmo'''
 
 class PelmoCrop(PelmoCropMixin, Enum):
+    '''The crops defined for Pelmo. Each defined as a PelmoCropMixin'''
     AP = PelmoCropMixin(display_name= "Apples", 
                         defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
     BB = PelmoCropMixin(display_name= "Bush berries", 
@@ -210,6 +221,7 @@ class PelmoCrop(PelmoCropMixin, Enum):
         return PelmoCrop[acronym]
     
 class Region(Enum):
+    '''The Steps12 Regions'''
     NoRunoff = 0
     North = 1
     South = 2
@@ -217,12 +229,17 @@ class Region(Enum):
 
 @dataclass
 class Application:
+    '''Application information'''
     rate: float
+    '''How much compound will be applied in g/ha'''
     number: int = 1
+    '''How often will be applied'''
     interval: int = 1
+    '''What is the minimum interval between applications'''
     factor: float = 1
 
 class Emergence(Enum):
+    '''The possible application crop development timings for Pelmo'''
     first_emergence = 0
     first_maturation = 1
     first_harvest = 2
@@ -233,15 +250,20 @@ class Emergence(Enum):
 
 
 class Season(Enum):
+    '''The Step12 Seasons'''
     Spring = auto()
     Summer = auto()
     Autumn = auto()
 
 @dataclass
 class Timing:
+    '''A timing definition in Pelmo'''
     emergence: Emergence
+    '''Relative to which development state'''
     offset: int
+    '''How many days after (or before) that state'''
     season: Season
+    '''In which Season is that'''
 
     def __init__(self, emergence: Union[Emergence, str, int], offset: int, season: Union[Season, str]):
         self.emergence = str_to_enum(emergence, Emergence)
@@ -250,11 +272,17 @@ class Timing:
 
 @dataclass
 class GAP:
+    '''Defines a GAP'''
     modelCrop: Crop
+    '''The crop that the field is modelled after'''
     application: Application
+    '''The values of the actual application'''
     cropCover: Dict[Season, Coverage]
+    '''How much crop cover is in different Seasons'''
     regions: List[Region]
+    '''Which regions are defined'''
     timings: List[Timing] = field(default_factory=list)
+    '''What are the timings of application'''
 
     def __init__(self, modelCrop: Union[Crop, str],
                  application: Union[Application, Dict[str, float]],

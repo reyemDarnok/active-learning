@@ -6,10 +6,16 @@ from enum import Enum, auto
 
 @dataclass
 class Occurrence:
+    '''Used for Step12 calculations
+    Describes the Occurrence behaviour of a substance.'''
     sediment: float
+    '''The Occurrence in sediment. Is always 100 for parents and less for metabolites'''
     soil: float
+    '''The Occurrence in soil. Is always 100 for parents and less for metabolites'''
+
 
 class DegradationType(Enum):
+    '''Used by Pelmo to describe the type of degdradation'''
     FACTORS = 0
     CONSTANT_WITH_DEPTH = auto()
     INDIVIDUAL = auto()
@@ -19,13 +25,16 @@ class DegradationType(Enum):
 
 @dataclass
 class Moisture:
+    '''Used by Pelmo'''
     absolute: float
     relative: float
     exp: float
 
 @dataclass
 class MetaboliteDegradation:
+    '''Used by Pelmo to describe the degradation to metabolites'''
     rate: float
+    '''The degradation rate. Calculated as ln(2)/DT50'''
     temperature: float
     q10: float
     moisture: Moisture
@@ -42,19 +51,28 @@ class MetaboliteDegradation:
 
 @dataclass
 class Photodegradation:
+    '''Used by pelmo'''
     inverse_rate: float
     i_ref: float
 
 @dataclass
 class Degradation:
+    '''General Degradation information'''
     system: float
+    '''Total System DT50'''
     soil: float
+    '''DT50 in soil'''
     surfaceWater: float
+    '''DT50 in water'''
     sediment: float
+    '''DT50 in sediment'''
     type: DegradationType = DegradationType.FACTORS
+    '''The type of degradation for pelmo'''
     metabolites: Dict[str, MetaboliteDegradation] = field(default_factory=dict)
+    '''Information on which metabolites will form'''
     photo: List[Photodegradation] = field(default_factory=list)
-    
+    '''Photodegradation information'''
+
     def __init__(self, system: float, soil: float, surfaceWater: float, sediment: float,
                  type: Union[DegradationType, int] = DegradationType.FACTORS,
                  metabolites: Dict[str, Union[MetaboliteDegradation, Dict[str, Union[float, int, Dict[str, float]]]]] = None,
@@ -77,6 +95,7 @@ class Degradation:
 
 @dataclass
 class Volatization:
+    '''Used by Pelmo'''
     henry: float
     solubility: float
     vaporization_pressure: float
@@ -85,6 +104,7 @@ class Volatization:
 
 @dataclass
 class Sorption:
+    '''Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values'''
     koc: float
     freundlich: float
     pH: float 
@@ -100,15 +120,23 @@ class Sorption:
 
 @dataclass
 class Substance:
+    '''A Compound definition'''
     molarMass: float
+    '''molar mass in g/mol'''
     waterSolubility: float
     sorptions: List[Sorption]
+    '''A list of soption behaviours'''
     degradation: Degradation
+    '''Degradation behaviours'''
     maxOccurrence: Occurrence
+    '''Simple formation fractions for Steps12'''
     parent: Optional['Substance'] = None
+    '''The parent Compound, if any'''
     freundlich: float = 1
     plant_uptake: float = 0
+    '''Fraction of plant uptake'''
     volatizations: List[Volatization] = field(default_factory = list)
+    '''A list of volatization behaviours'''
     
 
     def __init__(self, molarMass: float, waterSolubility: float, sorption: Union[Sorption, Dict[str, float]],

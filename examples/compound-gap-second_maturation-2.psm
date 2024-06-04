@@ -1,0 +1,73 @@
+<COMMENT>
+Generated from compound and gap <Pesticide>
+<END COMMENT>
+<NUMBER OF SOIL HORIZONS>
+ 0 
+<END NUMBER OF SOIL HORIZONS>
+<APPLICATION>
+ 1    0    9    <number of locations absolute app/relative app>
+026            <number of application location>
+02  04  01   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  02   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  03   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  04   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  05   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  06   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  07   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  08   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  09   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  10   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  11   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  12   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  13   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  14   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  15   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  16   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  17   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  18   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  19   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  20   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  21   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  22   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  23   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  24   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  25   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+02  04  26   1    0    0    75    0    0    0   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+ 4    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually
+ 0.0693    1  0.0693    0    500    1000                <plant decay rate;washoff parameter;penetration;photdegradation;Reference irradiance;laminar layer>
+<END APPLICATION>
+<FLAGS>
+ 1   1   <henry(0=direct 1=calc.)  kd_flag(0=direct 1=calc.)>
+<END FLAGS>
+<VOLATILIZATION>
+<henry       solub.      molmass     vap.press   diff air    depth volat.  Hv        Temperature>
+  0.00E+00   0.1    300     1.00E-07   0.05    0.1    98501    20 
+  0.00E+00   0.2    300     4.00E-07   0.05    0.1    98501    30 
+<END VOLATILIZATION>
+<PLANT UPTAKE>
+ 0      <plant uptake factor
+<END PLANT UPTAKE>
+<DEGRADATION>
+<degrate    degtemp     q10         moist-abs   moist-rel   moist-exp   rel deg neq sites  stoichiometric factor
+  0.00E+00   20          2.58        0           100         0.7       0         1        <Met A1>
+  0.00E+00   20          2.58        0           100         0.7       0         1        <Met B1>
+  0.00E+00   20          2.58        0           100         0.7       0         1        <Met C1>
+  0.00E+00   20          2.58        0           100         0.7       0         1        <Met D1>
+  9.50E-04   20          2.58        0           100         0.7       0         1        <BR/CO2>
+ 0                 <0 = degradation according to degradation factors, 1 = constant with depth,2 individual,3 = degradation according to degradation factors, 4 = constant with depth,5 individual, >2 deg in liquid phase only)
+<PHOTODEGRADATION>
+<rate 1/n>  <I_Ref W>
+ 0   500  0   500  0   500  0   500  0   500 
+<END DEGRADATION>
+<ADSORPTION>
+<Koc-value    Fr.exp.Koc  pH          pKa     limit for Freundl.  ann.incr.> <k_doc> <% change> KOC2      pH2 f_neq       kdes>
+ 1724        0.9        -99          20         1.00E-10          0      0     100    -99    -99     0     0 
+<END ADSORPTION>
+<DEPTH DEPENDENT SORPTION AND TRANSFORMATION VALUES>
+<Kd          Fr.exp.     Met A1   Met B1   Met C1   Met D1   BR/CO2 >
+<END DEPTH DEPENDENT>
+<THE FOLLOWING SECTION IS USED BY THE SHELL ONLY NOT BY PELMO>
+<FORMATION FRACTIONS ENTERED BY THE USER (0=NO,1=YES)>
+ 0 
+<END FORMATION FRACTIONS>
+<END PSM>

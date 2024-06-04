@@ -1,9 +1,15 @@
 Universe            = Vanilla
-Executable          = {% executable|default("Unknown") %}
+Executable          = C:\Users\GPLCE\AppData\Local\Programs\Python\Python37\python
+batch_name = psm_run_{{ run_id | default(0) }}
+transfer_executable = False
+when_to_transfer_output = ON_SUCCESS
+success_exe_code = 0
 
-{% for packageNumber in range(0, 99) %}
-Arguments   = {% packageNumber * packageSize + 1 %} 
-transfer_input_files = data.csv, FOCUS.zip, parsePELMOout.exe, PELMO500.EXE, FOCUSPELMO664.PSM
-transfer_output_files = 
-Queue
+{% for compound in compounds %}
+{% for gap in gaps %}
+Arguments = "-c {{ compound }} -g {{ gap }}"
+transfer_input_files = psm.py, psm_creator.py, psm_runner.py, FOCUS.zip, templates, focusStepsDatatypes
+transfer_output_files = output.json
+queue
+{% endfor %}
 {% endfor %}

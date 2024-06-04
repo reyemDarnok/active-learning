@@ -31,6 +31,8 @@ class PelmoResult:
     pec: List[float]
 
 def _init_thread(working_dir: Path):
+    '''Initialise a working directory for the current thread in the overarching working directory.
+    This mostly consists of copying reference files'''
         # PELMO can't run multiple times in the same directory at the same time
     logger.debug('Starting initialisation of %s', current_thread().name)
     runner_dir = working_dir / current_thread().name
@@ -53,6 +55,8 @@ def main():
             
 
 def run_psms(psm_files: Iterable[Path], working_dir: Path, crops: Iterable[PelmoCrop] = PelmoCrop, scenarios: Iterable[Scenario] = Scenario, pelmo_exe: Path = Path('C:/FOCUS_PELMO.664/PELMO500.exe'), max_workers: int = cpu_count() - 1) -> List[PelmoResult]:
+    '''Run all given psm_files using working_dir as scratch space. 
+    When given scenarios that are not defined for a some given crops, they are silently ignored for those crops only'''
     pool = ThreadPoolExecutor(max_workers=max_workers, initializer=_init_thread, initargs=(working_dir,))
     futures: List[Future] = []
     for psm_file in psm_files:
@@ -71,6 +75,8 @@ def run_psms(psm_files: Iterable[Path], working_dir: Path, crops: Iterable[Pelmo
     return result
 
 def single_pelmo_run(pelmo_exe: Path, psm_file: Path, working_dir: Path, inp_file_template: Template, dat_file_template: Template, crop: PelmoCrop, scenario: Scenario) -> List[PelmoResult]:
+    '''Runs a single psm/crop/scenario combination.
+    Assumes that it is in a multithreading context after _init_thread as run'''
     scenario_dirs = working_dir / current_thread().name
     scenario_dir = scenario_dirs / scenario.value
     run_dir = scenario_dir / f'{psm_file.stem}.run'
@@ -104,6 +110,7 @@ def single_pelmo_run(pelmo_exe: Path, psm_file: Path, working_dir: Path, inp_fil
 
 
 def parse_pelmo_result(run_dir: Path, target_compartment = 21) -> List[float]:
+    '''Parses the Pelmo outputfiles to determine the PEC that pelmo calculated'''
     water_file = run_dir / "WASSER.PLM"
     chem_files = run_dir.glob("CHEM*.PLM")
 
@@ -140,7 +147,7 @@ def extract_zip(working_dir: Path, focus_zip: Path):
 def parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument('-p', '--psm-files', type=Path, required=True, help="The psm file to run. If this is a directory, run all .psm files in this directory")
-    parser.add_argument('-w', '--working-dir', type=Path, default=Path.cwd(), help="The directory to use as a root working directory. Will be filled with expanded zips and defaults to the current working directory")
+    parser.add_argument('-w', '--working-dir', type=Path, default=Path.cwd() / 'pelmofiles', help="The directory to use as a root working directory. Will be filled with expanded zips and defaults to the current working directory")
     parser.add_argument('-f', '--focus-dir', type=Path, default=Path(__file__).parent / 'Focus.zip', help="The PELMO FOCUS directory to use. If a zip, will be unpacked first. Defaults to a bundled zip.")
     parser.add_argument('-e', '--pelmo-exe', type=Path, default=Path('C:/FOCUS_PELMO.664') / 'PELMO500.exe', help="The PELMO executable to use for running. Defaults to the default PELMO installation. This should point to the CLI EXE, usually named PELMO500.EXE NOT to the GUI EXE usually named wpelmo.exe.")
     parser.add_argument('-c', '--crop', nargs='*', type=gap.PelmoCrop.from_acronym, default=list(gap.PelmoCrop), help="The crops to simulate. Can be specified multiple times. Should be listed as a two letter acronym. The selected crops have to be present in the FOCUS zip, the bundled zip includes all crops. Defaults to all crops.")

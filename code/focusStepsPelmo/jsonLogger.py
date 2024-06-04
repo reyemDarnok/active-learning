@@ -57,20 +57,24 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(message_dict, default=str)
     
 def get_json_handler(file: str, format: dict = {"module": "module", "time": "asctime", "level": "levelname", "thread": "threadName", "function": "funcName", "message": "message"}):
+    '''Returns a logging handler that logs json in the given format to the given file'''
     file_handler = logging.FileHandler(file)
     json_formatter = JsonFormatter(format)
     file_handler.setFormatter(json_formatter)
     return file_handler
 
 def add_log_args(parser: ArgumentParser):
+    '''Adds logging related arguments loglevel and logfile to the given parser'''
     parser.add_argument('--loglevel', default=logging.INFO, choices=[logging.DEBUG, logging.INFO, logging.WARN, logging.ERROR, logging.CRITICAL], type=_str_to_level, help="The log level")
     parser.add_argument('--logfile', default='log.json', help="The logfile. Deaults to log.json")
 
 def configure_logger_from_argparse(logger: logging.Logger, args: Namespace):
+    '''Uses the arguments loglevel and logfile in args to configure logger'''
     logger.handlers = [get_json_handler(args.logfile)]
     logger.setLevel(args.loglevel)
 
 def _str_to_level(level: str) -> int:
+    '''translates a string to a loglevel'''
     d = {"debug": logging.DEBUG,
          "info": logging.INFO,
          "warning": logging.WARNING,

@@ -5,6 +5,7 @@ from .gap import Region, Season
 
 @dataclass
 class Scenario:
+    '''General Scenario information, the defaults do not typically need to be overridden'''
     waterDepth: float = 30
     runOffEventDay: int = 0
     density: float = 0.8
