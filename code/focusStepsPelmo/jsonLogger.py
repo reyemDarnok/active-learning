@@ -1,6 +1,8 @@
 from argparse import ArgumentParser, Namespace
 import logging
 import json
+from pathlib import Path
+import platform
 
 
 class JsonFormatter(logging.Formatter):
@@ -58,7 +60,7 @@ class JsonFormatter(logging.Formatter):
     
 def get_json_handler(file: str, format: dict = {"module": "module", "time": "asctime", "level": "levelname", "thread": "threadName", "function": "funcName", "message": "message"}):
     '''Returns a logging handler that logs json in the given format to the given file'''
-    file_handler = logging.FileHandler(file)
+    file_handler = logging.FileHandler(file, mode = 'a')
     json_formatter = JsonFormatter(format)
     file_handler.setFormatter(json_formatter)
     return file_handler
@@ -66,7 +68,8 @@ def get_json_handler(file: str, format: dict = {"module": "module", "time": "asc
 def add_log_args(parser: ArgumentParser):
     '''Adds logging related arguments loglevel and logfile to the given parser'''
     parser.add_argument('--loglevel', default=logging.INFO, choices=[logging.DEBUG, logging.INFO, logging.WARN, logging.ERROR, logging.CRITICAL], type=_str_to_level, help="The log level")
-    parser.add_argument('--logfile', default='log.json', help="The logfile. Deaults to log.json")
+    stdout_file = 'log.json' if platform.system() == 'Windows' else '/dev/stdout'
+    parser.add_argument('--logfile', default=Path(stdout_file), type=Path, help="The logfile. Deaults to stdout")
 
 def configure_logger_from_argparse(logger: logging.Logger, args: Namespace):
     '''Uses the arguments loglevel and logfile in args to configure logger'''
@@ -75,9 +78,14 @@ def configure_logger_from_argparse(logger: logging.Logger, args: Namespace):
 
 def _str_to_level(level: str) -> int:
     '''translates a string to a loglevel'''
-    d = {"debug": logging.DEBUG,
-         "info": logging.INFO,
-         "warning": logging.WARNING,
-         "error": logging.ERROR,
-         "critical": logging.CRITICAL}
-    return d[level.lower()]
+    try:
+        return int(level)
+    except ValueError:
+        if isinstance(level, int):
+            return level
+        d = {"debug": logging.DEBUG,
+            "info": logging.INFO,
+            "warning": logging.WARNING,
+            "error": logging.ERROR,
+            "critical": logging.CRITICAL}
+        return d[level.lower()]

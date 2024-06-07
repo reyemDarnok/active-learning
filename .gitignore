@@ -1,6 +1,8 @@
 # custom excludes
 **/test.py
 workdir/
+submit/
+log.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

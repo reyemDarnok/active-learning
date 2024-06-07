@@ -3,13 +3,11 @@ from argparse import ArgumentParser, Namespace
 import logging
 import jsonLogger
 from pathlib import Path
-from jinja2 import Environment, PackageLoader, select_autoescape, StrictUndefined
+from jinja2 import Environment, FileSystemLoader, PackageLoader, select_autoescape, StrictUndefined
 from enum import Enum
 import json
 from focusStepsDatatypes import compound, gap
-jinja_env = Environment(loader=PackageLoader("psm_creator"), autoescape=select_autoescape(), undefined=StrictUndefined)
-
-logger = logging.getLogger()
+jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(), undefined=StrictUndefined)
 
 class ApplicationType(Enum):
     soil = 1
@@ -19,7 +17,6 @@ class ApplicationType(Enum):
 
 def main():
     args = parse_args()
-    print(args)
     generate_psm_files(output_dir=args.output_dir, compound_file=args.compound_file, gap_file=args.gap_file)
 
 def generate_psm_files(output_dir: Path, compound_file: Path, gap_file: Path):
@@ -74,6 +71,7 @@ def parse_args() -> Namespace:
     parser.add_argument('-o', '--output-dir', default=Path('output'), type=Path, help='The directory for output files. The files will be named {COMPOUND_FILE}-{GAP_FILE}-{MATURATION}-{DAY}.psm. Defaults to a folder named output')
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
+    logger = logging.getLogger()
     jsonLogger.configure_logger_from_argparse(logger, args)
     return args
 
