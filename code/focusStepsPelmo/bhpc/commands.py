@@ -2,7 +2,6 @@ import contextlib
 from pathlib import Path
 import os
 import logging
-import shutil
 import random
 import subprocess
 import time

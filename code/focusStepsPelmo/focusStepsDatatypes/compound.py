@@ -1,6 +1,9 @@
 from dataclasses import dataclass, field
 from typing import List, Optional, Union, Dict
-from .helperfunctions import map_to_class, str_to_enum
+from pathlib import Path
+import sys
+sys.path += [str(Path(__file__).parent.parent)]
+from util.conversions import map_to_class, str_to_enum
 from enum import Enum, auto
 
 

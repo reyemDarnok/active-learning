@@ -1,9 +1,11 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Dict, List, Optional, Type, Union, NamedTuple
+from typing import Dict, List, Union, NamedTuple
 
-
-from .helperfunctions import map_to_class, str_to_enum
+from pathlib import Path
+import sys
+sys.path += [str(Path(__file__).parent.parent)]
+from util.conversions import map_to_class, str_to_enum
 
 class Coverage(Enum):
     '''Coverage categories for Steps12'''

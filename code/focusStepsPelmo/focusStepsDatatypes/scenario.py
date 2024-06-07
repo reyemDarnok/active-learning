@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Dict
-
-from .gap import Region, Season
+from pathlib import Path
+import sys
+sys.path += [str(Path(__file__).parent.parent)]
+from focusStepsDatatypes.gap import Region, Season
 
 @dataclass
 class Scenario:

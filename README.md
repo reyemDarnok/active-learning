@@ -4,11 +4,11 @@ This Repository aims to automate interacting with FOCUS PELMO
 
 ## Components
 
-There are three relevant scripts, psm_runner.py, psm_creator.py and psm.py
+The primary scripts to execute are found in `code/focusStepsPelmo/pelmo` and are `creator.py`, `local.py`, `runner.py` and `remote_bhpc.py`
 
-### psm_creator.py
+### creator.py
 
-The psm_creator has as its task creating the .psm input files for Pelmo.
+The creator has as its task creating the .psm input files for Pelmo.
 This will combine every available compound with every available GAP.
 
 #### Arguments
@@ -23,7 +23,7 @@ This will combine every available compound with every available GAP.
 
 The only known cause for errors are invalid input files, which simply cause the program to crash while outputting the relevant parsing error.
 
-### psm_runner.py
+### runner.py
 
 When this program is given a list of psm files, it executes using PELMO. Note that this program assumes that PELMO is already installed on the machine and does not bundle it.
 
@@ -33,8 +33,6 @@ When this program is given a list of psm files, it executes using PELMO. Note th
 |--------|----|------|
 |-p, --psm-files|Either a single psm file or a directory of psm files. Each file given will be run. There are no interactions between psm files.|None|
 |-w, --working-dir|Where to place the data PELMO uses while calculating.|cwd / pelmofiles|
-|-f, --focus-dir|Where to find PELMO Scenario data. There is bundled scenario data and you are unlikely to need to change it.|cwd / FOCUS.zip|
-|-e, --pelmo-exe|Where to find the PELMO CLI executable. The default value corresponds to the default installation location for PELMO|C:\FOCUS_PELMO.664\PELMO500.exe|
 |-c, --crop|Which crops to run. Can be specified multiple times if multiple crops are desired|All crops|
 |-s, --scenario|Which Scenario to run. Can be specified multiple times if multiple scenarios are desired. If a given Scenario is not defined for a selected Crop it will be silently skipped for that crop|
 |-t, --threads|How many threads to use for running PELMO in parallel|cpu_count -1|
@@ -45,9 +43,9 @@ If given invalid input files, this program will crash with the relevant parsing 
 
 PELMO does not accept some timings for some crop and scenario combinations. If those are defined, PELMO will exit with an error which will be written to the program log and this combination will be skipped in the output.
 
-### psm.py
+### local.py
 
-psm.py is a combination of the previous programs and is what you will usually want to use. It starts from compound and gap definitions and outputs PELMO PECs.
+local.py is a combination of the previous programs and is what you will usually want to use when running locally. It starts from compound and gap definitions and outputs PELMO PECs.
 
 #### Arguments
 
@@ -57,11 +55,9 @@ psm.py is a combination of the previous programs and is what you will usually wa
 |-g, --gap-file|Where to find the JSON files that define the source GAPs. May be either a single file or a directory. If it is a directory, all .json files in it will be assumed to be gap files.|None|
 |-w, --work-dir|Where to place the files PELMO uses for calculations|cwd / pelmofiles|
 |-o, --output-dir|The directory to write the results to. Each .psm file in it will be named *compound*-*GAP*-*timing*.psm|output|
-|-e, --pelmo-exe|Where to find the PELMO CLI executable. The default value corresponds to the default installation location for PELMO|C:\FOCUS_PELMO.664\PELMO500.exe|
 |--crop|Note that this option has no short form. Which crops to run. Can be specified multiple times if multiple crops are desired|All crops|
 |-s, --scenario|Which Scenario to run. Can be specified multiple times if multiple scenarios are desired. If a given Scenario is not defined for a selected Crop it will be silently skipped for that crop|
 |-t, --threads|How many threads to use for running PELMO in parallel|cpu_count -1|
-|-f, --focus|Where to find PELMO Scenario data. There is bundled scenario data and you are unlikely to need to change it.|cwd / FOCUS.zip|
 
 
 
@@ -70,6 +66,39 @@ psm.py is a combination of the previous programs and is what you will usually wa
 If given invalid input files, this program will crash with the relevant parsing error.
 
 PELMO does not accept some timings for some crop and scenario combinations. If those are defined, PELMO will exit with an error which will be written to the program log and this combination will be skipped in the output.
+
+
+### remote_bhpc.py
+
+remote_bhpc.py is a combination of the previous programs and connects to the bhpc to run there and as such should be your preferred tool for large runs. It starts from compound and gap definitions and outputs PELMO PECs.
+
+#### Arguments
+
+|Name|Effect|Default|
+|--------|----|------|
+|-c, --compound-file|Where to find the JSON files that define the source compounds. May be either a single file or a directory. If it is a directory, all .json files in it will be assumed to be compound files.|None|
+|-g, --gap-file|Where to find the JSON files that define the source GAPs. May be either a single file or a directory. If it is a directory, all .json files in it will be assumed to be gap files.|None|
+|-w, --work-dir|Where to place the files PELMO uses for calculations|cwd / pelmofiles|
+|-o, --output-dir|The directory to write the results to. Each .psm file in it will be named *compound*-*GAP*-*timing*.psm|output|
+|--crop|Note that this option has no short form. Which crops to run. Can be specified multiple times if multiple crops are desired|All crops|
+|-s, --scenario|Which Scenario to run. Can be specified multiple times if multiple scenarios are desired. If a given Scenario is not defined for a selected Crop it will be silently skipped for that crop|
+|-r, --run|Start the run on the bhpc. If this is not set it merely creates all required files that then could be started manually|Not set|
+|--count|The number of machines to use on the bhpc. If more performance is desired, increasing --cores is preferred as it incurs less overhead|1|
+|--cores|The number of cores per machine to use on the bhpc. Valid values are 2,4,8,16,96|96|
+|--notification-email|Who to notify when the run finishes|Nobody|
+|--session-timeout|How long in hours until the bhpc session will be assumed to hang and closed|6|
+|--batchsize|How many psm files should be grouped into a single bhpc job|100|
+
+
+
+
+#### Errors
+
+If given invalid input files, this program will crash with the relevant parsing error.
+
+PELMO does not accept some timings for some crop and scenario combinations. If those are defined, PELMO will exit with an error which will be written to the program log and this combination will be skipped in the output.
+
+If the bhpc environment arguments are not set, any attempt to run on the bhpc will fail. Creating the files necessary for a run is still possible without access to the bhpc.
 
 ## File Formats
 

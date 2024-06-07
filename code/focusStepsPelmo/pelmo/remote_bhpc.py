@@ -1,5 +1,4 @@
 from argparse import ArgumentParser, Namespace
-from itertools import islice
 import logging
 import os
 from pathlib import Path
@@ -8,18 +7,18 @@ from contextlib import suppress
 import shutil
 import subprocess
 import sys
+sys.path += [str(Path(__file__).parent.parent)]
+
 from typing import Generator, Iterable, List, Sequence, TypeVar
 from zipfile import ZipFile
 import zipfile
-import pip
+from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
-from jinja2 import Environment, FileSystemLoader, PackageLoader, StrictUndefined, select_autoescape
-
-import bhpc
-import jsonLogger
-from focusStepsDatatypes import helperfunctions
+from bhpc import commands
+import util.jsonLogger as jsonLogger
+from util import conversions
 from focusStepsDatatypes.gap import PelmoCrop, Scenario
-from psm_creator import generate_psm_files
+from pelmo.creator import generate_psm_files
 
 
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(), undefined=StrictUndefined)
@@ -52,13 +51,12 @@ def main():
     logger.debug('Collected psm files')
     logger.debug(psm_files)
     make_sub_file(psm_files=psm_files, target_dir=args.output, 
-                  focus_zip=args.focus_zip, pelmo_exe=args.pelmo_exe, 
                   crops=args.crop, scenarios=args.scenario, 
                   batchsize=args.batchsize)
 
     if args.run:
         logger.info('Starting Pelmo run')
-        session = bhpc.start_submit_file(submit_folder=args.output, session_name_prefix='Pelmo', submit_file_regex='pelmo\\.sub',
+        session = commands.start_submit_file(submit_folder=args.output, session_name_prefix='Pelmo', submit_file_regex='pelmo\\.sub',
                                machines=args.count, cores=args.cores, multithreading=args.multithreading,
                                notificationemail=args.notification_email, session_timeout=args.session_timeout)
         logger.info('Started Pelmo run as session %s', session)
@@ -74,30 +72,32 @@ def zip_common_directories(target: Path):
             logger.debug('Adding %s to zip', directory)
             zip_directory(Path(directory), 'common.zip')
 
-def copy_common_files(output: Path, focus_zip: Path, pelmo_exe: Path):
+def copy_common_files(output: Path):
     """Copies the files common to all runs to output
     :param output: Where to copy the files to
     :param focus_zip: Where to find the focus zip file
     :param pelmo_exe: Where to find the pelmo exe"""
     logger = logging.getLogger()
     output.mkdir(exist_ok=True, parents=True)
+    (output / 'pelmo').mkdir(exist_ok=True, parents=True)
     script_dir = Path(__file__).parent
-    logger.debug('Copying psm_runner.py')
-    shutil.copy(script_dir / 'psm_runner.py', output / 'psm_runner.py')
-    logger.debug('Copying focus zip')
-    shutil.copy(focus_zip, output / 'FOCUS.zip')
-    logger.debug('Copying pelmo')
-    shutil.copy(pelmo_exe, output / 'PELMO500.exe')
-    logger.debug('Copying datatypes')
-    shutil.copytree(script_dir / 'focusStepsDatatypes', output / 'focusStepsDatatypes')
+    logger.debug('Copying runner.py')
+    shutil.copy(script_dir / 'runner.py', output / 'pelmo' / 'runner.py')
+    logger.debug('Copying data files')
+    shutil.copytree(script_dir / 'data', output / 'pelmo' / 'data')
+    
     logger.debug('Copying templates')
-    shutil.copytree(script_dir / 'templates', output / 'templates')
-    logger.debug('Copying JsonLogger')
-    shutil.copy(script_dir / 'jsonLogger.py', output / 'jsonLogger.py')   
+    shutil.copytree(script_dir / 'templates', output / 'pelmo' / 'templates')
+    
     logger.debug('Copying pythonwrapper')
     shutil.copy(script_dir / 'pythonwrapper.bat', output / 'pythonwrapper.bat')     
-    logger.debug('Getting jinja2')
+    logger.debug('Getting requirements')
     subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', str((script_dir / 'requirements.txt').absolute()),  '--platform', 'win32',  '--upgrade', '--only-binary', ':all:', '--target', str(output.absolute())])
+    logger.debug('Getting datatypes')
+    shutil.copytree(script_dir / '..' / 'focusStepsDatatypes', output / 'focusStepsDatatypes')
+    logger.debug('Getting utils')
+    shutil.copytree(script_dir / '..' / 'util', output / 'util')
+
 
 def zip_directory(directory: Path, zip_name:str, mode: str='a'):
     """Zips all directory into zipName, such that if zipName is unzipped to the directory it is in directory will be restored
@@ -121,7 +121,6 @@ def zip_directory(directory: Path, zip_name:str, mode: str='a'):
 
 
 def make_sub_file(psm_files: Iterable[Path], target_dir: Path, 
-                  focus_zip: Path, pelmo_exe: Path, 
                   crops: PelmoCrop = PelmoCrop, scenarios: Scenario = Scenario, 
                   batchsize: int = 100):
     '''Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
@@ -135,7 +134,7 @@ def make_sub_file(psm_files: Iterable[Path], target_dir: Path,
     logger = logging.getLogger()
 
     logger.info('Setting up file system for the sub file')
-    copy_common_files(output=target_dir, focus_zip=focus_zip, pelmo_exe=pelmo_exe)
+    copy_common_files(output=target_dir)
     zip_common_directories(target=target_dir)
 
     logger.info('Making batches')
@@ -181,9 +180,7 @@ def parse_args() -> Namespace:
     parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path, help='The directory in which files for Pelmo will be created. Defaults to the current directory')
     parser.add_argument('-o', '--output', default=Path('output'), type=Path, help='Where to output the submit file and its dependencies. Defaults to "output"')
     parser.add_argument(      '--crop', nargs='*', default=PelmoCrop, type=PelmoCrop.from_acronym, help="Which crops to run. Defaults to all crops")
-    parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: helperfunctions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
-    parser.add_argument('-e', '--pelmo-exe', type=Path, default=Path(__file__) / 'PELMO500.exe', help="The PELMO executable to use for running. Defaults to the default PELMO installation. This should point to the CLI EXE, usually named PELMO500.EXE NOT to the GUI EXE usually named wpelmo.exe.")
-    parser.add_argument('-f', '--focus-zip', type=Path, default=Path(__file__) / 'FOCUS.zip', help="The Focus data to use. Unzips it if it is a zip. Defaults to a bundled zip")
+    parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('-r', '--run', action='store_true', default=False, help="Run the created submit files on the bhpc")
     parser.add_argument('--count', type=int, default=1, help="How many machines to use on the bhpc")
     parser.add_argument('--cores', type=int, choices=(2,4,8,16,96), default=96, help="How many cores per machine to use. One core per machine is always overhead, so larger machines are more efficient")
