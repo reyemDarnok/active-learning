@@ -19,7 +19,7 @@ def pushd(new_dir):
     and after closing the working directory will be restored to its old value. 
     This contextmanager can be nested and overwrites working directory changes made inside it when exiting
     
-    :param new_dir The directory to move to during the context'''
+    :param new_dir: The directory to move to during the context'''
     previous_dir = os.getcwd()
     os.chdir(new_dir)
     try:
@@ -33,15 +33,16 @@ def start_submit_file(submit_folder: Path,
                       notificationemail: Optional[str] = None, session_timeout: int = 6) -> str:
     """Starts a session defined by submit files in the bhpc. This method assumes that the bhpc environment variables have already been set.
     
-    :param submit_folder The folder to search for submit files. Will be searched recursively
-    :param session_name_prefix The prefix for bhpc session names. Defaults to "Unknown session"
-    :param session_name_suffix The suffix for bhpc session names. Defaults to a random int
-    :param submit_file_regex The regex for submit file filenames. Defaults to ".+\.sub" which is also the bhpc default
-    :param machines How many ec2 instances to use for running. Prefer increasing the cores count if you need more performance as that reduces overhead
-    :param cores How many cores each instance should have. Valid values are 2,4,8,16 and 96
-    :param multithreading Whether to use multithreading support in the bhpc
-    :param notificationemail Who to notify when the bhpc session completes
-    :param session_timeout Maximum time for the bhpc session. Automatically enables longRun mode if over 12. CURRENTLY BUGGED"""
+    :param submit_folder: The folder to search for submit files. Will be searched recursively
+    :param session_name_prefix: The prefix for bhpc session names. Defaults to "Unknown session"
+    :param session_name_suffix: The suffix for bhpc session names. Defaults to a random int
+    :param submit_file_regex: The regex for submit file filenames. Defaults to ".+\.sub" which is also the bhpc default
+    :param machines: How many ec2 instances to use for running. Prefer increasing the cores count if you need more performance as that reduces overhead
+    :param cores: How many cores each instance should have. Valid values are 2,4,8,16 and 96
+    :param multithreading: Whether to use multithreading support in the bhpc
+    :param notificationemail: Who to notify when the bhpc session completes
+    :param session_timeout: Maximum time for the bhpc session. Automatically enables longRun mode if over 12. CURRENTLY BUGGED
+    :return: The ID of the created bhpc session"""
     assert cores in (2,4,8,16,96)
     assert bhpc_exe.exists()
 
@@ -83,9 +84,9 @@ def start_submit_file(submit_folder: Path,
 
 def download_submission(session: str, wait_until_finished: bool = True)-> bool:
     """Download the results of a bhpc session The results will be in the directory where the submit file that started the session is.
-    :param session The sesssionId of the session to download
-    :param wait_until_finished Whether to wait until the session is finished
-    :return If wait_until_finished is False return False if the session is not finished yet. Otherwise returns True after download"""
+    :param session: The sesssionId of the session to download
+    :param wait_until_finished: Whether to wait until the session is finished
+    :return: If wait_until_finished is False return False if the session is not finished yet. Otherwise returns True after download"""
     logger = logging.getLogger()
 
     with pushd(bhpc_dir):
@@ -121,8 +122,8 @@ def download_submission(session: str, wait_until_finished: bool = True)-> bool:
 
 def is_bhpc_job_finished_status(status: str) -> bool:
     """Checks whether the status message is a finished bhpc session
-    :param status The status message as output by bhpc.exe show "sessionId"
-    :return True if all jobs in the session have finished status, False otherwise"""
+    :param status: The status message as output by bhpc.exe show "sessionId"
+    :return: True if all jobs in the session have finished status, False otherwise"""
     lines = status.splitlines()
     lines = lines[2:]
     for line in lines:
