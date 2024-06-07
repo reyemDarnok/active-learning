@@ -62,7 +62,7 @@ def main():
     psm_files = list(psm_dir.glob('*.psm'))
     logger.debug('Collected psm files')
     logger.debug(psm_files)
-    make_sub_file(psm_files=psm_files, target_dir=args.output, crops=args.crop, scenarios=args.scenario)
+    make_sub_file(psm_files=psm_files, target_dir=args.output, crops=args.crop, scenarios=args.scenario, batchsize=args.batchsize)
     for directory in os.listdir(args.output):
         directory = Path( args.output / directory)
         logger.debug('Considering to add %s to zip', directory)
@@ -92,7 +92,7 @@ def zip_folders(directory: Path, zipName:str):
                 zip.write(root / file, arcname)
 
 
-def make_sub_file(psm_files: Iterable[Path], target_dir: Path, crops: PelmoCrop = PelmoCrop, scenarios: Scenario = Scenario, batchsize: int = 1):
+def make_sub_file(psm_files: Iterable[Path], target_dir: Path, crops: PelmoCrop = PelmoCrop, scenarios: Scenario = Scenario, batchsize: int = 100):
     '''Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working'''
     logger = logging.getLogger()
     sub_template = jinja_env.get_template('commit.sub.j2')
@@ -132,10 +132,11 @@ def parse_args() -> Namespace:
     parser.add_argument('-f', '--focus-zip', type=Path, default=Path('FOCUS.zip', help="The Focus data to use. Unzips it if it is a zip. Defaults to a bundled zip"))
     parser.add_argument('-r', '--run', action='store_true', default=False, help="Run the created submit files on the bhpc")
     parser.add_argument('--count', type=int, default=1, help="How many machines to use on the bhpc")
-    parser.add_argument('--cores', type=int, choices=(2,4,8,16,96), default=8, help="How many cores per machine to use. One core per machine is always overhead, so larger machines are more efficient")
+    parser.add_argument('--cores', type=int, choices=(2,4,8,16,96), default=96, help="How many cores per machine to use. One core per machine is always overhead, so larger machines are more efficient")
     parser.add_argument('--multithreading', action='store_true', default=True, help="Use multithreading")
     parser.add_argument('--notification-email', type=str, default=None, help="The email address which will be notified if the bhpc run finishes")
     parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")
+    parser.add_argument('--batchsize', type=int, default=100, help="How many psm files to batch together into one bhpc job")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()
