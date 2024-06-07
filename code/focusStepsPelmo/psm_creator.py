@@ -10,6 +10,7 @@ from focusStepsDatatypes import compound, gap
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(), undefined=StrictUndefined)
 
 class ApplicationType(Enum):
+    """The different types of application Pelmo recognizes"""
     soil = 1
     linear = 2
     exp_foliar = 3
@@ -19,8 +20,11 @@ def main():
     args = parse_args()
     generate_psm_files(output_dir=args.output_dir, compound_file=args.compound_file, gap_file=args.gap_file)
 
-def generate_psm_files(output_dir: Path, compound_file: Path, gap_file: Path):
-    '''Creates the crossproduct of compound and gap files and saves the resulting psm files in output_dir'''
+def generate_psm_files(compound_file: Path, gap_file: Path, output_dir: Path):
+    '''Creates the crossproduct of compound and gap files and saves the resulting psm files in output_dir
+    :param output_dir: Where to save the .psm files. The files will be named {COMPOUND_FILE}-{GAP_FILE}-{MATURATION}-{DAY}.psm
+    :param compound_file: Either a compound file or a directory filled with compound.json files. If a directory all *.json files are assumed to be compound files
+    :param gap_file: Either a gap file or a directory filled with gap.json files. If a directory all *.json files are assumed to be gap files'''
     output_dir.mkdir(exist_ok=True, parents=True)
     if compound_file.is_dir():
         if gap_file.is_dir():
@@ -38,7 +42,10 @@ def generate_psm_files(output_dir: Path, compound_file: Path, gap_file: Path):
             _generate_psms(compound_file, gap_file, output_dir)
 
 def _generate_psms(compound_file: Path, gap_file: Path, output_dir: Path):
-    '''For a given compound and gap file, generate the matching psm files and write them to output_dir'''
+    '''For a given compound and gap file, generate the matching psm files and write them to output_dir
+    :param output_dir: Where to save the .psm files. The files will be named {COMPOUND_FILE}-{GAP_FILE}-{MATURATION}-{DAY}.psm
+    :param gap_file: The gap file to use when generating psm files
+    :param compound_file: The compound file to use when generating psm files'''
     psm_compound = compound.Substance(**json.loads(compound_file.read_text()))
     psm_gap = gap.GAP(**json.loads(gap_file.read_text()))
     psm_template = jinja_env.get_template('general.psm.j2')
