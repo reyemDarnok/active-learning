@@ -2,7 +2,7 @@ Universe            = Vanilla
 Executable          = pythonwrapper.bat
 
 {% for batch_dir in batches %}
-Arguments = psm_runner.py -p {{ batch_dir }} -w {{ batch_dir }}-work -e PELMO500.exe -c{% for crop in crops %} {{ crop.name }}{% endfor %} -s{% for scenario in scenarios %} {{ scenario.name }}{% endfor %} --logfile {{batch_dir}}-log.json -o {{ batch_dir }}-output.json --loglevel DEBUG
+Arguments = {{ batch_dir }} psm_runner.py -p {{ batch_dir }} -w {{ batch_dir }}-work -e PELMO500.exe -c{% for crop in crops %} {{ crop.name }}{% endfor %} -s{% for scenario in scenarios %} {{ scenario.name }}{% endfor %} --logfile {{batch_dir}}-log.json -o {{ batch_dir }}-output.json --loglevel DEBUG
 transfer_input_files = psm_runner.py,FOCUS.zip,PELMO500.exe,zipped.zip,jsonLogger.py
 transfer_output_files = {{ batch_dir }}-output.json,{{ batch_dir}}-log.json
 Queue

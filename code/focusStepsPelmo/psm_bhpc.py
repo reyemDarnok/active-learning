@@ -52,10 +52,10 @@ def main():
     shutil.copytree(script_dir / 'focusStepsDatatypes', args.output / 'focusStepsDatatypes')
     logger.debug('Copying templates')
     shutil.copytree(script_dir / 'templates', args.output / 'templates')
-    logger.debug('Copying pythonwrapper')
-    shutil.copy(script_dir / 'pythonwrapper.bat', args.output / 'pythonwrapper.bat')
     logger.debug('Copying JsonLogger')
-    shutil.copy(script_dir / 'jsonLogger.py', args.output / 'jsonLogger.py')        
+    shutil.copy(script_dir / 'jsonLogger.py', args.output / 'jsonLogger.py')   
+    logger.debug('Copying pythonwrapper')
+    shutil.copy(script_dir / 'pythonwrapper.bat', args.output / 'pythonwrapper.bat')     
     logger.debug('Getting jinja2')
     subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', str((script_dir / 'requirements.txt').absolute()),  '--platform', 'win32',  '--upgrade', '--only-binary', ':all:', '--target', str(args.output.absolute())])
     logger.info('Generating sub files for bhpc')
@@ -66,9 +66,9 @@ def main():
     for directory in os.listdir(args.output):
         directory = Path( args.output / directory)
         logger.debug('Considering to add %s to zip', directory)
-        if directory.is_dir():
+        if directory.is_dir() and not directory.name.endswith('.d'):
             logger.debug('Adding %s to zip', directory)
-            zip_folders(Path(directory), 'zipped.zip')
+            zip_folders(Path(directory), 'common.zip')
     if args.run:
         session = bhpc.start_submit_file(submit_folder=args.output, session_name_prefix='Pelmo', submit_file_regex='pelmo\\.sub',
                                machines=args.count, cores=args.cores, multithreading=args.multithreading,
@@ -78,7 +78,7 @@ def main():
 def zip_folders(directory: Path, zipName:str):
     logger = logging.getLogger()
     with ZipFile(directory.parent / zipName, 'a', zipfile.ZIP_DEFLATED) as zip:
-        for root, dirs, files in os.walk(directory):
+        for root, _, files in os.walk(directory):
             for file in files:
                 root = Path(root)
                 file = Path(file)
@@ -101,11 +101,15 @@ def make_sub_file(psm_files: Iterable[Path], target_dir: Path, crops: PelmoCrop 
     logger.info('Split psm_files into batches')
     logger.debug(batches)
     for i, batch in enumerate(batches):
-        batch_folder = target_dir / f"psm{i}.d"
+        batchname = f"psm{i}.d"
+        batch_folder = target_dir / batchname
         batch_folder.mkdir(exist_ok=True, parents=True)
+        logger.info('Adding psm files for batch %s', i)
         for file in batch:
+            logger.debug('Adding %s to batch %s', file, i)
             file.rename(batch_folder / file.name)
         logger.info('Created batch %s', i)
+        zip_folders(batch_folder, f"{batchname}.zip")
     subfile = target_dir / "pelmo.sub"
     batchdirs = [f"psm{i}.d" for i in range(len(batches))]
     logger.info('Writing sub file')
