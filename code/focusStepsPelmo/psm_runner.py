@@ -8,7 +8,7 @@ from argparse import Namespace, ArgumentParser
 from multiprocessing import cpu_count
 from pathlib import Path
 import subprocess
-from typing import Iterable, List
+from typing import Generator, Iterable, List
 from zipfile import ZipFile
 from shutil import copytree, rmtree
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -40,7 +40,8 @@ class PelmoResult:
 
 def _init_thread(working_dir: Path):
     '''Initialise a working directory for the current thread in the overarching working directory.
-    This mostly consists of copying reference files'''
+    This mostly consists of copying reference files
+    :param working_dir: Where to create the subdirectory for the thread'''
         # PELMO can't run multiple times in the same directory at the same time
     logger = logging.getLogger()
 
@@ -62,9 +63,21 @@ def main():
 
             
 
-def run_psms(psm_files: Iterable[Path], working_dir: Path, focus_data: Path, crops: Iterable[PelmoCrop] = PelmoCrop, scenarios: Iterable[Scenario] = Scenario, pelmo_exe: Path = Path('C:/FOCUS_PELMO.664/PELMO500.exe'), max_workers: int = cpu_count() - 1) -> List[PelmoResult]:
+def run_psms(psm_files: Iterable[Path], working_dir: Path, 
+             focus_data: Path, pelmo_exe: Path, 
+             crops: Iterable[PelmoCrop] = PelmoCrop, scenarios: Iterable[Scenario] = Scenario, 
+             max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
     '''Run all given psm_files using working_dir as scratch space. 
-    When given scenarios that are not defined for a some given crops, they are silently ignored for those crops only'''
+    When given scenarios that are not defined for some given crops, they are silently ignored for those crops only
+    :param psm_files: The files to run
+    :param working_dir: Where to run them
+    :param focus_data: Where to find the focus data (zipped or as a directory)
+    :param pelmo_exe: Which pelmo exe to use to run the psms
+    :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
+    :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
+    :param max_workers: How many worker threads to use at most
+    :return: A Generator of the results of the calculations. Makes new results available as they finish.
+                No particular ordering is guaranteed but the calulations are started in order of psm_file, then crop, then scenario'''
     logger = logging.getLogger()
     if focus_data.is_dir():
         copytree(focus_data, working_dir / focus_data )
@@ -74,26 +87,32 @@ def run_psms(psm_files: Iterable[Path], working_dir: Path, focus_data: Path, cro
     futures: List[Future] = []
     for psm_file in psm_files:
         logging.info('Registering Jobs for %s', psm_file.name)
-        inp_file_template = jinja_env.get_template('pelmo.inp.j2')
-        dat_file_template = jinja_env.get_template('input.dat')
         for crop in crops:
             logging.debug('Registering Jobs for %s with crop %s', psm_file.name, crop.display_name)
             for scenario in set(crop.defined_scenarios).intersection(scenarios):
                 logging.debug('Registering Job for %s with crop %s and scenario %s', psm_file.name, crop.display_name, scenario.value)
-                futures.append(pool.submit(single_pelmo_run, pelmo_exe, psm_file, working_dir, inp_file_template, dat_file_template, crop, scenario))
-    result = []
+                futures.append(pool.submit(single_pelmo_run, pelmo_exe=pelmo_exe, psm_file=psm_file, working_dir=working_dir, crop=crop, scenario=scenario))
     for f in futures:
         try:
-            result.append(f.result())
+            result = f.result()
+            yield result
         except ValueError as e:
             logger.warn(e)
     pool.shutdown()
-    return result
 
-def single_pelmo_run(pelmo_exe: Path, psm_file: Path, working_dir: Path, inp_file_template: Template, dat_file_template: Template, crop: PelmoCrop, scenario: Scenario) -> List[PelmoResult]:
+def single_pelmo_run(pelmo_exe: Path, psm_file: Path, working_dir: Path, 
+                     crop: PelmoCrop, scenario: Scenario) -> PelmoResult:
     '''Runs a single psm/crop/scenario combination.
-    Assumes that it is in a multithreading context after _init_thread as run'''
+    Assumes that it is in a multithreading context after _init_thread as run
+    :param pelmo_exe: The pelmo exe to use for running the psm file
+    :param psm_file: The psm file to run
+    :param working_dir: Where to find the scenario data
+    :param crop: Which crop to calculate
+    :param scenario: Which scenario to calculate
+    :return: The result of the Pelmo run'''
     logger = logging.getLogger()
+    inp_file_template = jinja_env.get_template('pelmo.inp.j2')
+    dat_file_template = jinja_env.get_template('input.dat')
     scenario_dirs = working_dir / current_thread().name
     scenario_dir = scenario_dirs / scenario.value
     run_dir = scenario_dir / f'{psm_file.stem}.run'
@@ -127,7 +146,10 @@ def single_pelmo_run(pelmo_exe: Path, psm_file: Path, working_dir: Path, inp_fil
 
 
 def parse_pelmo_result(run_dir: Path, target_compartment = 21) -> List[float]:
-    '''Parses the Pelmo outputfiles to determine the PEC that pelmo calculated'''
+    '''Parses the Pelmo outputfiles to determine the PEC that pelmo calculated
+    :param run_dir: Where Pelmo was executed and placed its result files
+    :param target_compartment: Which compartment to take as result
+    :return: A list of concentrations, element 0 is the parent and the others are the Metabolites in the order defined by Pelmo'''
     water_file = run_dir / "WASSER.PLM"
     chem_files = run_dir.glob("CHEM*.PLM")
 
