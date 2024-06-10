@@ -17,7 +17,7 @@ class Occurrence:
     '''The Occurrence in soil. Is always 100 for parents and less for metabolites'''
 
 
-class DegradationType(Enum):
+class DegradationType(int, Enum):
     '''Used by Pelmo to describe the type of degdradation'''
     FACTORS = 0
     CONSTANT_WITH_DEPTH = auto()
@@ -127,7 +127,7 @@ class Substance:
     molarMass: float
     '''molar mass in g/mol'''
     waterSolubility: float
-    sorptions: List[Sorption]
+    sorption: Sorption
     '''A list of soption behaviours'''
     degradation: Degradation
     '''Degradation behaviours'''

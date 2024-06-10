@@ -28,11 +28,6 @@ jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templat
 
 import dataclasses, json
 
-class EnhancedJSONEncoder(json.JSONEncoder):
-        def default(self, o):
-            if dataclasses.is_dataclass(o):
-                return dataclasses.asdict(o)
-            return super().default(o)
 
 
 @dataclass
@@ -63,7 +58,7 @@ def main():
     files = list(args.psm_files.glob('*.psm') if args.psm_files.is_dir() else [args.psm_files])
     logging.info('Running for the following psm files: %s', files)
     results = run_psms(psm_files=files, working_dir=args.working_dir, crops=args.crop, scenarios=args.scenario, max_workers=args.threads)
-    args.output.write_text(json.dumps(list(results), cls=EnhancedJSONEncoder))
+    args.output.write_text(json.dumps(list(results), cls=conversions.EnhancedJSONEncoder))
 
             
 
@@ -140,7 +135,7 @@ def single_pelmo_run(psm_file: Path, working_dir: Path,
     if b"F A T A L   E R R O R" in process.stdout:
         raise ValueError(f"Pelmo completed with error while calculating {psm_file.name} {crop.display_name} {scenario.value}. The Pelmo output was {process.stdout.decode(errors='backslashreplace')}")
 
-    return PelmoResult(psm = psm_file.name, scenario=scenario.value, crop=crop.display_name, pec=parse_pelmo_result(crop_dir))
+    return PelmoResult(psm = str(psm_file), scenario=scenario.value, crop=crop.display_name, pec=parse_pelmo_result(crop_dir))
 
 
 

@@ -6,6 +6,7 @@ from contextlib import suppress
 from pathlib import Path
 import sys
 sys.path += [str(Path(__file__).parent.parent)]
+from pelmo.summarize import rebuild_output
 from util import conversions
 from focusStepsDatatypes.gap import PelmoCrop, Scenario
 from pelmo.creator import generate_psm_files
@@ -23,8 +24,6 @@ def main():
 
     logger.debug(args)
     logger.info('Deleting old artefacts')
-    logging.info(list(Path.cwd().glob('*')))
-    logging.info(list(Path('templates').glob('*')))
     with suppress(FileNotFoundError): rmtree(args.work_dir)
     psm_dir: Path = args.work_dir / 'psm'
     psm_dir.mkdir(exist_ok=True, parents=True)
@@ -35,7 +34,10 @@ def main():
     logger.info('Starting to run Pelmo')
     results = run_psms(psm_files=psm_dir.glob('*.psm'), working_dir=focus_dir,crops=args.crop, scenarios=args.scenario, max_workers=args.threads)
     logger.info('Dumping results of Pelmo runs to %s', args.output_file)
-    args.output_file.write_text(json.dumps([asdict(result) for result in results]))
+
+    result = list(rebuild_output(results))
+    with args.output_file.open('w') as fp:
+        json.dump(result, fp, cls=conversions.EnhancedJSONEncoder)
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()

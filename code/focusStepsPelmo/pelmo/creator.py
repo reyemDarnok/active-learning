@@ -35,46 +35,45 @@ def generate_psm_files(compound_file: Path, gap_file: Path, output_dir: Path):
         if gap_file.is_dir():
             for actual_compound_file in compound_file.glob('*.json'):
                 for actual_gap_file in gap_file.glob('*.json'):
-                    _generate_psms(actual_compound_file, actual_gap_file, output_dir)
+                    _generate_psm(actual_compound_file, actual_gap_file, output_dir)
         else:
             for actual_compound_file in compound_file.glob('*.json'):
-                _generate_psms(actual_compound_file, gap_file, output_dir)
+                _generate_psm(actual_compound_file, gap_file, output_dir)
     else:
         if gap_file.is_dir():
             for actual_gap_file in gap_file.glob('*.json'):
-                _generate_psms(compound_file, actual_gap_file, output_dir)
+                _generate_psm(compound_file, actual_gap_file, output_dir)
         else:
-            _generate_psms(compound_file, gap_file, output_dir)
+            _generate_psm(compound_file, gap_file, output_dir)
 
-def _generate_psms(compound_file: Path, gap_file: Path, output_dir: Path):
+def _generate_psm(compound_file: Path, gap_file: Path, output_dir: Path):
     '''For a given compound and gap file, generate the matching psm files and write them to output_dir
-    :param output_dir: Where to save the .psm files. The files will be named {COMPOUND_FILE}-{GAP_FILE}-{MATURATION}-{DAY}.psm
+    :param output_dir: Where to save the .psm files. The files will be named {COMPOUND_FILE}-{GAP_FILE}.psm
     :param gap_file: The gap file to use when generating psm files
     :param compound_file: The compound file to use when generating psm files'''
     psm_compound = compound.Substance(**json.loads(compound_file.read_text()))
     psm_gap = gap.GAP(**json.loads(gap_file.read_text()))
     psm_template = jinja_env.get_template('general.psm.j2')
-    comment = f"Generated from {compound_file.stem} and {gap_file.stem}"
-    for timing in psm_gap.timings:
-        psm_content = psm_template.render(compound=psm_compound, 
-                                gap=psm_gap,
-                                scenario={
-                                            "plant_decay_rate": 0.0693,
-                                            "washoff": 1,
-                                            "penetration": 0.0693,
-                                            "photodegradation": 0,
-                                            "irradiance": 500,
-                                            "laminar_layer": 1000},
-                                comment=comment, 
-                                timing = timing,
-                                henry_calc=True,
-                                kd_calc=True,
-                                time=0,
-                                Ffield=0,
-                                frpex=0,
-                                pesticide={'application_type': ApplicationType.manual},
-                                )
-        (output_dir / f'{compound_file.stem}-{gap_file.stem}-{timing.emergence.name}-{timing.offset}.psm').write_text(psm_content)
+    comment = json.dumps({"compound": str(compound_file), "gap": str(gap_file)})
+    psm_content = psm_template.render(compound=psm_compound, 
+        gap=psm_gap,
+        scenario={
+            "plant_decay_rate": 0.0693,
+            "washoff": 1,
+            "penetration": 0.0693,
+            "photodegradation": 0,
+            "irradiance": 500,
+            "laminar_layer": 1000},
+        comment=comment, 
+        timing = psm_gap.timing,
+        henry_calc=True,
+        kd_calc=True,
+        time=0,
+        Ffield=0,
+        frpex=0,
+        pesticide={'application_type': ApplicationType.manual},
+        )
+    (output_dir / f'{compound_file.stem}-{gap_file.stem}.psm').write_text(psm_content)
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()

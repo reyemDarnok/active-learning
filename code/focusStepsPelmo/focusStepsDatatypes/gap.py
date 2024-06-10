@@ -7,7 +7,7 @@ import sys
 sys.path += [str(Path(__file__).parent.parent)]
 from util.conversions import map_to_class, str_to_enum
 
-class Coverage(Enum):
+class Coverage(int, Enum):
     '''Coverage categories for Steps12'''
     No = 0
     Minimal = auto()
@@ -22,6 +22,11 @@ class CropDataMixin(NamedTuple):
     '''How much substance drifts into the water'''
     interception: Dict[Coverage, float]
     '''At which coverage level, how much substance does the plant intercept?'''
+
+    def toJSON(self):
+        return {"display_name": self.display_name,
+                "driftValues": self.driftValues,
+                "interception": self.interception}
 
 class Crop(CropDataMixin, Enum):
     '''The crops defined for Steps12, each defined as a CropDataMixin'''
@@ -145,6 +150,11 @@ class Crop(CropDataMixin, Enum):
     @staticmethod
     def from_acronym( acronym: str) -> 'Crop':
         return Crop[acronym]
+    
+    def toJSON(self):
+        return {"display_name": self.display_name,
+                "driftValues": self.driftValues,
+                "interception": self.interception}
 
 class Scenario(Enum):
     '''The Pelmo Scenarios. The key is the one letter shorthand and the value the full name'''
@@ -163,7 +173,11 @@ class PelmoCropMixin(NamedTuple):
     display_name: str
     '''The name to use for display'''
     defined_scenarios: List[Scenario]
+
     '''The scenarios that are defined for this Crop in Pelmo'''
+    def toJSON(self):
+        return {"display_name": self.display_name,
+                "defined_scenarios": self.defined_scenarios}
 
 class PelmoCrop(PelmoCropMixin, Enum):
     '''The crops defined for Pelmo. Each defined as a PelmoCropMixin'''
@@ -222,6 +236,10 @@ class PelmoCrop(PelmoCropMixin, Enum):
     def from_acronym( acronym: str) -> 'Crop':
         return PelmoCrop[acronym]
     
+    def toJSON(self):
+        return {"display_name": self.display_name,
+                "defined_scenarios": self.defined_scenarios}
+    
 class Region(Enum):
     '''The Steps12 Regions'''
     NoRunoff = 0
@@ -251,7 +269,7 @@ class Emergence(Enum):
 
 
 
-class Season(Enum):
+class Season(int, Enum):
     '''The Step12 Seasons'''
     Spring = auto()
     Summer = auto()
@@ -283,14 +301,14 @@ class GAP:
     '''How much crop cover is in different Seasons'''
     regions: List[Region]
     '''Which regions are defined'''
-    timings: List[Timing] = field(default_factory=list)
+    timing:Timing
     '''What are the timings of application'''
 
     def __init__(self, modelCrop: Union[Crop, str],
                  application: Union[Application, Dict[str, float]],
                  cropCover: Union[Dict[Season, Coverage], Dict[str, str]],
                  regions: List[Union[Region, str]],
-                 timings: List[Union[Timing, Dict[str, Union[int, str]]]] = None):
+                 timing: Union[Timing, Dict[str, Union[int, str]]] = None):
         if isinstance(modelCrop, Crop):
             self.modelCrop = modelCrop
         else:
@@ -300,14 +318,14 @@ class GAP:
                           str_to_enum(coverage, Coverage) 
                           for season, coverage in cropCover.items()}
         self.regions = [str_to_enum(region, Region) for region in regions]
-        if timings == None:
-            self.timings = []
-        else:
-            self.timings = [map_to_class(x, Timing) for x in timings]
+        self.timing = map_to_class(timing, Timing)
+
+    def _asdict(self):
+        return {"modelCrop": self.modelCrop, "application": self.application, "cropCover": self.cropCover, "regions": self.regions, "timing": self.timing}
 
     @property
     def seasons(self):
-        return self.cropCover.keys()
+        return list(self.cropCover.keys())
     
     @property
     def interception(self):

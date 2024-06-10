@@ -12,16 +12,10 @@
     "regions": [
       "South"
     ],
-    "timings": [
-        {
+    "timing": {
             "emergence": "first_maturation",
             "offset": 3,
             "season": "Spring"
-        },
-        {
-            "emergence": "second_maturation",
-            "offset": 2,
-            "season": "Summer"
         }
-    ]
+
   }

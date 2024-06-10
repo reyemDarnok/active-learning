@@ -1,5 +1,8 @@
-from typing import TypeVar, Union, Dict, Type
+import dataclasses
+from json import JSONEncoder
+from typing import NamedTuple, TypeVar, Union, Dict, Type
 from enum import Enum
+import enum
 
 T = TypeVar('T')
 
@@ -23,3 +26,14 @@ def str_to_enum(obj: Union[E, str], cls: Type[E]) -> E:
             return cls(obj)
         except ValueError:
             return cls[obj]
+        
+class EnhancedJSONEncoder(JSONEncoder):
+        def default(self, o):
+            if hasattr(o, '_asdict'):
+                return o._asdict()
+            if dataclasses.is_dataclass(o):
+                return dataclasses.asdict(o)
+            if isinstance(o, Enum):
+                if not isinstance(o, (str, int, float, bool)):
+                    return o.name
+            return super().default(o)
