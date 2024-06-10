@@ -51,8 +51,10 @@ def _generate_psm(compound_file: Path, gap_file: Path, output_dir: Path):
     :param output_dir: Where to save the .psm files. The files will be named {COMPOUND_FILE}-{GAP_FILE}.psm
     :param gap_file: The gap file to use when generating psm files
     :param compound_file: The compound file to use when generating psm files'''
-    psm_compound = compound.Substance(**json.loads(compound_file.read_text()))
-    psm_gap = gap.GAP(**json.loads(gap_file.read_text()))
+    with compound_file.open() as fp:
+        psm_compound = compound.Substance(**json.load(fp))
+    with gap_file.open() as fp:
+        psm_gap = gap.GAP(**json.load(fp))
     psm_template = jinja_env.get_template('general.psm.j2')
     comment = json.dumps({"compound": str(compound_file), "gap": str(gap_file)})
     psm_content = psm_template.render(compound=psm_compound, 

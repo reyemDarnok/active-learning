@@ -1,12 +1,13 @@
 import contextlib
+from dataclasses import dataclass
 from pathlib import Path
 import os
 import logging
 import random
 import subprocess
 import time
-from subprocess import CalledProcessError
-from typing import Optional
+from subprocess import PIPE, CalledProcessError
+from typing import Generator, List, Optional, Tuple
 
 bhpc_dir = Path('C:\\_AWS', 'actualVersion')
 bhpc_exe = bhpc_dir / 'bhpc.exe'
@@ -81,51 +82,85 @@ def start_submit_file(submit_folder: Path,
             raise e
         return session
 
-def download_submission(session: str, wait_until_finished: bool = True)-> bool:
+def download_session(session: str, wait_until_finished: bool = True, retry_interval: float = 60)-> bool:
     """Download the results of a bhpc session The results will be in the directory where the submit file that started the session is.
     :param session: The sesssionId of the session to download
     :param wait_until_finished: Whether to wait until the session is finished
+    :param retry_interval: How long to wait between checks of the session status
     :return: If wait_until_finished is False return False if the session is not finished yet. Otherwise returns True after download"""
     logger = logging.getLogger()
 
+    if wait_until_finished:
+        while not bhpc_job_finished(session):
+            time.sleep(retry_interval)
+
+
     with pushd(bhpc_dir):
         try:
-            logging.info('Running show command')
-            p = subprocess.run([
-                    str(bhpc_exe.absolute()), 'show', session], capture_output=True, check=True)
-            if not is_bhpc_job_finished_status(p.stdout) and not wait_until_finished:
-                return False
-            job_finished = False
-            while (not job_finished) and wait_until_finished:
-                logging.info('Running show command')
-                p = subprocess.run([
-                    str(bhpc_exe.absolute()), 'show', session], capture_output=True, check=True)
-                if is_bhpc_job_finished_status(p.stdout):
-                    job_finished = True
-                else:
-                    time.sleep(60)
-        except CalledProcessError as e:
-            logger.error('Failed to check the bhpc jobs status. A frequent problem is that the credentials have not been configured in the past 8 hours.')
-            raise e
-        
-        try:
             logging.info('Running download command')
-            subprocess([
-                str(bhpc_exe.absolute), 'download', session
+            subprocess.run([
+                str(bhpc_exe.absolute()), 'download', session
             ])
         except CalledProcessError as e:
             logger.error('Failed to download the bhpc job. A frequent problem is that the credentials have not been configured in the past 8 hours.')
             raise e
         return True
-        
+    
+def remove_session(session: str, kill: bool = True):
+    logger = logging.getLogger()
+    with pushd(bhpc_dir):
+        try:
+            logging.info('Running remove command')
+            p = subprocess.Popen([
+                    str(bhpc_exe.absolute()), "remove", session],
+                stdin=PIPE)
+            if kill:
+                p.communicate("yes".encode())
+            else:
+                p.communicate("no".encode())
+            rc = p.wait() != 0
+            if rc != 0:
+                raise CalledProcessError(rc, [
+                    str(bhpc_exe.absolute()), "remove", session], output=p.stdout, stderr=p.stderr)
+        except CalledProcessError as e:
+            logger.error('Failed to remove the bhpc job. A frequent problem is that the credentials have not been configured in the past 8 hours.')
+            raise e  
 
-def is_bhpc_job_finished_status(status: str) -> bool:
+def bhpc_job_finished(session: str) -> bool:
     """Checks whether the status message is a finished bhpc session
-    :param status: The status message as output by bhpc.exe show "sessionId"
     :return: True if all jobs in the session have finished status, False otherwise"""
-    lines = status.splitlines()
-    lines = lines[2:]
-    for line in lines:
-        if line.split()[0] != 0 or line.split()[1] != 0:
+    for status in get_bhpc_job_status(session):
+        if status.initial != 0 or status.started != 0:
             return False
     return True
+
+@dataclass
+class Status:
+    initial: int
+    started: int
+    done: int
+    submitfile: Path
+
+def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
+    logger = logging.getLogger()
+    with pushd(bhpc_dir):
+        try:
+            logging.info('Running show command for session %s', session)
+            p = subprocess.run([
+            str(bhpc_exe.absolute()), 'show', session], capture_output=True, check=True, text=True)
+        except CalledProcessError as e:
+            logger.error('Failed to show the bhpc job status. A frequent problem is that the credentials have not been configured in the past 8 hours.')
+            raise e
+    logger.debug("%s", p.stdout)
+    lines = p.stdout.splitlines()
+    lines = lines[3:]
+    for line in lines:
+        if line.startswith('-'):
+            return
+        initial, started, done, *path = line.split()
+        initial = int(initial)
+        started = int(started)
+        done = int(done)
+        path = Path(" ".join(path))
+        logger.debug("%s %s %s %s", initial, started, done, path)
+        yield Status(initial, started, done, path)

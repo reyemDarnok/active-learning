@@ -1,4 +1,5 @@
 from argparse import ArgumentParser, Namespace
+import json
 import logging
 import os
 from pathlib import Path
@@ -7,6 +8,7 @@ from contextlib import suppress
 import shutil
 import subprocess
 import sys
+
 sys.path += [str(Path(__file__).parent.parent)]
 
 from typing import Generator, Iterable, List, Sequence, TypeVar
@@ -17,8 +19,11 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 from bhpc import commands
 import util.jsonLogger as jsonLogger
 from util import conversions
+from util.conversions import EnhancedJSONEncoder
 from focusStepsDatatypes.gap import PelmoCrop, Scenario
 from pelmo.creator import generate_psm_files
+from pelmo.summarize import rebuild_scattered_output
+
 
 
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(), undefined=StrictUndefined)
@@ -60,6 +65,12 @@ def main():
                                machines=args.count, cores=args.cores, multithreading=args.multithreading,
                                notificationemail=args.notification_email, session_timeout=args.session_timeout)
         logger.info('Started Pelmo run as session %s', session)
+        commands.download_session(session)
+        result = list(rebuild_scattered_output(args.output, "psm*.d-output.json", psm_root=args.output))
+        with (args.output / "output.json").open('w') as fp:
+            json.dump(result, fp, cls=EnhancedJSONEncoder)
+        commands.remove_session(session)
+
 
 def zip_common_directories(target: Path):
     """Zip directories in output to common.zip so that when common.zip is unpacked the directories are where they started

@@ -58,8 +58,8 @@ def main():
     files = list(args.psm_files.glob('*.psm') if args.psm_files.is_dir() else [args.psm_files])
     logging.info('Running for the following psm files: %s', files)
     results = run_psms(psm_files=files, working_dir=args.working_dir, crops=args.crop, scenarios=args.scenario, max_workers=args.threads)
-    args.output.write_text(json.dumps(list(results), cls=conversions.EnhancedJSONEncoder))
-
+    with args.output.open('w') as fp:
+        json.dump(list(results), fp, cls=conversions.EnhancedJSONEncoder)
             
 
 def run_psms(psm_files: Iterable[Path], working_dir: Path, 

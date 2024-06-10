@@ -14,19 +14,23 @@ from pelmo.runner import PelmoResult
 from focusStepsDatatypes.compound import Substance
 from focusStepsDatatypes.gap import GAP
 
-def rebuild_scattered_output(parent: Path, glob_pattern: str = "output.json") -> Generator[Dict[str, Union[float, str, GAP, Substance]], None, None]:
+def rebuild_scattered_output(parent: Path, glob_pattern: str = "output.json", psm_root = Path.cwd()) -> Generator[Dict[str, Union[float, str, GAP, Substance]], None, None]:
+    logger = logging.getLogger()
+    logger.debug("Iterating over output files %s", list(parent.rglob(glob_pattern)))
     for file in parent.rglob(glob_pattern):
-        for output in rebuild_output(file):
+        for output in rebuild_output(file, psm_root):
             yield output
 
-def rebuild_output(source: Union[Path, List[PelmoResult]]) -> Generator[Dict[str, Union[float, str, GAP, Substance]], None, None]:
+def rebuild_output(source: Union[Path, List[PelmoResult]], psm_root = Path.cwd()) -> Generator[Dict[str, Union[float, str, GAP, Substance]], None, None]:
     logger = logging.getLogger()
     if isinstance(source, Path):
-        outputs = json.reads(source.read_text())
+        with source.open() as fp:
+            outputs = json.load(fp)
+        outputs = [PelmoResult(**item) for item in outputs]
     else:
-        outputs = source
+        outputs = source 
     for output in outputs:
-        psm_file = Path(output.psm)
+        psm_file = psm_root / output.psm
         with psm_file.open() as psm:
             psm.readline()
             input_data_locations = json.loads(psm.readline())
