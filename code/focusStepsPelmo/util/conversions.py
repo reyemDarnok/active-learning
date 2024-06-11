@@ -1,6 +1,8 @@
+from collections import OrderedDict
 import dataclasses
 from json import JSONEncoder
-from typing import NamedTuple, TypeVar, Union, Dict, Type
+import re
+from typing import Any, Generator, Iterable, List, NamedTuple, TypeVar, Union, Dict, Type
 from enum import Enum
 import enum
 
@@ -37,3 +39,21 @@ class EnhancedJSONEncoder(JSONEncoder):
                 if not isinstance(o, (str, int, float, bool)):
                     return o.name
             return super().default(o)
+
+def flatten_to_csv(result: Iterable[Dict[str, Any]]) -> Generator[str, None, None]:
+    for row in result:
+        yield flatten(row)
+
+def flatten(to_flatten: Union[List, Dict, Any]) -> str:
+    if isinstance(to_flatten, dict):
+        ordered = OrderedDict(sorted(to_flatten.items()))
+        return ",".join(flatten(value) for _, value in ordered.items())
+    elif isinstance(to_flatten, list):
+        return ",".join(flatten(value) for value in to_flatten)
+    elif hasattr(to_flatten, '_asdict'):
+        return flatten(to_flatten._asdict())
+    elif dataclasses.is_dataclass(to_flatten):
+        return flatten(dataclasses.asdict(to_flatten))
+    else:
+        to_flatten = str(to_flatten)
+        return re.sub(r'([\\,])', r"\\\1", to_flatten)

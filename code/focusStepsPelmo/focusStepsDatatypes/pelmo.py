@@ -109,3 +109,4 @@ class PelmoResult:
     scenario: str
     crop: str
     pec: List[float]
+
