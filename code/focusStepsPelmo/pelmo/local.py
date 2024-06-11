@@ -46,7 +46,6 @@ def main():
         elif args.output_format == "csv":
             for row in conversions.flatten_to_csv(result):
                 fp.write(f"{row}\n")
-                fp.flush()
         else:
             raise ValueError(f"Invalid output format {args.output_format}")
 

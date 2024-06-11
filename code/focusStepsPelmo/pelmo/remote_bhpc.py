@@ -66,9 +66,14 @@ def main():
                                notificationemail=args.notification_email, session_timeout=args.session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         commands.download_session(session)
-        result = list(rebuild_scattered_output(args.output, "psm*.d-output.json", psm_root=args.output))
-        with (args.output / "output.json").open('w') as fp:
-            json.dump(result, fp, cls=EnhancedJSONEncoder)
+        result = rebuild_scattered_output(args.output, "psm*.d-output.json", psm_root=args.output)
+        with (args.output / "output").with_suffix(f".{args.output_format}").open('w') as fp:
+            if args.output_format == "json":
+                result = list(result)
+                json.dump(result, fp, cls=EnhancedJSONEncoder)
+            elif args.output_format == "csv":
+                for row in conversions.flatten_to_csv(result):
+                    fp.write(f"{row}\n")
         commands.remove_session(session)
 
 
@@ -196,6 +201,7 @@ def parse_args() -> Namespace:
     parser.add_argument('--notification-email', type=str, default=None, help="The email address which will be notified if the bhpc run finishes")
     parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")
     parser.add_argument('--batchsize', type=int, default=100, help="How many psm files to batch together into one bhpc job")
+    parser.add_argument('--output-format', type=str.lower, choices=("json", "csv"), default="json", help="The output format. Defaults to JSON, but csv is more ram efficient")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()
