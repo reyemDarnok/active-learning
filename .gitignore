@@ -3,6 +3,8 @@
 workdir/
 submit/
 log.json
+output*/
+output.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
