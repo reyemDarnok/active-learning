@@ -86,8 +86,7 @@ def zip_common_directories(target: Path):
 def copy_common_files(output: Path):
     """Copies the files common to all runs to output
     :param output: Where to copy the files to
-    :param focus_zip: Where to find the focus zip file
-    :param pelmo_exe: Where to find the pelmo exe"""
+    """
     logger = logging.getLogger()
     output.mkdir(exist_ok=True, parents=True)
     (output / 'pelmo').mkdir(exist_ok=True, parents=True)
@@ -137,8 +136,6 @@ def make_sub_file(psm_files: Iterable[Path], target_dir: Path,
     '''Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_files: The files to run in Pelmo. WARNING: Will be moved to target_dir
     :param target_dir: The directory to write the sub file to
-    :param focus_zip: Where to find the zip of focus data
-    :param pelmo_exe: Where to find the pelmo exe to run
     :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
     :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
     :param batchsize: How many psm files per bhpc job'''
