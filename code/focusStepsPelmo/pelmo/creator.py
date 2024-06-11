@@ -7,19 +7,13 @@ from enum import Enum
 import json
 import sys 
 sys.path += [str(Path(__file__).parent.parent)]
+from focusStepsDatatypes.pelmo import ApplicationType
 from focusStepsDatatypes import compound, gap
 import util.jsonLogger as jsonLogger
 
 
 
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(), undefined=StrictUndefined)
-
-class ApplicationType(Enum):
-    """The different types of application Pelmo recognizes"""
-    soil = 1
-    linear = 2
-    exp_foliar = 3
-    manual = 4
 
 def main():
     args = parse_args()

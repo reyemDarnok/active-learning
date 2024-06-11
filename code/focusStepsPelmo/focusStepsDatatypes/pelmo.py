@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from pathlib import Path
 import re
 from typing import List
@@ -94,3 +95,10 @@ class ChemPLM:
         '''Expects the path to a CHEM.PLM file'''
         years = [[[line for line in section.splitlines()[:-1] if line] for section in re.split(r"---+", year)[1:]] for year in file.read_text().split("ANNUAL")[1:]]
         self.horizons = [[ChemHorizon(line) for line in year[2][:-1] if not '*' in line] for year in years]
+
+class ApplicationType(int, Enum):
+    """The different types of application Pelmo recognizes"""
+    soil = 1
+    linear = 2
+    exp_foliar = 3
+    manual = 4

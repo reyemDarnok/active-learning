@@ -240,7 +240,7 @@ class PelmoCrop(PelmoCropMixin, Enum):
         return {"display_name": self.display_name,
                 "defined_scenarios": self.defined_scenarios}
     
-class Region(Enum):
+class Region(int, Enum):
     '''The Steps12 Regions'''
     NoRunoff = 0
     North = 1
@@ -258,7 +258,7 @@ class Application:
     '''What is the minimum interval between applications'''
     factor: float = 1
 
-class Emergence(Enum):
+class Emergence(int, Enum):
     '''The possible application crop development timings for Pelmo'''
     first_emergence = 0
     first_maturation = 1
@@ -302,7 +302,7 @@ class GAP:
     regions: List[Region]
     '''Which regions are defined'''
     timing:Timing
-    '''What are the timings of application'''
+    '''What is the timing of application'''
 
     def __init__(self, modelCrop: Union[Crop, str],
                  application: Union[Application, Dict[str, float]],
@@ -325,13 +325,16 @@ class GAP:
 
     @property
     def seasons(self):
+        """The seasons for which the gap is defined"""
         return list(self.cropCover.keys())
     
     @property
     def interception(self):
+        """A dictionary mapping seasons to the crop interception in that season"""
         return {season: self.modelCrop.interception[self.cropCover[season]] for season in self.seasons}
     
     @property
     def driftFactor(self):
+        """How much drift there is"""
         return self.modelCrop.driftValues[self.application.number - 1]
 
