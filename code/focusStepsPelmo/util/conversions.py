@@ -30,6 +30,16 @@ def str_to_enum(obj: Union[E, str], cls: Type[E]) -> E:
             return cls[obj]
         
 class EnhancedJSONEncoder(JSONEncoder):
+        """Adds several previously unserializable classes to the JSON encoder
+        Cannot be trivially extended to change the representation of serializable objects
+        Currently adds support for:
+
+        Objects implementing _asdict (primarily NamedTuples)
+
+        dataclasses
+
+        Enums
+        """
         def default(self, o):
             if hasattr(o, '_asdict'):
                 return o._asdict()
@@ -40,11 +50,27 @@ class EnhancedJSONEncoder(JSONEncoder):
                     return o.name
             return super().default(o)
 
-def flatten_to_csv(result: Iterable[Dict[str, Any]]) -> Generator[str, None, None]:
-    for row in result:
-        yield flatten(row)
+def flatten_to_csv(to_flatten: Iterable[Dict[str, Any]]) -> Generator[str, None, None]:
+    """Takes an Iterable of dictionaries and flattens them to csv data. 
+    The fields are ordered alphabetically by their keys for dictionaries and by their index for lists.
+    Nested structures are supported.
+    :param to_flatten: The Iterable to flatten. Will be lazily iterated for each value of the generator"""
+    for row in to_flatten:
+        yield flatten(f"{row}\n")
 
 def flatten(to_flatten: Union[List, Dict, Any]) -> str:
+    """Flatten a given structure to a csv row. 
+    Calls str on anything that is not one of the following special cases
+    
+    dict
+    
+    list
+    
+    implements _asdict (NamedTuples, mostly)
+    
+    dataclass
+    
+    :param to_flatten: The structure to flatten"""
     if isinstance(to_flatten, dict):
         ordered = OrderedDict(sorted(to_flatten.items()))
         return ",".join(flatten(value) for _, value in ordered.items())

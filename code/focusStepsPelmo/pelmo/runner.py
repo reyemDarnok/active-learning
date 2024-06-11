@@ -52,7 +52,6 @@ def main():
     results = run_psms(psm_files=files, working_dir=args.working_dir, crops=args.crop, scenarios=args.scenario, max_workers=args.threads)
     with args.output.open('w') as fp:
         json.dump(list(results), fp, cls=conversions.EnhancedJSONEncoder)
-            
 
 def run_psms(psm_files: Iterable[Path], working_dir: Path, 
              crops: Iterable[PelmoCrop] = PelmoCrop, scenarios: Iterable[Scenario] = Scenario, 

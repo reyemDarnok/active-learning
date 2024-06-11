@@ -45,7 +45,7 @@ def main():
             json.dump(result, fp, cls=conversions.EnhancedJSONEncoder)
         elif args.output_format == "csv":
             for row in conversions.flatten_to_csv(result):
-                fp.write(f"{row}\n")
+                fp.write(row)
         else:
             raise ValueError(f"Invalid output format {args.output_format}")
 
