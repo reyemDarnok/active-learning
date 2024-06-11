@@ -18,7 +18,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 from util import conversions
 from focusStepsDatatypes.gap import PelmoCrop, Scenario
 from focusStepsDatatypes import gap
-from focusStepsDatatypes.pelmo import ChemPLM, WaterPLM
+from focusStepsDatatypes.pelmo import ChemPLM, PelmoResult, WaterPLM
 import util.jsonLogger as jsonLogger
 
 
@@ -26,16 +26,8 @@ from contextlib import suppress
 
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(), undefined=StrictUndefined)
 
-import dataclasses, json
+import json
 
-
-
-@dataclass
-class PelmoResult:
-    psm: str
-    scenario: str
-    crop: str
-    pec: List[float]
 
 def _init_thread(working_dir: Path):
     '''Initialise a working directory for the current thread in the overarching working directory.
@@ -69,12 +61,10 @@ def run_psms(psm_files: Iterable[Path], working_dir: Path,
     When given scenarios that are not defined for some given crops, they are silently ignored for those crops only
     :param psm_files: The files to run
     :param working_dir: Where to run them
-    :param focus_data: Where to find the focus data (zipped or as a directory)
-    :param pelmo_exe: Which pelmo exe to use to run the psms
     :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
     :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
     :param max_workers: How many worker threads to use at most
-    :return: A Generator of the results of the calculations. Makes new results available as they finish.
+    :return: A Generator of the results of the calculations. Makes new results available as their calculations finish.
                 No particular ordering is guaranteed but the calulations are started in order of psm_file, then crop, then scenario'''
     logger = logging.getLogger()
     

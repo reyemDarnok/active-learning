@@ -102,3 +102,10 @@ class ApplicationType(int, Enum):
     linear = 2
     exp_foliar = 3
     manual = 4
+
+@dataclass
+class PelmoResult:
+    psm: str
+    scenario: str
+    crop: str
+    pec: List[float]
