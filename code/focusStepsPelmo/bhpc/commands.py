@@ -107,6 +107,9 @@ def download_session(session: str, wait_until_finished: bool = True, retry_inter
         return True
     
 def remove_session(session: str, kill: bool = True):
+    """Remove a session from the bhpc
+    :param session: The session to remove
+    :param kill: Whether to also kill the session"""
     logger = logging.getLogger()
     with pushd(bhpc_dir):
         try:
@@ -128,20 +131,33 @@ def remove_session(session: str, kill: bool = True):
 
 def bhpc_job_finished(session: str) -> bool:
     """Checks whether the status message is a finished bhpc session
+    :param session: The sessionID to check
     :return: True if all jobs in the session have finished status, False otherwise"""
     for status in get_bhpc_job_status(session):
-        if status.initial != 0 or status.started != 0:
+        if not status.is_finished():
             return False
     return True
 
 @dataclass
 class Status:
+    """A dataclass representing the status of a BHPC submitfile"""
     initial: int
+    """How many jobs are initialised, that is defined and uploaded but not yet running"""
     started: int
+    """How many jobs are currently running"""
     done: int
+    """How many jobs have already finished running"""
     submitfile: Path
+    """The path of the submit file defining the jobs. Any downloads from this job will be saved in the same directory as this file"""
+
+    def is_finished(self):
+        return self.initial == 0 and self.started == 0
 
 def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
+    """Checks the status of a BHPC job
+    KNOWN ISSUE: Paths with whitespace other than single spaces will have their whitespace reduced to single spaces
+    :param session: The session to check
+    :return: The statuses of each submit file in the order BHPC show presents them"""
     logger = logging.getLogger()
     with pushd(bhpc_dir):
         try:
@@ -161,6 +177,8 @@ def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
         initial = int(initial)
         started = int(started)
         done = int(done)
+        # attempt to repair path with spaces - only works if the only whitespace in path is single spaces, but that's the most common case
+        # and this will most likely be used for reporting, not accessing the submit file
         path = Path(" ".join(path))
         logger.debug("%s %s %s %s", initial, started, done, path)
         yield Status(initial, started, done, path)
