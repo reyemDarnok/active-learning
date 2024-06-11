@@ -33,7 +33,7 @@ def _init_thread(working_dir: Path):
     '''Initialise a working directory for the current thread in the overarching working directory.
     This mostly consists of copying reference files
     :param working_dir: Where to create the subdirectory for the thread'''
-        # PELMO can't run multiple times in the same directory at the same time
+    # PELMO can't run multiple times in the same directory at the same time
     logger = logging.getLogger()
 
     logger.debug('Starting initialisation of %s', current_thread().name)

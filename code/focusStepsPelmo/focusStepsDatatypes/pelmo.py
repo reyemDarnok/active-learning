@@ -1,8 +1,10 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import Enum, auto
 from pathlib import Path
 import re
-from typing import List
+from typing import List, NamedTuple
+
+from util.conversions import map_to_class
 
 
 @dataclass
@@ -110,3 +112,165 @@ class PelmoResult:
     crop: str
     pec: List[float]
 
+
+class Scenario(Enum):
+    '''The Pelmo Scenarios. The key is the one letter shorthand and the value the full name'''
+    C = "Châteaudun"
+    H = "Hamburg"
+    J = "Jokioinen"
+    K = "Kremsmünster"
+    N = "Okehampton"
+    P = "Piacenza"
+    O = "Porto"
+    S = "Sevilla"
+    T = "Thiva"
+
+class PelmoCropMixin(NamedTuple):
+    '''Crop information for Pelmo'''
+    display_name: str
+    '''The name to use for display'''
+    defined_scenarios: List[Scenario]
+
+    '''The scenarios that are defined for this Crop in Pelmo'''
+    def toJSON(self):
+        return {"display_name": self.display_name,
+                "defined_scenarios": self.defined_scenarios}
+
+class PelmoCrop(PelmoCropMixin, Enum):
+    '''The crops defined for Pelmo. Each defined as a PelmoCropMixin'''
+    AP = PelmoCropMixin(display_name= "Apples", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    BB = PelmoCropMixin(display_name= "Bush berries", 
+                        defined_scenarios=[Scenario.J])
+    BF = PelmoCropMixin(display_name= "Beans (field)", 
+                        defined_scenarios=[Scenario.H, Scenario.K, Scenario.N])
+    BV = PelmoCropMixin(display_name= "Beans (vegetables)", 
+                        defined_scenarios=[Scenario.O, Scenario.T])
+    CA = PelmoCropMixin(display_name= "Carrots", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O, Scenario.T])
+    CB = PelmoCropMixin(display_name= "Cabbage", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O, Scenario.S, Scenario.T])
+    CI = PelmoCropMixin(display_name= "Citrus", 
+                        defined_scenarios=[Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    CO = PelmoCropMixin(display_name= "Cotton", 
+                        defined_scenarios=[Scenario.S, Scenario.T])
+    GA = PelmoCropMixin(display_name= "Grass and alfalfa", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    LS = PelmoCropMixin(display_name= "Linseed", 
+                        defined_scenarios=[Scenario.N])
+    MZ = PelmoCropMixin(display_name= "Maize", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    ON = PelmoCropMixin(display_name= "Onions", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O, Scenario.T])
+    OS = PelmoCropMixin(display_name= "Oilseed rape (summer)", 
+                        defined_scenarios=[Scenario.J, Scenario.N, Scenario.O])
+    OW = PelmoCropMixin(display_name= "Oilseed rape (winter)", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.K, Scenario.N, Scenario.P, Scenario.O])
+    PE = PelmoCropMixin(display_name= "Peas (animals)", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.N])
+    PO = PelmoCropMixin(display_name= "Potatoes", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    SB = PelmoCropMixin(display_name= "Sugar beets", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    SC = PelmoCropMixin(display_name= "Spring cereals", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.O])
+    SF = PelmoCropMixin(display_name= "Sunflower", 
+                        defined_scenarios=[Scenario.P, Scenario.S])
+    SO = PelmoCropMixin(display_name= "Soybeans", 
+                        defined_scenarios=[Scenario.P])
+    SW = PelmoCropMixin(display_name= "Strawberries", 
+                        defined_scenarios=[Scenario.H, Scenario.J, Scenario.K, Scenario.S])
+    TB = PelmoCropMixin(display_name= "Tobacco", 
+                        defined_scenarios=[Scenario.P, Scenario.T])
+    TM = PelmoCropMixin(display_name= "Tomatoes", 
+                        defined_scenarios=[Scenario.C, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    VI = PelmoCropMixin(display_name= "Vines", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.K, Scenario.P, Scenario.O, Scenario.S, Scenario.T])
+    WC = PelmoCropMixin(display_name= "Winter cereals", 
+                        defined_scenarios=[Scenario.C, Scenario.H, Scenario.J, Scenario.N, Scenario.P, Scenario.O]) # K, S, T have crp files but are not officially defined there
+
+    @staticmethod
+    def from_acronym( acronym: str) -> 'PelmoCrop':
+        return PelmoCrop[acronym]
+    
+    def toJSON(self):
+        return {"display_name": self.display_name,
+                "defined_scenarios": self.defined_scenarios}
+    
+
+class Emergence(int, Enum):
+    '''The possible application crop development timings for Pelmo'''
+    first_emergence = 0
+    first_maturation = 1
+    first_harvest = 2
+    second_emregence = 3
+    second_maturation = 4
+    second_harvest = 5
+
+# Compound starts here
+class DegradationType(int, Enum):
+    '''Used by Pelmo to describe the type of degdradation'''
+    FACTORS = 0
+    CONSTANT_WITH_DEPTH = auto()
+    INDIVIDUAL = auto()
+    FACTORS_LIQUID_PHASE = auto()
+    CONSTANT_WITH_DEPTH_LIQUID_PHASE = auto()
+    INDIVIDUAL_LIQUID_PHASE = auto()
+
+    
+@dataclass
+class Moisture:
+    '''Used by Pelmo'''
+    absolute: float
+    relative: float
+    exp: float
+
+@dataclass
+class MetaboliteDegradation:
+    '''Used by Pelmo to describe the degradation to metabolites'''
+    rate: float
+    '''The degradation rate. Calculated as ln(2)/DT50'''
+    temperature: float
+    q10: float
+    moisture: Moisture
+    stochiometric_factor: float
+    rel_deg_new_sites: int
+
+    def __init__(self, rate: float, temperature: float, q10: float, moisture: Moisture, stochiometric_factor: float, rel_deg_new_sites: int):
+        self.rate = rate
+        self.temperature = temperature
+        self.q10 = q10
+        self.moisture = map_to_class(moisture, Moisture)
+        self.stochiometric_factor = stochiometric_factor
+        self.rel_deg_new_sites = rel_deg_new_sites
+
+@dataclass
+class Photodegradation:
+    '''Used by pelmo'''
+    inverse_rate: float
+    i_ref: float
+
+@dataclass
+class Volatization:
+    '''Used by Pelmo'''
+    henry: float
+    solubility: float
+    vaporization_pressure: float
+    diff_air: float
+    temperature: float
+
+@dataclass
+class Sorption:
+    '''Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values'''
+    koc: float
+    freundlich: float
+    pH: float 
+    pKa: float
+    limit_freundl: float
+    annual_increment: float
+    k_doc: float
+    percent_change: float
+    koc2: float
+    pH2: float
+    f_neq: float
+    kdes: float
