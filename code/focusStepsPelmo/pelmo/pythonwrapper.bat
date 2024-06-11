@@ -1,6 +1,9 @@
+@REM Powershell scripts have to be signed, batch scripts don't and piping powershell commands to the powershell.exe from batch is apparently ok
 echo Expand-Archive common.zip -DestinationPath . -Force | powershell.exe
 echo Expand-Archive %1.zip -DestinationPath . -Force | powershell.exe
 
+@REM Don't show variable manipulation in console
+@echo off
 @REM Write all arguments without the first one into RESTVAR
 set RESTVAR=
 shift
@@ -11,5 +14,6 @@ shift
 goto loop1
 
 :after_loop
+@echo on
 
 python.exe %RESTVAR%
