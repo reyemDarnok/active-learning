@@ -8,10 +8,10 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, Iterable, List, TextIO, Union
 sys.path += [str(Path(__file__).parent.parent)]
-from focusStepsDatatypes.compound import Substance
+from inputTypes.compound import Compound
 from pelmo.summarize import rebuild_output
 from util import conversions
-from focusStepsDatatypes.gap import GAP, PelmoCrop, Scenario
+from inputTypes.gap import GAP, PelmoCrop, Scenario
 from pelmo.creator import generate_psm_files
 from pelmo.runner import run_psms, extract_zip
 from shutil import copytree, rmtree

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 from argparse import ArgumentParser, Namespace
+from dataclasses import asdict
 import logging
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape, StrictUndefined
@@ -7,8 +8,8 @@ from enum import Enum
 import json
 import sys 
 sys.path += [str(Path(__file__).parent.parent)]
-from focusStepsDatatypes.pelmo import ApplicationType
-from focusStepsDatatypes import compound, gap
+from psm_file import PsmFile
+from inputTypes import compound, gap
 import util.jsonLogger as jsonLogger
 
 
@@ -46,29 +47,13 @@ def _generate_psm(compound_file: Path, gap_file: Path, output_dir: Path):
     :param gap_file: The gap file to use when generating psm files
     :param compound_file: The compound file to use when generating psm files'''
     with compound_file.open() as fp:
-        psm_compound = compound.Substance(**json.load(fp))
+        psm_compound = compound.Compound(**json.load(fp))
     with gap_file.open() as fp:
         psm_gap = gap.GAP(**json.load(fp))
+    psm_file = PsmFile.fromInput(compound=psm_compound, gap=psm_gap)
     psm_template = jinja_env.get_template('general.psm.j2')
-    comment = json.dumps({"compound": str(compound_file), "gap": str(gap_file)})
-    psm_content = psm_template.render(compound=psm_compound, 
-        gap=psm_gap,
-        scenario={
-            "plant_decay_rate": 0.0693,
-            "washoff": 1,
-            "penetration": 0.0693,
-            "photodegradation": 0,
-            "irradiance": 500,
-            "laminar_layer": 1000},
-        comment=comment, 
-        timing = psm_gap.timing,
-        henry_calc=True,
-        kd_calc=True,
-        time=0,
-        Ffield=0,
-        frpex=0,
-        pesticide={'application_type': ApplicationType.manual},
-        )
+    psm_file.comment = json.dumps({"compound": str(compound_file), "gap": str(gap_file)})
+    psm_content = psm_template.render(**asdict(psm_file))
     (output_dir / f'{compound_file.stem}-{gap_file.stem}.psm').write_text(psm_content)
 
 def parse_args() -> Namespace:

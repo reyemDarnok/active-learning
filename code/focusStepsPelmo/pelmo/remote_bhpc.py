@@ -20,7 +20,7 @@ from bhpc import commands
 import util.jsonLogger as jsonLogger
 from util import conversions
 from util.conversions import EnhancedJSONEncoder
-from focusStepsDatatypes.gap import PelmoCrop, Scenario
+from inputTypes.gap import PelmoCrop, Scenario
 from pelmo.creator import generate_psm_files
 from pelmo.summarize import rebuild_scattered_output
 
@@ -198,7 +198,7 @@ def parse_args() -> Namespace:
     parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('-r', '--run', action='store_true', default=False, help="Run the created submit files on the bhpc")
     parser.add_argument('--count', type=int, default=1, help="How many machines to use on the bhpc")
-    parser.add_argument('--cores', type=int, choices=(2,4,8,16,96), default=96, help="How many cores per machine to use. One core per machine is always overhead, so larger machines are more efficient")
+    parser.add_argument('--cores', type=int, choices=(2,4,8,16,96), default=2, help="How many cores per machine to use. One core per machine is always overhead, so larger machines are more efficient")
     parser.add_argument('--multithreading', action='store_true', default=True, help="Use multithreading")
     parser.add_argument('--notification-email', type=str, default=None, help="The email address which will be notified if the bhpc run finishes")
     parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")

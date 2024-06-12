@@ -98,12 +98,7 @@ class ChemPLM:
         years = [[[line for line in section.splitlines()[:-1] if line] for section in re.split(r"---+", year)[1:]] for year in file.read_text().split("ANNUAL")[1:]]
         self.horizons = [[ChemHorizon(line) for line in year[2][:-1] if not '*' in line] for year in years]
 
-class ApplicationType(int, Enum):
-    """The different types of application Pelmo recognizes"""
-    soil = 1
-    linear = 2
-    exp_foliar = 3
-    manual = 4
+
 
 @dataclass
 class PelmoResult:
@@ -198,32 +193,10 @@ class PelmoCrop(PelmoCropMixin, Enum):
                 "defined_scenarios": self.defined_scenarios}
     
 
-class Emergence(int, Enum):
-    '''The possible application crop development timings for Pelmo'''
-    first_emergence = 0
-    first_maturation = 1
-    first_harvest = 2
-    second_emregence = 3
-    second_maturation = 4
-    second_harvest = 5
-
 # Compound starts here
-class DegradationType(int, Enum):
-    '''Used by Pelmo to describe the type of degdradation'''
-    FACTORS = 0
-    CONSTANT_WITH_DEPTH = auto()
-    INDIVIDUAL = auto()
-    FACTORS_LIQUID_PHASE = auto()
-    CONSTANT_WITH_DEPTH_LIQUID_PHASE = auto()
-    INDIVIDUAL_LIQUID_PHASE = auto()
 
-    
-@dataclass
-class Moisture:
-    '''Used by Pelmo'''
-    absolute: float
-    relative: float
-    exp: float
+
+
 
 @dataclass
 class MetaboliteDegradation:
@@ -250,27 +223,4 @@ class Photodegradation:
     inverse_rate: float
     i_ref: float
 
-@dataclass
-class Volatization:
-    '''Used by Pelmo'''
-    henry: float
-    solubility: float
-    vaporization_pressure: float
-    diff_air: float
-    temperature: float
 
-@dataclass
-class Sorption:
-    '''Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values'''
-    koc: float
-    freundlich: float
-    pH: float 
-    pKa: float
-    limit_freundl: float
-    annual_increment: float
-    k_doc: float
-    percent_change: float
-    koc2: float
-    pH2: float
-    f_neq: float
-    kdes: float

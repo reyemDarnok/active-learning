@@ -16,9 +16,9 @@ from threading import current_thread
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 from util import conversions
-from focusStepsDatatypes.gap import PelmoCrop, Scenario
-from focusStepsDatatypes import gap
-from focusStepsDatatypes.pelmo import ChemPLM, PelmoResult, WaterPLM
+from inputTypes.gap import PelmoCrop, Scenario
+from inputTypes import gap
+from inputTypes.pelmo import ChemPLM, PelmoResult, WaterPLM
 import util.jsonLogger as jsonLogger
 
 

@@ -11,17 +11,17 @@ sys.path += [str(Path(__file__).parent.parent)]
 
 from util.conversions import EnhancedJSONEncoder
 from pelmo.runner import PelmoResult
-from focusStepsDatatypes.compound import Substance
-from focusStepsDatatypes.gap import GAP
+from inputTypes.compound import Compound
+from inputTypes.gap import GAP
 
-def rebuild_scattered_output(parent: Path, glob_pattern: str = "output.json", psm_root = Path.cwd()) -> Generator[Dict[str, Union[float, str, GAP, Substance]], None, None]:
+def rebuild_scattered_output(parent: Path, glob_pattern: str = "output.json", psm_root = Path.cwd()) -> Generator[Dict[str, Union[float, str, GAP, Compound]], None, None]:
     logger = logging.getLogger()
     logger.debug("Iterating over output files %s", list(parent.rglob(glob_pattern)))
     for file in parent.rglob(glob_pattern):
         for output in rebuild_output(file, psm_root):
             yield output
 
-def rebuild_output(source: Union[Path, List[PelmoResult]], psm_root = Path.cwd()) -> Generator[Dict[str, Union[float, str, GAP, Substance]], None, None]:
+def rebuild_output(source: Union[Path, List[PelmoResult]], psm_root = Path.cwd()) -> Generator[Dict[str, Union[float, str, GAP, Compound]], None, None]:
     logger = logging.getLogger()
     if isinstance(source, Path):
         with source.open() as fp:
@@ -45,7 +45,7 @@ def rebuild_output(source: Union[Path, List[PelmoResult]], psm_root = Path.cwd()
 def get_compound(file: Path):
     with file.open() as fp:
         content = json.load(fp)
-    return Substance(**content)
+    return Compound(**content)
 
 @functools.lru_cache(maxsize=None)
 def get_gap(file: Path):
