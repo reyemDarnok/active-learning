@@ -5,9 +5,8 @@ from enum import Enum, auto
 import math
 from typing import List, Tuple
 
-from inputTypes.compound import Compound, Degradation, Sorption
-from inputTypes.gap import GAP, Application, FOCUSCrop
-from inputTypes.pelmo import PelmoCrop
+from ioTypes.compound import Compound, Degradation, Sorption
+from ioTypes.gap import GAP, Application, FOCUSCrop
 
 PELMO_UNSET = -99
 

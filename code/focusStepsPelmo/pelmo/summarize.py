@@ -11,8 +11,8 @@ sys.path += [str(Path(__file__).parent.parent)]
 
 from util.conversions import EnhancedJSONEncoder
 from pelmo.runner import PelmoResult
-from inputTypes.compound import Compound
-from inputTypes.gap import GAP
+from ioTypes.compound import Compound
+from ioTypes.gap import GAP
 
 def rebuild_scattered_output(parent: Path, glob_pattern: str = "output.json", psm_root = Path.cwd()) -> Generator[Dict[str, Union[float, str, GAP, Compound]], None, None]:
     logger = logging.getLogger()

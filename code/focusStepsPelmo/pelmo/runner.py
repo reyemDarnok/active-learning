@@ -16,9 +16,9 @@ from threading import current_thread
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 from util import conversions
-from inputTypes.gap import PelmoCrop, Scenario
-from inputTypes import gap
-from inputTypes.pelmo import ChemPLM, PelmoResult, WaterPLM
+from ioTypes.gap import FOCUSCrop, Scenario
+from ioTypes import gap
+from ioTypes.pelmo import ChemPLM, PelmoResult, WaterPLM
 import util.jsonLogger as jsonLogger
 
 
@@ -54,7 +54,7 @@ def main():
         json.dump(list(results), fp, cls=conversions.EnhancedJSONEncoder)
 
 def run_psms(psm_files: Iterable[Path], working_dir: Path, 
-             crops: Iterable[PelmoCrop] = PelmoCrop, scenarios: Iterable[Scenario] = Scenario, 
+             crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
              max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
     '''Run all given psm_files using working_dir as scratch space. 
     When given scenarios that are not defined for some given crops, they are silently ignored for those crops only
@@ -86,7 +86,7 @@ def run_psms(psm_files: Iterable[Path], working_dir: Path,
     pool.shutdown()
 
 def single_pelmo_run(psm_file: Path, working_dir: Path, 
-                     crop: PelmoCrop, scenario: Scenario) -> PelmoResult:
+                     crop: FOCUSCrop, scenario: Scenario) -> PelmoResult:
     '''Runs a single psm/crop/scenario combination.
     Assumes that it is in a multithreading context after _init_thread as run
     :param pelmo_exe: The pelmo exe to use for running the psm file
@@ -176,7 +176,7 @@ def parse_args() -> Namespace:
     parser.add_argument('-w', '--working-dir', type=Path, default=Path.cwd() / 'pelmofiles', help="The directory to use as a root working directory. Will be filled with expanded zips and defaults to the current working directory")
     parser.add_argument('-f', '--focus-dir', type=Path, default=Path(__file__).parent / 'data' / 'Focus.zip', help="The PELMO FOCUS directory to use. If a zip, will be unpacked first. Defaults to a bundled zip.")
     parser.add_argument('-e', '--pelmo-exe', type=Path, default=Path(__file__).parent / 'data' /'PELMO500.exe', help="The PELMO executable to use for running. Defaults to a bundled PELMO installation. This should point to the CLI EXE, usually named PELMO500.EXE NOT to the GUI EXE usually named wpelmo.exe.")
-    parser.add_argument('-c', '--crop', nargs='*', type=gap.PelmoCrop.from_acronym, default=list(gap.PelmoCrop), help="The crops to simulate. Can be specified multiple times. Should be listed as a two letter acronym. The selected crops have to be present in the FOCUS zip, the bundled zip includes all crops. Defaults to all crops.")
+    parser.add_argument('-c', '--crop', nargs='*', type=gap.FOCUSCrop.from_acronym, default=list(gap.FOCUSCrop), help="The crops to simulate. Can be specified multiple times. Should be listed as a two letter acronym. The selected crops have to be present in the FOCUS zip, the bundled zip includes all crops. Defaults to all crops.")
     parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(gap.Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1, help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
     parser.add_argument('-o', '--output', type=Path, default=Path('output.json'), help="Where to write the results to. Defaults to output.json")

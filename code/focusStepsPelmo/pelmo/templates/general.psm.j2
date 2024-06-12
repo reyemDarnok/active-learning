@@ -7,7 +7,7 @@
 <APPLICATION>
  1    0    9    <number of locations absolute app/relative app>
 026            <number of application location>
-{% for year in range(1,27) %}{{ "%02d" % application.offset }}  {{ "%02d" % application.stage.value }}  {{ "%02d" % year }}   {{ application.rate }}    {{ upper_depth| default(0) }}    {{ lower_depth | default(0)}}    {{ "%d" % crop.interception[application.timing.bbch_state] * 100)  }}    {{Ffield}}    {{frpex}}    {{time}}   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+{% for year in range(1,27) %}{{ "%02d" % application.offset }}  {{ "%02d" % application.stage.value }}  {{ "%02d" % year }}   {{ application.rate }}    {{ upper_depth| default(0) }}    {{ lower_depth | default(0)}}    {{ "%d" % crop.get_interception(application.timing.bbch_state)  }}    {{Ffield}}    {{frpex}}    {{time}}   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
 {%- if not loop.last%}
 {% endif %}{% endfor %}
  {{ application.type.value }}    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually

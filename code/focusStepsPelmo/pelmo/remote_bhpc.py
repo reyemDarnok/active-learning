@@ -11,7 +11,7 @@ import sys
 
 sys.path += [str(Path(__file__).parent.parent)]
 
-from typing import Generator, Iterable, List, Sequence, TypeVar
+from typing import Generator, Iterable, Sequence, TypeVar
 from zipfile import ZipFile
 import zipfile
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
@@ -20,7 +20,7 @@ from bhpc import commands
 import util.jsonLogger as jsonLogger
 from util import conversions
 from util.conversions import EnhancedJSONEncoder
-from inputTypes.gap import PelmoCrop, Scenario
+from ioTypes.gap import FOCUSCrop, Scenario
 from pelmo.creator import generate_psm_files
 from pelmo.summarize import rebuild_scattered_output
 
@@ -138,7 +138,7 @@ def zip_directory(directory: Path, zip_name:str, mode: str='a'):
 
 
 def make_sub_file(psm_files: Iterable[Path], target_dir: Path, 
-                  crops: PelmoCrop = PelmoCrop, scenarios: Scenario = Scenario, 
+                  crops: FOCUSCrop = FOCUSCrop, scenarios: Scenario = Scenario, 
                   batchsize: int = 100):
     '''Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_files: The files to run in Pelmo. WARNING: Will be moved to target_dir
@@ -194,7 +194,7 @@ def parse_args() -> Namespace:
     parser.add_argument('-g', '--gap-file', required=True, type=Path, help='The gap to create a psm file for. If this is a directory, create psm files for every gap file in the directory, with .json files assumed to be compound files and no recursion')
     parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path, help='The directory in which files for Pelmo will be created. Defaults to the current directory')
     parser.add_argument('-o', '--output', default=Path('output'), type=Path, help='Where to output the submit file and its dependencies. Defaults to "output"')
-    parser.add_argument(      '--crop', nargs='*', default=PelmoCrop, type=PelmoCrop.from_acronym, help="Which crops to run. Defaults to all crops")
+    parser.add_argument(      '--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.from_acronym, help="Which crops to run. Defaults to all crops")
     parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('-r', '--run', action='store_true', default=False, help="Run the created submit files on the bhpc")
     parser.add_argument('--count', type=int, default=1, help="How many machines to use on the bhpc")

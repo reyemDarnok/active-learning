@@ -4,12 +4,11 @@ from dataclasses import asdict
 import logging
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape, StrictUndefined
-from enum import Enum
 import json
 import sys 
 sys.path += [str(Path(__file__).parent.parent)]
 from psm_file import PsmFile
-from inputTypes import compound, gap
+from ioTypes import compound, gap
 import util.jsonLogger as jsonLogger
 
 
