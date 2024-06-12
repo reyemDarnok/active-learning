@@ -7,6 +7,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape, StrictUndef
 import json
 import sys 
 sys.path += [str(Path(__file__).parent.parent)]
+from util.conversions import EnhancedJSONEncoder
 from psm_file import PsmFile
 from ioTypes import compound, gap
 import util.jsonLogger as jsonLogger
@@ -52,7 +53,7 @@ def _generate_psm(compound_file: Path, gap_file: Path, output_dir: Path):
     psm_file = PsmFile.fromInput(compound=psm_compound, gap=psm_gap)
     psm_template = jinja_env.get_template('general.psm.j2')
     psm_file.comment = json.dumps({"compound": str(compound_file), "gap": str(gap_file)})
-    psm_content = psm_template.render(**asdict(psm_file))
+    psm_content = psm_template.render(**psm_file._asdict())
     (output_dir / f'{compound_file.stem}-{gap_file.stem}.psm').write_text(psm_content)
 
 def parse_args() -> Namespace:

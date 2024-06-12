@@ -7,7 +7,7 @@
 <APPLICATION>
  1    0    9    <number of locations absolute app/relative app>
 026            <number of application location>
-{% for year in range(1,27) %}{{ "%02d" % application.offset }}  {{ "%02d" % application.stage.value }}  {{ "%02d" % year }}   {{ application.rate }}    {{ upper_depth| default(0) }}    {{ lower_depth | default(0)}}    {{ "%d" % crop.get_interception(application.timing.bbch_state)  }}    {{Ffield}}    {{frpex}}    {{time}}   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
+{% for year in range(1,27) %}{{ "%02d" % application.offset }}  {{ "%02d" % application.stage.value }}  {{ "%02d" % year }}   {{ application.rate }}    {{ application.upper_depth| default(0) }}    {{ application.lower_depth | default(0)}}    {{ "%d" % crop.get_interception(application.timing.bbch_state)  }}    {{application.ffield}}    {{application.frpex}}    {{application.time}}   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>
 {%- if not loop.last%}
 {% endif %}{% endfor %}
  {{ application.type.value }}    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually
@@ -17,7 +17,7 @@
 <END FLAGS>
 <VOLATILIZATION>
 <henry       solub.      molmass     vap.press   diff air    depth volat.  Hv        Temperature>
-{% for volatization in volatizations %}  {{ '%.2E' % volatization.henry}}   {{ volatization.solubility}}    {{ compound.molarMass}}     {{ '%.2E' % volatization.vaporization_pressure }}   {{ volatization.diff_air }}    {{ volatization.depth_volatility }}    {{ volatization.hv }}    {{ volatization.temperature }} {% if not loop.last%}
+{% for volatization in volatizations %}  {{ '%.2E' % volatization.henry}}   {{ volatization.solubility}}    {{ molar_mass }}     {{ '%.2E' % volatization.vaporization_pressure }}   {{ volatization.diff_air }}    {{ volatization.depth_volatility }}    {{ volatization.hv }}    {{ volatization.temperature }} {% if not loop.last%}
 {% endif %}{% endfor %}
 <END VOLATILIZATION>
 <PLANT UPTAKE>
@@ -25,17 +25,20 @@
 <END PLANT UPTAKE>
 <DEGRADATION>
 <degrate    degtemp     q10         moist-abs   moist-rel   moist-exp   rel deg neq sites  stoichiometric factor
-{% for degradation in degradations %}  {{ '%.2E' % degradation.rate }}   {{ degradation.temperature }}          {{ degradation.q10}}        {{ degradation.moisture.absolute }}           {{ degradation.moisture.relative }}         {{ degradation.moisture.exp }}       {{ degradation.rel_deg_new_sites}}         {{ degradation.formation_factor }}
+{% for degradation in degradations.metabolites %}  {{ '%.2E' % degradation.to_disregard.rate }}   {{ degradation.to_disregard.temperature }}          {{ degradation.to_disregard.q10}}        {{ degradation.to_disregard.moisture.absolute }}           {{ degradation.to_disregard.moisture.relative }}         {{ degradation.to_disregard.moisture.exp }}       {{ degradation.to_disregard.rel_deg_new_sites}}         {{ degradation.to_disregard.formation_factor }}
 {%- if not loop.last%}
-{% endif %}{% endfor %}
+{% endif %}{% endfor %}{% if degradations.metabolites | length > 0 %}
+{% endif %} {{ '%.2E' % degradations.to_disregard.rate }}   {{ degradations.to_disregard.temperature }}          {{ degradations.to_disregard.q10}}        {{ degradations.to_disregard.moisture.absolute }}           {{ degradations.to_disregard.moisture.relative }}         {{ degradations.to_disregard.moisture.exp }}       {{ degradations.to_disregard.rel_deg_new_sites}}         {{ degradations.to_disregard.formation_factor }}
  {{ degradation_type.value }}                 <0 = degradation according to degradation factors, 1 = constant with depth,2 individual,3 = degradation according to degradation factors, 4 = constant with depth,5 individual, >2 deg in liquid phase only)
 <PHOTODEGRADATION>
 <rate 1/n>  <I_Ref W>
-{% for degradation in degradations %} {{ degradation.inverse_rate }}   {{ degradation.i_ref }} {% endfor %}
+{% for degradation in degradations.metabolites %} {{ degradation.to_disregard.inverse_rate }}   {{ degradation.to_disregard.i_ref }} {% endfor %} {{degradations.to_disregard.inverse_rate}}   {{degradations.to_disregard.i_ref}}
 <END DEGRADATION>
 <ADSORPTION>
 <Koc-value    Fr.exp.Koc  pH          pKa     limit for Freundl.  ann.incr.> <k_doc> <% change> KOC2      pH2 f_neq       kdes>
- {{adsorption.koc}}        {{adsorption.freundlich}}        {{adsorption.pH}}          {{adsorption.pKa}}         {{'%.2E' % adsorption.limit_freundl}}          {{adsorption.annual_increment}}      {{adsorption.k_doc}}     {{adsorption.percent_change}}    {{adsorption.koc2}}    {{adsorption.pH2}}     {{adsorption.f_neq}}     {{adsorption.kdes}} 
+{% for adsorption in adsorptions %} {{adsorption.koc}}        {{adsorption.freundlich}}        {{adsorption.pH}}          {{adsorption.pKa}}         {{'%.2E' % adsorption.limit_freundl}}          {{adsorption.annual_increment}}      {{adsorption.k_doc}}     {{adsorption.percent_change}}    {{adsorption.koc2}}    {{adsorption.pH2}}     {{adsorption.f_neq}}     {{adsorption.kdes}} 
+{%- if not loop.last %}
+{% endif %}{% endfor%}
 <END ADSORPTION>
 <DEPTH DEPENDENT SORPTION AND TRANSFORMATION VALUES>
 <Kd          Fr.exp.     Met A1   Met B1   Met C1   Met D1   BR/CO2 >

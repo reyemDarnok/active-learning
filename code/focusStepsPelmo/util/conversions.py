@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, UserDict
 import dataclasses
 from json import JSONEncoder
 import re
@@ -39,6 +39,8 @@ class EnhancedJSONEncoder(JSONEncoder):
         dataclasses
 
         Enums
+
+        UserDict
         """
         def default(self, o):
             if hasattr(o, '_asdict'):
@@ -48,6 +50,8 @@ class EnhancedJSONEncoder(JSONEncoder):
             if isinstance(o, Enum):
                 if not isinstance(o, (str, int, float, bool)):
                     return o.name
+            if isinstance(o, UserDict):
+                return o.data
             return super().default(o)
 
 def flatten_to_csv(to_flatten: Iterable[Dict[str, Any]]) -> Generator[str, None, None]:

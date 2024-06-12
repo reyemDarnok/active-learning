@@ -1,21 +1,11 @@
 {
   "modelCrop": "MZ",
-    "application": {
-      "number": 1,
-      "interval": 1,
-      "rate": 1
-    },
-    "cropCover": {
-      "Spring": "Average",
-      "Summer": "Full"
-    },
-    "regions": [
-      "South"
-    ],
+  "application": {
+    "number": 1,
+    "interval": 1,
+    "rate": 1,
     "timing": {
-            "emergence": "first_maturation",
-            "offset": 3,
-            "season": "Spring"
-        }
-
+      "bbch_state": -1
+    }
   }
+}

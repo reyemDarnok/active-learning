@@ -147,9 +147,10 @@ def parse_pelmo_result(run_dir: Path, target_compartment = 21) -> List[float]:
         # mass in g/ha / water in mm
         # input is in kg/ha and cm
         pecs = [(chem_horizons[i].leaching_output * 1000 / (water_horizons[i].leaching_output * 10 ) * 100 ) if water_horizons[i].leaching_output > 0 else 0 for i in range(len(chem_horizons))]
+        pecs = pecs[6:]
         pecs.sort()
         percentile = 0.8
-        lower = int((len(pecs) - 1) * percentile) + 1
+        lower = int((len(pecs) - 1) * percentile)
         PECgw = (pecs[lower] + pecs[lower + 1]) / 2
         results.append(PECgw)
 

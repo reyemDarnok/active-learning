@@ -19,14 +19,8 @@ class Degradation:
     metabolites: List['Degradation']
     '''Information on which metabolites will form'''
 
-    def __init__(self, system: float, soil: float, surfaceWater: float, sediment: float,
-                 metabolites: List[Union['Degradation', Dict[str, Union[float, 'Degradation']]]] = None,
-                 ):
-        self.system = system
-        self.soil = soil
-        self.surfaceWater = surfaceWater
-        self.sediment = sediment
-        self.metabolites = [map_to_class(x) for x in metabolites]
+    def __post_init__(self):
+        self.metabolites = [map_to_class(x) for x in self.metabolites]
 
 
 
@@ -52,19 +46,11 @@ class Compound:
     '''Fraction of plant uptake'''
     
 
-    def __init__(self, molarMass: float, waterSolubility: float, sorption: Union[Sorption, Dict[str, float]],
-                 degradation: Union[Degradation, Dict[str, float]], 
-                 parent: Union[Optional['Compound'], Dict[str, float]] = None,
-                 plant_uptake: float = 0):
-        self.molarMass = molarMass
-        self.waterSolubility = waterSolubility
-        self.sorption = map_to_class(sorption, Sorption)
-        self.degradation = map_to_class(degradation, Degradation)
-        if parent is None:
-            self.parent = None
-        else:
-            self.parent = map_to_class(parent, Compound)
-        self.plant_uptake = plant_uptake
+    def __post_init__(self):
+        self.sorption = map_to_class(self.sorption, Sorption)
+        self.degradation = map_to_class(self.degradation, Degradation)
+        if self.parent is not None:
+            self.parent = map_to_class(self.parent, Compound)
 
 
 
