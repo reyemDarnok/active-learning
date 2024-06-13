@@ -11,7 +11,7 @@ from util.datastructures import HashableRSDict
 from util.conversions import map_to_class, str_to_enum
 
 
-class Scenario(Enum):
+class Scenario(str, Enum):
     '''The Pelmo Scenarios. The key is the one letter shorthand and the value the full name'''
     C = "Châteaudun"
     H = "Hamburg"
@@ -144,6 +144,9 @@ class Timing:
 
     def principal_stage(self):
         return PrincipalStage(max(-1, min(9, math.floor(self.bbch_state / 10))))
+    
+    def __post_init__(self):
+        object.__setattr__(self, 'bbch_state', int(self.bbch_state))
 
 @dataclass(frozen=True)
 class Application:
@@ -160,6 +163,10 @@ class Application:
     
     def __post_init__(self):
         object.__setattr__(self, 'timing', map_to_class(self.timing, Timing))
+        object.__setattr__(self, 'rate', float(self.rate))
+        object.__setattr__(self, 'number', int(self.number))
+        object.__setattr__(self, 'interval', int(self.interval))
+        object.__setattr__(self, 'factor', float(self.factor))
 
 @dataclass(frozen=True)
 class GAP:
@@ -170,7 +177,7 @@ class GAP:
     '''The values of the actual application'''
 
     def _asdict(self):
-        return {"modelCrop": self.modelCrop, "application": self.application}
+        return {"modelCrop": self.modelCrop.name, "application": self.application}
     
     def __post_init__(self):
         object.__setattr__(self, 'modelCrop', str_to_enum(self.modelCrop, FOCUSCrop))

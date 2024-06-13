@@ -67,7 +67,7 @@ class DegradationType(int, Enum):
     INDIVIDUAL_LIQUID_PHASE = auto()
 
 
-@dataclass(frozen=True)
+@dataclass
 class Volatization:
     '''Used by Pelmo'''
     henry: float = 3.33E-04
@@ -79,14 +79,14 @@ class Volatization:
     temperature: float = 20
 
     
-@dataclass(frozen=True)
+@dataclass
 class Moisture:
     '''Used by Pelmo'''
     absolute: float = 0
     relative: float = 100
     exp: float = 0.7
 
-@dataclass(frozen=True)
+@dataclass
 class DegradationData:
     rate: float
     temperature: float = 20
@@ -100,7 +100,7 @@ class DegradationData:
     def __post_init__(self):
         object.__setattr__(self, 'moisture', map_to_class(self.moisture, Moisture))
 
-@dataclass(frozen=True)
+@dataclass
 class PsmDegradation:
     to_disregard: DegradationData
     metabolites: Tuple['PsmDegradation'] = field(default_factory=tuple)
@@ -111,6 +111,7 @@ class PsmDegradation:
             if len(self.metabolites) == 4:
                 object.__setattr__(self, 'metabolites', [map_to_class(x, PsmDegradation) for x in self.metabolites])
             elif len(self.metabolites) < 4:
+                metabolites = list(self.metabolites)
                 for _ in range(4-len(self.metabolites)):
                     next_filler = PsmDegradation(to_disregard=DegradationData(rate=0), metabolites=None)
                     metabolites += [next_filler]
@@ -120,7 +121,7 @@ class PsmDegradation:
 
 
 
-@dataclass(frozen=True)
+@dataclass
 class PsmAdsorption:
     '''Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values'''
     koc: float
@@ -136,7 +137,7 @@ class PsmAdsorption:
     f_neq: float = 0
     kdes: float = 0
 
-@dataclass(frozen=True)
+@dataclass
 class PsmFile:
     application: PsmApplication
     degradations: PsmDegradation # rate calculation with metabolites is still suspect - works for parent only
@@ -173,7 +174,7 @@ class PsmFile:
         
         degradations = PsmDegradation(to_disregard= DegradationData(rate=math.log(2) / compound.degradation.system), metabolites=[])
         
-        adsorptions = tuple(PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich))
+        adsorptions = tuple([PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)])
         crop = gap.modelCrop
         molar_mass = compound.molarMass
         return PsmFile(application=application, 

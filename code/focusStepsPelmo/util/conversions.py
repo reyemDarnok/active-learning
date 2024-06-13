@@ -43,13 +43,16 @@ class EnhancedJSONEncoder(JSONEncoder):
         UserDict
         """
         def default(self, o):
+            if Enum in type(o).__bases__:
+                print(f"Enum: {o}")
+                if set((str, int, float, bool)) & set(type(o).__bases__):
+                    return o.value
+                else:
+                    return o.name
             if hasattr(o, '_asdict'):
                 return o._asdict()
             if dataclasses.is_dataclass(o):
                 return dataclasses.asdict(o)
-            if isinstance(o, Enum):
-                if not isinstance(o, (str, int, float, bool)):
-                    return o.name
             if isinstance(o, UserDict):
                 return o.data
             return super().default(o)
