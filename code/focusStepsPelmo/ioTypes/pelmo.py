@@ -6,7 +6,7 @@ from typing import List
 from util.conversions import map_to_class
 
 
-@dataclass
+@dataclass()
 class WaterHorizon():
     '''Class describing a horizon segment line of a WASSER.PLM'''
     horizon: int
@@ -45,7 +45,7 @@ class WaterHorizon():
             segments = segments[5:]
         self.temperature = segments[0]
 
-@dataclass
+@dataclass()
 class WaterPLM():
     '''A parsed form of a WASSER.PLM file in the Pelmo output. Does not yet parse all fields'''
     horizons: List[List[WaterHorizon]]
@@ -55,7 +55,7 @@ class WaterPLM():
         years = [[[line for line in section.splitlines()[:-1] if line] for section in re.split(r"---+", year)[1:]] for year in file.read_text().split("ANNUAL WATER OUTPUT")[1:]]
         self.horizons = [[WaterHorizon(line) for line in year[2][:-1]] for year in years]
 
-@dataclass
+@dataclass()
 class ChemHorizon():
     '''Class describing a horizon segment line of a CHEM.PLM'''
     horizon : int
@@ -86,7 +86,7 @@ class ChemHorizon():
         self.current_storage = float(segments[9])
         self.storage_in_neq_domain = float(segments[10])
 
-@dataclass
+@dataclass()
 class ChemPLM:
     '''A parsed form of a CHEM.PLM file in the Pelmo output. Does not yet parse all fields'''
     horizons: List[List[ChemHorizon]]
@@ -99,7 +99,7 @@ class ChemPLM:
 
 
 
-@dataclass
+@dataclass(frozen=True)
 class PelmoResult:
     psm: str
     scenario: str

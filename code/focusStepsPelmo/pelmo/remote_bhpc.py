@@ -111,7 +111,7 @@ def copy_common_files(output: Path):
     logger.debug('Getting requirements')
     subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', str((script_dir / 'requirements.txt').absolute()),  '--platform', 'win32',  '--upgrade', '--only-binary', ':all:', '--target', str(output.absolute())])
     logger.debug('Getting datatypes')
-    shutil.copytree(script_dir / '..' / 'focusStepsDatatypes', output / 'focusStepsDatatypes')
+    shutil.copytree(script_dir / '..' / 'ioTypes', output / 'ioTypes')
     logger.debug('Getting utils')
     shutil.copytree(script_dir / '..' / 'util', output / 'util')
 

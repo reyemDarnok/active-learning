@@ -24,7 +24,7 @@ class Season(int, Enum):
     Summer = auto()
     Autumn = auto()
 
-@dataclass
+@dataclass(frozen=True)
 class Scenario:
     '''General Scenario information, the defaults do not typically need to be overridden'''
     waterDepth: float = 30
@@ -44,7 +44,7 @@ class Scenario:
 
 
 # Compound starts here 
-@dataclass
+@dataclass(frozen=True)
 class Occurrence:
     '''Used for Step12 calculations
     Describes the Occurrence behaviour of a substance.'''

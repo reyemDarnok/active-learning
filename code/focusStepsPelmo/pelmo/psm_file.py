@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
 import math
-from typing import List, Tuple
+from typing import Tuple
 
 from util.conversions import map_to_class, str_to_enum
 from ioTypes.compound import Compound, Degradation, Sorption
@@ -33,7 +33,7 @@ class ApplicationType(int, Enum):
     exp_foliar = 3
     manual = 4
 
-@dataclass
+@dataclass(frozen=True)
 class PsmApplication(Application):
     type: ApplicationType = ApplicationType.soil
     lower_depth: float = 0
@@ -48,11 +48,11 @@ class PsmApplication(Application):
     def __post_init__(self):
         super().__post_init__()
         if self.stage == None:
-            self.stage = Emergence.fromStage(self.timing.principal_stage())
+            object.__setattr__(self, 'stage', Emergence.fromStage(self.timing.principal_stage()))
         if self.offset == None:
-            if self.timing.bbch_state > 90: self.offset = self.timing.bbch_state - 90
-            elif self.timing.bbch_state > 80: self.offset = self.timing.bbch_state - 80
-            else: self.offset = self.timing.bbch_state
+            if self.timing.bbch_state > 90: object.__setattr__(self, 'offset', self.timing.bbch_state - 90)
+            elif self.timing.bbch_state > 80: object.__setattr__(self, 'offset', self.timing.bbch_state - 80)
+            else: object.__setattr__(self, 'offset', self.timing.bbch_state)
         
 
 
@@ -67,7 +67,7 @@ class DegradationType(int, Enum):
     INDIVIDUAL_LIQUID_PHASE = auto()
 
 
-@dataclass
+@dataclass(frozen=True)
 class Volatization:
     '''Used by Pelmo'''
     henry: float = 3.33E-04
@@ -79,14 +79,14 @@ class Volatization:
     temperature: float = 20
 
     
-@dataclass
+@dataclass(frozen=True)
 class Moisture:
     '''Used by Pelmo'''
     absolute: float = 0
     relative: float = 100
     exp: float = 0.7
 
-@dataclass
+@dataclass(frozen=True)
 class DegradationData:
     rate: float
     temperature: float = 20
@@ -98,27 +98,29 @@ class DegradationData:
     i_ref: float = 100
 
     def __post_init__(self):
-        self.moisture = map_to_class(self.moisture, Moisture)
+        object.__setattr__(self, 'moisture', map_to_class(self.moisture, Moisture))
 
-@dataclass
+@dataclass(frozen=True)
 class PsmDegradation:
     to_disregard: DegradationData
-    metabolites: List['PsmDegradation'] = field(default_factory=list)
+    metabolites: Tuple['PsmDegradation'] = field(default_factory=tuple)
 
     def __post_init__(self):
-        self.to_disregard = map_to_class(self.to_disregard, DegradationData)
+        object.__setattr__(self, 'to_disregard', map_to_class(self.to_disregard, DegradationData))
         if self.metabolites is not None:
-            self.metabolites = [map_to_class(x, PsmDegradation) for x in self.metabolites]
-            if len(self.metabolites) < 4:
+            if len(self.metabolites) == 4:
+                object.__setattr__(self, 'metabolites', [map_to_class(x, PsmDegradation) for x in self.metabolites])
+            elif len(self.metabolites) < 4:
                 for _ in range(4-len(self.metabolites)):
                     next_filler = PsmDegradation(to_disregard=DegradationData(rate=0), metabolites=None)
-                    self.metabolites += [next_filler]
+                    metabolites += [next_filler]
+                    object.__setattr__(self, 'metabolites', tuple(metabolites))
         else:
-            self.metabolites = []
+            object.__setattr__(self, 'metabolites', tuple())
 
 
 
-@dataclass
+@dataclass(frozen=True)
 class PsmAdsorption:
     '''Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values'''
     koc: float
@@ -134,18 +136,18 @@ class PsmAdsorption:
     f_neq: float = 0
     kdes: float = 0
 
-@dataclass
+@dataclass(frozen=True)
 class PsmFile:
     application: PsmApplication
     degradations: PsmDegradation # rate calculation with metabolites is still suspect - works for parent only
-    adsorptions: List[PsmAdsorption]
+    adsorptions: Tuple[PsmAdsorption]
     crop: FOCUSCrop
     molar_mass: float
     comment: str = "No comment"
     num_soil_horizons: int = 0
     do_henry_calc: bool = True
     do_kd_calc: bool = True
-    volatizations: List[Volatization] = field(default_factory=lambda: [Volatization(henry=3.33E-04, solubility=90, vaporization_pressure=1.00E-04), Volatization(henry=6.67E-10, solubility=180, vaporization_pressure=4.00E-04)])
+    volatizations: Tuple[Volatization] = field(default_factory=lambda: tuple([Volatization(henry=3.33E-04, solubility=90, vaporization_pressure=1.00E-04), Volatization(henry=6.67E-10, solubility=180, vaporization_pressure=4.00E-04)]))
     plant_uptake: float = 0.5
     degradation_type: DegradationType = DegradationType.FACTORS
 
@@ -171,7 +173,7 @@ class PsmFile:
         
         degradations = PsmDegradation(to_disregard= DegradationData(rate=math.log(2) / compound.degradation.system), metabolites=[])
         
-        adsorptions = [PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)]
+        adsorptions = tuple(PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich))
         crop = gap.modelCrop
         molar_mass = compound.molarMass
         return PsmFile(application=application, 
@@ -195,10 +197,10 @@ class PsmFile:
         return (compound, gap)
 
     def __post_init__(self):
-        self.application = map_to_class(self.application, PsmApplication)
-        self.degradations = map_to_class(self.degradations, PsmDegradation)
-        self.adsorptions = [map_to_class(x, PsmAdsorption) for x in self.adsorptions]
-        self.crop = str_to_enum(self.crop, FOCUSCrop)
-        self.volatizations = [map_to_class(x, Volatization) for x in self.volatizations]
-        self.degradation_type = str_to_enum(self.degradation_type, DegradationType)
+        object.__setattr__(self, 'application', map_to_class(self.application, PsmApplication))
+        object.__setattr__(self, 'degradations', map_to_class(self.degradations, PsmDegradation))
+        object.__setattr__(self, 'adsorptions', tuple([map_to_class(x, PsmAdsorption) for x in self.adsorptions]))
+        object.__setattr__(self, 'crop', str_to_enum(self.crop, FOCUSCrop))
+        object.__setattr__(self, 'volatizations', tuple([map_to_class(x, Volatization) for x in self.volatizations]))
+        object.__setattr__(self, 'degradation_type', str_to_enum(self.degradation_type, DegradationType))
 

@@ -1,11 +1,11 @@
 from dataclasses import dataclass
-from typing import List, Optional, Union, Dict
+from typing import List, Optional, Tuple, Union, Dict
 from pathlib import Path
 import sys
 sys.path += [str(Path(__file__).parent.parent)]
 from util.conversions import map_to_class
 
-@dataclass
+@dataclass(frozen=True)
 class Degradation:
     '''General Degradation information'''
     system: float
@@ -16,28 +16,28 @@ class Degradation:
     '''DT50 in water'''
     sediment: float
     '''DT50 in sediment'''
-    metabolites: List['Degradation']
+    metabolites: Tuple['Degradation']
     '''Information on which metabolites will form'''
 
     def __post_init__(self):
-        self.metabolites = [map_to_class(x) for x in self.metabolites]
+        object.__setattr__(self, 'metabolites', tuple([map_to_class(x) for x in self.metabolites]))
 
 
 
-@dataclass
+@dataclass(frozen=True)
 class Sorption:
     '''Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values'''
     koc: float
     freundlich: float
 
-@dataclass
+@dataclass(frozen=True)
 class Compound:
     '''A Compound definition'''
     molarMass: float
     '''molar mass in g/mol'''
     waterSolubility: float
     sorption: Sorption
-    '''A list of soption behaviours'''
+    '''A sorption behaviour'''
     degradation: Degradation
     '''Degradation behaviours'''
     parent: Optional['Compound'] = None
@@ -47,10 +47,10 @@ class Compound:
     
 
     def __post_init__(self):
-        self.sorption = map_to_class(self.sorption, Sorption)
-        self.degradation = map_to_class(self.degradation, Degradation)
+        object.__setattr__(self, 'sorption', map_to_class(self.sorption, Sorption))
+        object.__setattr__(self, 'degradation', map_to_class(self.degradation, Degradation))
         if self.parent is not None:
-            self.parent = map_to_class(self.parent, Compound)
+            object.__setattr__(self, 'parent', map_to_class(self.parent, Compound))
 
 
 
