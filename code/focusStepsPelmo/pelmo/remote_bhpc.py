@@ -11,7 +11,7 @@ import sys
 
 sys.path += [str(Path(__file__).parent.parent)]
 
-from typing import Generator, Iterable, Sequence, TypeVar
+from typing import Generator, Iterable, Optional, Sequence, TypeVar
 from zipfile import ZipFile
 import zipfile
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
@@ -42,40 +42,45 @@ def main():
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
+    run_bhpc(work_dir=args.work_dir, compound_file=args.compound_file,gap_file=args.gap_file, submit=args.submit, output=args.output, output_format=args.output_format,
+             crops=args.crops, scenarios=args.scenarios, 
+             batchsize=args.batchsize, cores=args.cores, machines=args.count,
+             notificationemail=args.notification_email, session_timeout=args.session_timeout, run=args.run)
 
-    logger.info('Deleting old artefacts')
-    with suppress(FileNotFoundError): rmtree(args.work_dir)
-    with suppress(FileNotFoundError): rmtree(args.output)
-
+def run_bhpc(work_dir: Path, compound_file: Path, gap_file: Path, submit: Path, output: Path, output_format: str = 'json',
+             crops: FOCUSCrop = FOCUSCrop, scenarios: Scenario = Scenario, 
+             batchsize: int = 100, cores: int = 2, machines: int = 1,
+             notificationemail: Optional[str] = None, session_timeout: int = 6, run: bool = True):
+    logger = logging.getLogger()
     logger.info('Starting to genearte psm files')
-    psm_dir: Path = args.work_dir / 'psm'
-    generate_psm_files(output_dir=psm_dir, compound_file=args.compound_file, gap_file=args.gap_file)
+    psm_dir: Path = work_dir / 'psm'
+    generate_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file)
 
     logger.info('Generating sub files for bhpc')
     psm_files = list(psm_dir.glob('*.psm'))
     logger.debug('Collected psm files')
     logger.debug(psm_files)
-    make_sub_file(psm_files=psm_files, target_dir=args.output, 
-                  crops=args.crop, scenarios=args.scenario, 
-                  batchsize=args.batchsize)
+    make_sub_file(psm_files=psm_files, target_dir=submit, 
+                  crops=crops, scenarios=scenarios, 
+                  batchsize=batchsize)
 
-    if args.run:
+    if run:
         logger.info('Starting Pelmo run')
-        session = commands.start_submit_file(submit_folder=args.output, session_name_prefix='Pelmo', submit_file_regex='pelmo\\.sub',
-                               machines=args.count, cores=args.cores, multithreading=args.multithreading,
-                               notificationemail=args.notification_email, session_timeout=args.session_timeout)
+        session = commands.start_submit_file(submit_folder=submit, session_name_prefix='Pelmo', submit_file_regex='pelmo\\.sub',
+                               machines=machines, cores=cores, multithreading=True,
+                               notificationemail=notificationemail, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         commands.download_session(session)
-        result = rebuild_scattered_output(args.output, "psm*.d-output.json", psm_root=args.output)
-        with (args.output / "output").with_suffix(f".{args.output_format}").open('w') as fp:
-            if args.output_format == "json":
+        result = rebuild_scattered_output(submit, "psm*.d-output.json", psm_root=submit)
+        with output.with_suffix(f".{output_format}").open('w') as fp:
+            if output_format == "json":
                 result = list(result)
                 json.dump(result, fp, cls=EnhancedJSONEncoder)
-            elif args.output_format == "csv":
+            elif output_format == "csv":
                 for row in conversions.flatten_to_csv(result):
                     fp.write(row)
             else:
-                raise ValueError(f"Invalid output format {args.output_format}")
+                raise ValueError(f"Invalid output format {output_format}")
         commands.remove_session(session)
 
 
@@ -193,13 +198,13 @@ def parse_args() -> Namespace:
     parser.add_argument('-c', '--compound-file', required=True, type=Path, help='The compound to create a psm file for. If this is a directory, create psm files for every compound file in the directory, with .json files assumed to be compound files and no recursion')
     parser.add_argument('-g', '--gap-file', required=True, type=Path, help='The gap to create a psm file for. If this is a directory, create psm files for every gap file in the directory, with .json files assumed to be compound files and no recursion')
     parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path, help='The directory in which files for Pelmo will be created. Defaults to the current directory')
-    parser.add_argument('-o', '--output', default=Path('output'), type=Path, help='Where to output the submit file and its dependencies. Defaults to "output"')
+    parser.add_argument('-s', '--submit', default=Path('submit'), type=Path, help='Where to output the submit file and its dependencies. Defaults to "submit"')
+    parser.add_argument('-o', '--output', default=Path('output'), type=Path, help='Where to output the final results. Defaults to output')
     parser.add_argument(      '--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.from_acronym, help="Which crops to run. Defaults to all crops")
-    parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
+    parser.add_argument(      '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('-r', '--run', action='store_true', default=False, help="Run the created submit files on the bhpc")
     parser.add_argument('--count', type=int, default=1, help="How many machines to use on the bhpc")
     parser.add_argument('--cores', type=int, choices=(2,4,8,16,96), default=2, help="How many cores per machine to use. One core per machine is always overhead, so larger machines are more efficient")
-    parser.add_argument('--multithreading', action='store_true', default=True, help="Use multithreading")
     parser.add_argument('--notification-email', type=str, default=None, help="The email address which will be notified if the bhpc run finishes")
     parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")
     parser.add_argument('--batchsize', type=int, default=100, help="How many psm files to batch together into one bhpc job")

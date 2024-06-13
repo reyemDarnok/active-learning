@@ -1,8 +1,7 @@
-from collections import OrderedDict
 from dataclasses import dataclass
 from enum import Enum
 import math
-from typing import Dict, List, Tuple, Union, NamedTuple
+from typing import Dict, List, OrderedDict, Tuple, Union, NamedTuple
 
 from pathlib import Path
 import sys
@@ -43,7 +42,7 @@ class FOCUSCropMixin(NamedTuple):
     '''The name to use for display'''
     defined_scenarios: Tuple[Scenario]
     '''The scenarios that are defined for this Crop in Pelmo'''
-    interception: HashableRSDict[PrincipalStage, float]
+    interception: OrderedDict[PrincipalStage, float]
     '''Mapping bbch states to interception values'''
 
 

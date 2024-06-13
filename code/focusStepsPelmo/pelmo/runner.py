@@ -46,7 +46,6 @@ def main():
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
-    with suppress(FileNotFoundError): rmtree(args.working_dir)
     files = list(args.psm_files.glob('*.psm') if args.psm_files.is_dir() else [args.psm_files])
     logging.info('Running for the following psm files: %s', files)
     results = run_psms(psm_files=files, working_dir=args.working_dir, crops=args.crop, scenarios=args.scenario, max_workers=args.threads)

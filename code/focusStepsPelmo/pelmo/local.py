@@ -4,6 +4,7 @@ from argparse import ArgumentParser, Namespace
 from contextlib import suppress
 from pathlib import Path
 import sys
+from typing import Sequence
 sys.path += [str(Path(__file__).parent.parent)]
 from pelmo.summarize import rebuild_output
 from util import conversions
@@ -22,28 +23,34 @@ def main():
     logger = logging.getLogger()
 
     logger.debug(args)
-    logger.info('Deleting old artefacts')
-    with suppress(FileNotFoundError): rmtree(args.work_dir)
-    psm_dir: Path = args.work_dir / 'psm'
+    run_local(work_dir=args.work_dir, compound_files=args.compound_file, gap_files=args.gap_file, output_file=args.output_file, output_format=args.output_format,
+              crops=args.crop, scenarios=args.scenario, threads=args.threads)
+
+def run_local(work_dir: Path, compound_files: Path, gap_files: Path, output_file: Path, output_format: str = 'json',
+              crops: Sequence[FOCUSCrop]=FOCUSCrop, scenarios: Sequence[Scenario]=Scenario, threads: int = cpu_count() - 1):
+    logger = logging.getLogger()
+    psm_dir: Path = work_dir / 'psm'
     psm_dir.mkdir(exist_ok=True, parents=True)
-    focus_dir: Path = args.work_dir / 'FOCUS'
+    focus_dir: Path = work_dir / 'FOCUS'
     focus_dir.mkdir(exist_ok=True, parents=True)
     logger.info('Starting to generate psm files')
-    generate_psm_files(output_dir=psm_dir, compound_file=args.compound_file, gap_file=args.gap_file)
+
+    
+    generate_psm_files(output_dir=psm_dir, compound_file=compound_files, gap_file=gap_files)
     logger.info('Starting to run Pelmo')
-    results = run_psms(psm_files=psm_dir.glob('*.psm'), working_dir=focus_dir,crops=args.crop, scenarios=args.scenario, max_workers=args.threads)
-    logger.info('Dumping results of Pelmo runs to %s', args.output_file)
+    results = run_psms(psm_files=psm_dir.glob('*.psm'), working_dir=focus_dir,crops=crops, scenarios=scenarios, max_workers=threads)
+    logger.info('Dumping results of Pelmo runs to %s', output_file)
 
     result = rebuild_output(results)
-    with args.output_file.with_suffix(f".{args.output_format}").open('w') as fp:
-        if args.output_format == "json":
+    with output_file.with_suffix(f".{output_format}").open('w') as fp:
+        if output_format == "json":
             result = list(result)
             json.dump(result, fp, cls=conversions.EnhancedJSONEncoder)
-        elif args.output_format == "csv":
+        elif output_format == "csv":
             for row in conversions.flatten_to_csv(result):
                 fp.write(row)
         else:
-            raise ValueError(f"Invalid output format {args.output_format}")
+            raise ValueError(f"Invalid output format {output_format}")
 
 
 
