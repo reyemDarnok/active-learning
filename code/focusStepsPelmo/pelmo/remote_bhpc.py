@@ -55,7 +55,7 @@ def run_bhpc(work_dir: Path, compound_file: Path, gap_file: Path, submit: Path, 
     logger.info('Starting to genearte psm files')
     psm_dir: Path = work_dir / 'psm'
     generate_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file)
-
+    with suppress(FileNotFoundError): rmtree(submit)
     logger.info('Generating sub files for bhpc')
     psm_files = list(psm_dir.glob('*.psm'))
     logger.debug('Collected psm files')

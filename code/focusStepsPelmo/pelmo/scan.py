@@ -1,4 +1,5 @@
 
+from contextlib import suppress
 import csv
 from argparse import ArgumentParser, Namespace
 from dataclasses import replace
@@ -7,6 +8,7 @@ import logging
 from os import cpu_count
 import os
 from pathlib import Path
+from shutil import rmtree
 from typing import Generator, Iterable, Optional, Sequence, Tuple, Union
 import sys
 sys.path += [str(Path(__file__).parent.parent)]
@@ -75,8 +77,10 @@ def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Pa
     :param plant_uptake: The plant uptake values in the matrix"""
     if gap_dir is None:
         gap_dir = compound_dir
-    gap_dir.mkdir(exist_ok=True, parents=True)
-    compound_dir.mkdir(exist_ok=True, parents=True)
+    with suppress(FileNotFoundError): rmtree(gap_dir)
+    with suppress(FileNotFoundError): rmtree(compound_dir)
+    gap_dir.mkdir(parents=True)
+    compound_dir.mkdir(parents=True)
     for gap in span_gap(template_gap, bbch, rate):
         with (gap_dir / f"gap-{hash(gap)}.json").open('w') as fp:
             json.dump(gap, fp, cls=EnhancedJSONEncoder)
