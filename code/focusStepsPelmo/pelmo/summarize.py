@@ -32,12 +32,12 @@ def write_results_to_file(results: Iterable[PECResult], file: Path, format: Opti
     elif format == 'csv':
         with file.with_suffix('.csv').open('w', newline='') as fp:
             writer = csv.writer(fp,)
-            header = ["molarMass", "waterSolubility", "dt50", "koc", "freundlich", "plant_uptake","bbch", "rate",  "pecs"]
+            header = ["molarMass", "waterSolubility", "dt50", "koc", "freundlich", "plant_uptake","bbch", "rate",  "pec"]
             writer.writerow(header)
             def to_list(r: PECResult) -> List[Any]:
                 return [r.compound.molarMass, r.compound.waterSolubility, r.compound.degradation.system, r.compound.sorption.koc, r.compound.sorption.freundlich,
                         r.gap.application.timing.bbch_state, r.gap.application.rate,
-                        r.pec]
+                        r.pec[0]]
             writer.writerows(to_list(r) for r in results)
     else:
         raise ValueError("Could not infer format, please specify explicitly")

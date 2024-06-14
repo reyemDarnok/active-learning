@@ -2,142 +2,45 @@
 
 This Repository aims to automate interacting with FOCUS PELMO
 
+## PELMO
+
+Pelmo is a european groundwater model. It takes proprietary inputs and delivers proprietary outputs
+
+### PELMO Input
+
+Pelmo takes requires three files in the working directory, `pelmo.inp`, `input.dat` and a `*.psm` file, which in turn reference several other files by relative path
+
+#### 2 Levels above the working directory
+
+The scenario files, that is the `.cli`, `.soi` and `.crp` files for the run have to be here.
+
+#### In the working directory
+
+`pelmo.inp` lists all other required files (the files mentioned in the previous section and the `.psm` file), `input.dat` provides lookup values for the crop states and the `*.psm` file is the primary input.
+
+#### The psm file
+
+As Pelmo predates the creation of even XML its input is sadly no standard format. In this format comments are begun with `<` and end with the end of the line or with a `>`.
+
+In terms of actual content, each line without leading whitespace is a new section, with each space at the start of the line indicating one level of nesting of lists. Every block that starts with whitespace also is one section. Inside one line, the elements of the section are separated with whitespace of arbitrary length. Which sections appear in which order is best discovered by inspecting the `FOCUS_defaults.psm` included with PELMO which is well commented.
+
+### PELMO Output
+
+Pelmos outputfiles are all written in the current working directory and end in `.PLM`. Taken together they are about 2.5 MB in size, which is why this project deletes them after extracting the interesting information from them.
+
+#### PLM format
+
+PLM is a mixture of a space seperated tables, typically the interesting data, with one such table per year of simulation and key value pairs, which differ in formatting from file to file slightly. While these segments sadly do not have a delimiter between them, they all start with a heading followed by a line of dashes, which can be used to split the PLM files in parsable chunks. One thing to keep in mind however, is that the seperation of columns sadly is not perfect in these files. Some Columns are paired as value (variation_of_value) and depending on the value, that space before the bracket may or may not be there, which has to be taken into consideration when parsing.
+
+#### Finding the PEC
+
+To determine the PEC two files are relevant: `WASSER.PLM` and `CHEM.PLM`, listing the water volume and compound masses respectively. When calculating the PEC one needs to parse each year segment for the line with compartment 21 and extract the relevant column and calculate that years PEC. Then, the first 6 years of warmup have to be excluded and the 80% percentile of the remaining values has to be taken, which is the final result.
+
 ## Components
 
-The primary scripts to execute are found in `code/focusStepsPelmo/pelmo` and are `creator.py`, `local.py`, `runner.py` and `remote_bhpc.py`
+The primary scripts to execute are found in `code/focusStepsPelmo/pelmo` and are `creator.py`, `local.py`, `runner.py`, `remote_bhpc.py` and `scan.py`
 
-### creator.py
+### scan.py
 
-The creator has as its task creating the .psm input files for Pelmo.
-This will combine every available compound with every available GAP.
+`scan.py` is intended to cover parameter matrixes and takes as input a template input and which range it should use for different parameters. Each part of this matrix can then either be simply written out or directly be calculated on the local machine or the BHPC.
 
-#### Arguments
-
-|Name|Effect|Default|
-|--------|----|------|
-|-c, --compound-file|Where to find the JSON files that define the source compounds. May be either a single file or a directory. If it is a directory, all .json files in it will be assumed to be compound files.|None|
-|-g, --gap-file|Where to find the JSON files that define the source GAPs. May be either a single file or a directory. If it is a directory, all .json files in it will be assumed to be gap files.|None|
-|-o, --output-dir|The directory to write the results to. Each .psm file in it will be named *compound*-*GAP*-*timing*.psm|output|
-
-#### Errors
-
-The only known cause for errors are invalid input files, which simply cause the program to crash while outputting the relevant parsing error.
-
-### runner.py
-
-When this program is given a list of psm files, it executes using PELMO. Note that this program assumes that PELMO is already installed on the machine and does not bundle it.
-
-#### Arguments
-
-|Name|Effect|Default|
-|--------|----|------|
-|-p, --psm-files|Either a single psm file or a directory of psm files. Each file given will be run. There are no interactions between psm files.|None|
-|-w, --working-dir|Where to place the data PELMO uses while calculating.|cwd / pelmofiles|
-|-c, --crop|Which crops to run. Can be specified multiple times if multiple crops are desired|All crops|
-|-s, --scenario|Which Scenario to run. Can be specified multiple times if multiple scenarios are desired. If a given Scenario is not defined for a selected Crop it will be silently skipped for that crop|
-|-t, --threads|How many threads to use for running PELMO in parallel|cpu_count -1|
-
-#### Errors
-
-If given invalid input files, this program will crash with the relevant parsing error.
-
-PELMO does not accept some timings for some crop and scenario combinations. If those are defined, PELMO will exit with an error which will be written to the program log and this combination will be skipped in the output.
-
-### local.py
-
-local.py is a combination of the previous programs and is what you will usually want to use when running locally. It starts from compound and gap definitions and outputs PELMO PECs.
-
-#### Arguments
-
-|Name|Effect|Default|
-|--------|----|------|
-|-c, --compound-file|Where to find the JSON files that define the source compounds. May be either a single file or a directory. If it is a directory, all .json files in it will be assumed to be compound files.|None|
-|-g, --gap-file|Where to find the JSON files that define the source GAPs. May be either a single file or a directory. If it is a directory, all .json files in it will be assumed to be gap files.|None|
-|-w, --work-dir|Where to place the files PELMO uses for calculations|cwd / pelmofiles|
-|-o, --output-dir|The directory to write the results to. Each .psm file in it will be named *compound*-*GAP*-*timing*.psm|output|
-|--crop|Note that this option has no short form. Which crops to run. Can be specified multiple times if multiple crops are desired|All crops|
-|-s, --scenario|Which Scenario to run. Can be specified multiple times if multiple scenarios are desired. If a given Scenario is not defined for a selected Crop it will be silently skipped for that crop|
-|-t, --threads|How many threads to use for running PELMO in parallel|cpu_count -1|
-
-
-
-#### Errors
-
-If given invalid input files, this program will crash with the relevant parsing error.
-
-PELMO does not accept some timings for some crop and scenario combinations. If those are defined, PELMO will exit with an error which will be written to the program log and this combination will be skipped in the output.
-
-
-### remote_bhpc.py
-
-remote_bhpc.py is a combination of the previous programs and connects to the bhpc to run there and as such should be your preferred tool for large runs. It starts from compound and gap definitions and outputs PELMO PECs.
-
-#### Arguments
-
-|Name|Effect|Default|
-|--------|----|------|
-|-c, --compound-file|Where to find the JSON files that define the source compounds. May be either a single file or a directory. If it is a directory, all .json files in it will be assumed to be compound files.|None|
-|-g, --gap-file|Where to find the JSON files that define the source GAPs. May be either a single file or a directory. If it is a directory, all .json files in it will be assumed to be gap files.|None|
-|-w, --work-dir|Where to place the files PELMO uses for calculations|cwd / pelmofiles|
-|-o, --output-dir|The directory to write the results to. Each .psm file in it will be named *compound*-*GAP*-*timing*.psm|output|
-|--crop|Note that this option has no short form. Which crops to run. Can be specified multiple times if multiple crops are desired|All crops|
-|-s, --scenario|Which Scenario to run. Can be specified multiple times if multiple scenarios are desired. If a given Scenario is not defined for a selected Crop it will be silently skipped for that crop|
-|-r, --run|Start the run on the bhpc. If this is not set it merely creates all required files that then could be started manually|Not set|
-|--count|The number of machines to use on the bhpc. If more performance is desired, increasing --cores is preferred as it incurs less overhead|1|
-|--cores|The number of cores per machine to use on the bhpc. Valid values are 2,4,8,16,96|96|
-|--notification-email|Who to notify when the run finishes|Nobody|
-|--session-timeout|How long in hours until the bhpc session will be assumed to hang and closed|6|
-|--batchsize|How many psm files should be grouped into a single bhpc job|100|
-
-
-
-
-#### Errors
-
-If given invalid input files, this program will crash with the relevant parsing error.
-
-PELMO does not accept some timings for some crop and scenario combinations. If those are defined, PELMO will exit with an error which will be written to the program log and this combination will be skipped in the output.
-
-If the bhpc environment arguments are not set, any attempt to run on the bhpc will fail. Creating the files necessary for a run is still possible without access to the bhpc.
-
-## File Formats
-
-This project uses several file formats for different purposes.
-
-### Input
-
-#### Compound
-
-Compounds are represented in JSON format as a nested map of keys to values or other maps.
-A full example can be found in `./examples/compound.json`
-
-#### GAP
-
-GAPS are represented in JSON format as a nested map of keys to values or other maps.
-A full example can be found in `./examples/gap.json`
-
-#### PSM
-
-PSM files are not in any standard format as their format is defined by PELMO, which predates these standard formats (PELMO: 1991, XML: 1998).
-
-In a psm file regions are defined by tags, with the opening tag being `<Name_of_Region>` and the closing tag `<END Name_of_region>`. Comments are available as well, simply defined as tags that have no closing element. Comments also cannot span multiple lines and not ending a comment tag before the end of the line is not a syntax error, merely bad form.
-
-In these Regions Lists are typically defined by the line starting with a space, while level of nesting is indicated by multiple spaces. Values with different meaning on a single line are further seperated by whitespace (any amount).
-
-Example psm files can be found in `./examples`
-
-### Output
-
-#### PSM
-
-PSM files are not in any standard format as their format is defined by PELMO, which predates these standard formats (PELMO: 1991, XML: 1998).
-
-In a psm file regions are defined by tags, with the opening tag being `<Name_of_Region>` and the closing tag `<END Name_of_region>`. Comments are available as well, simply defined as tags that have no closing element. Comments also cannot span multiple lines and not ending a comment tag before the end of the line is not a syntax error, merely bad form.
-
-In these Regions Lists are typically defined by the line starting with a space, while level of nesting is indicated by multiple spaces. Values with different meaning on a single line are further seperated by whitespace (any amount).
-
-Example psm files can be found in `./examples`
-
-#### Final output
-
-The final output file is a combination of psm, crop and scenario information with their PECs attached in JSON format. An example output file can be found in `./examples/output.json`
