@@ -5,6 +5,7 @@ from dataclasses import replace
 import json
 import logging
 from os import cpu_count
+import os
 from pathlib import Path
 from typing import Generator, Iterable, Optional, Sequence, Tuple, Union
 import sys
@@ -22,15 +23,16 @@ def main():
     logger.debug(args)
     span_params = {"bbch": args.bbch, "rate": args.rate, 
                     "dt50": args.dt50, "koc": args.koc, "freundlich": args.freundlich, "plant_uptake": args.plant_uptake}
+    span_params = {key: value for key, value in span_params.items() if value}
     crops = args.crop
     scenarios = args.scenario
     if args.input_file:
         with args.input_file.open() as fp:
-            if args.format == 'json':
+            if args.input_format == 'json':
                 file_span_params: dict = json.load(fp)
             else:
                 rows = csv.reader(fp)
-                file_span_params = {row[0]: row[0:] for row in rows}
+                file_span_params = {row[0]: row[1:] for row in rows}
             if not crops:
                 crops = file_span_params.pop('crop', FOCUSCrop)
             if not scenarios:
@@ -44,9 +46,9 @@ def main():
     span_to_dir(template_gap=template_gap, template_compound=template_compound, compound_dir=args.work_dir / "compounds", gap_dir=args.work_dir / "gaps",
                 **span_params)
     if args.run == 'bhpc':
-        run_bhpc(work_dir=args.work_dir / 'remote', compound_file=args.work_dir / 'compounds', gap_files=args.work_dir / 'gaps',
+        run_bhpc(work_dir=args.work_dir / 'remote', compound_file=args.work_dir / 'compounds', gap_file=args.work_dir / 'gaps',
                  submit=args.work_dir / 'submit', output=args.output, output_format=args.output_format, crops=crops, scenarios=scenarios,
-                 batchsize=args.batchsize, cores=args.cores, machines=args.machines, notificationemail=args.notificationemail, session_timeout=args.session_timeout, run=True)
+                 batchsize=args.batchsize, cores=args.cores, machines=args.count, notificationemail=args.notification_email, session_timeout=args.session_timeout, run=True)
     elif args.run == 'local':
         run_local(work_dir=args.work_dir / 'local', compound_files=args.work_dir / 'compounds', gap_files=args.work_dir / 'gaps', 
                   output_file=args.output, output_format=args.output_format, crops=crops, scenarios=scenarios, threads=args.threads)

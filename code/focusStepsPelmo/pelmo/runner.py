@@ -65,7 +65,7 @@ def run_psms(psm_files: Iterable[Path], working_dir: Path,
     :return: A Generator of the results of the calculations. Makes new results available as their calculations finish.
                 No particular ordering is guaranteed but the calulations are started in order of psm_file, then crop, then scenario'''
     logger = logging.getLogger()
-    
+    with suppress(FileNotFoundError): rmtree(working_dir)
     extract_zip(working_dir / 'sample', Path(__file__).parent / 'data' / 'FOCUS.zip')
     pool = ThreadPoolExecutor(max_workers=max_workers, initializer=_init_thread, initargs=(working_dir,))
     futures: List[Future] = []
