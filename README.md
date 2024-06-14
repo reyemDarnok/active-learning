@@ -44,3 +44,15 @@ The primary scripts to execute are found in `code/focusStepsPelmo/pelmo` and are
 
 `scan.py` is intended to cover parameter matrixes and takes as input a template input and which range it should use for different parameters. Each part of this matrix can then either be simply written out or directly be calculated on the local machine or the BHPC.
 
+### local.py
+
+This script runs the defined runs on the local machine. To keep the machine still usable, it uses one less thread than the machine has cores, as reported by pythons cpu_count(). It is not required to install PELMO to run this script, as it uses its own bundled executable, regardless of whether is installed or not.
+
+### remote_bhpc.py
+
+This script runs the defined runs on the BHPC. This primarily makes sense for larger runs as a single PELMO run requires about 30 CPU seconds and a bhpc instance requires about 10 minutes to start and is billed for at least an hour. For larger runs however the BHPC can start several 96 core machines, which will greatly reduce the calculation time over smaller instances and, as long as the time remains above one our, reduce the cost as larger ec2 instances have less proportional overhead while maintaining the same cost per core.
+
+### Other Scripts
+
+While the other scripts can be directly run from the command line and this may be usefull for testing, they are primarily intended for invocation by the other three scripts.
+
