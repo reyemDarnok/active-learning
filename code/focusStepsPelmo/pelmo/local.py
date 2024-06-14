@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 from typing import Sequence
 sys.path += [str(Path(__file__).parent.parent)]
-from pelmo.summarize import rebuild_output
+from pelmo.summarize import rebuild_output, rebuild_output_to_file
 from util import conversions
 from ioTypes.gap import FOCUSCrop, Scenario
 from pelmo.creator import generate_psm_files
@@ -41,18 +41,7 @@ def run_local(work_dir: Path, compound_files: Path, gap_files: Path, output_file
     results = run_psms(psm_files=psm_dir.glob('*.psm'), working_dir=focus_dir,crops=crops, scenarios=scenarios, max_workers=threads)
     logger.info('Dumping results of Pelmo runs to %s', output_file)
 
-    result = rebuild_output(results)
-    with output_file.with_suffix(f".{output_format}").open('w') as fp:
-        if output_format == "json":
-            result = list(result)
-            json.dump(result, fp, cls=conversions.EnhancedJSONEncoder)
-        elif output_format == "csv":
-            for row in conversions.flatten_to_csv(result):
-                fp.write(row)
-        else:
-            raise ValueError(f"Invalid output format {output_format}")
-
-
+    rebuild_output_to_file(output_file, results, output_format)
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
@@ -63,7 +52,7 @@ def parse_args() -> Namespace:
     parser.add_argument(      '--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.from_acronym, help="Which crops to run. Defaults to all crops")
     parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1, help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
     parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
-    parser.add_argument('--output-format', type=str.lower, choices=("json", "csv"), default="json", help="The output format. Defaults to JSON, but csv is more ram efficient")
+    parser.add_argument('--output-format', type=str.lower, choices=("json", "csv"), default=None, help="The output format. Defaults to guessing from the filename")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()

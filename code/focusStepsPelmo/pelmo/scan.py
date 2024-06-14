@@ -27,12 +27,16 @@ def main():
     crops = args.crop
     scenarios = args.scenario
     if args.input_file:
+        if args.input_format == None:
+            args.input_format = args.input_file.suffix[1:]
         with args.input_file.open() as fp:
             if args.input_format == 'json':
                 file_span_params: dict = json.load(fp)
-            else:
+            elif args.input_format == 'csv':
                 rows = csv.reader(fp)
                 file_span_params = {row[0]: row[1:] for row in rows}
+            else:
+                raise ValueError("Cannot infer input format, please specify explictly")
             if not crops:
                 crops = file_span_params.pop('crop', FOCUSCrop)
             if not scenarios:
@@ -58,6 +62,17 @@ def main():
 def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Path, gap_dir: Optional[Path] = None,
          bbch: Iterable[int] = None, rate: Iterable[float] = None,
          dt50: Iterable[float] = None, koc: Iterable[float] = None, freundlich: Iterable[float] = None, plant_uptake: Iterable[float] = None) -> None:
+    """Creates compund and gap jsons for a parameter matrix
+    :param template_gap: The gap to use as a template for parameters that are not in the matrix
+    :param template_compound: The compund to use as a template for parameters that are not in the matrix
+    :param compound_dir: The directory to write the resulting compound files to
+    :param gap_dir: The directory to write the resulting gap files to. Defaults to compound_dir if not set
+    :param bbch: The BBCH values in the matrix
+    :param rate: The application rate values in the matrix
+    :param dt50: The DT50 values in the matrix
+    :param koc: The koc values in the matrix
+    :param freundlich: The freundlich values in the matrix
+    :param plant_uptake: The plant uptake values in the matrix"""
     if gap_dir is None:
         gap_dir = compound_dir
     gap_dir.mkdir(exist_ok=True, parents=True)
@@ -72,11 +87,26 @@ def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Pa
 def span(template_gap: GAP, template_compound: Compound,
          bbch: Iterable[int] = None, rate: Iterable[float] = None,
          dt50: Iterable[float] = None, koc: Iterable[float] = None, freundlich: Iterable[float] = None, plant_uptake: Iterable[float] = None) -> Generator[Tuple[GAP, Compound], None, None]:
+    """Creates compound and gap combinations from a matrix
+    :param template_gap: The gap to use as a template for parameters that are not in the matrix
+    :param template_compound: The compund to use as a template for parameters that are not in the matrix
+    :param bbch: The BBCH values in the matrix
+    :param rate: The application rate values in the matrix
+    :param dt50: The DT50 values in the matrix
+    :param koc: The koc values in the matrix
+    :param freundlich: The freundlich values in the matrix
+    :param plant_uptake: The plant uptake values in the matrix
+    :return: A generator that layily creates compound/gap combinations"""
     for gap in span_gap(template_gap, bbch, rate):
         for compound in span_compounds(template_compound, dt50, koc, freundlich, plant_uptake):
             yield (gap, compound)
 
 def span_gap(template_gaps: Union[GAP, Iterable[GAP]], bbch: Optional[Iterable[int]], rate: Optional[Iterable[float]]) -> Generator[GAP, None, None]:
+    """Creates gaps from a template and a matrix
+    :param template_gaps: The gaps to use as templates. If an iterable, the matrix will be applied to each element
+    :param bbch: The BBCH values in the matrix
+    :param rate: The application rate values in the matrix
+    :return: A Generator that lazily creates gaps from the matrix"""
     # Do nothing if template_gaps is iterable, make it a single item list if its a single gap
     try:
         _ = iter(template_gaps)
@@ -92,6 +122,10 @@ def span_gap(template_gaps: Union[GAP, Iterable[GAP]], bbch: Optional[Iterable[i
     return template_gaps
 
 def span_bbch(gaps: Iterable[GAP], bbchs: Iterable[int]) -> Generator[GAP, None, None]:
+    """Creates gaps with different bbchs
+    :param gaps: The gaps to change the bbchs in
+    :param bbchs: The range of bbch to use
+    :return: A generator for every gap/bbch combination"""
     for gap in gaps:
         for bbch in bbchs:
             new_timing = replace(gap.application.timing, bbch_state=bbch)
@@ -99,6 +133,10 @@ def span_bbch(gaps: Iterable[GAP], bbchs: Iterable[int]) -> Generator[GAP, None,
             yield replace(gap, application=new_application)
 
 def span_rate(gaps: Iterable[GAP], rates: Iterable[float]) -> Generator[GAP, None, None]:
+    """Creates gaps with different application rates
+    :param gaps: The gaps to change the application rate in
+    :param bbchs: The range of application rates to use
+    :return: A generator for every gap/application rate combination"""
     for gap in gaps:
         for rate in rates:
             new_application = replace(gap.application, rate=rate)
@@ -156,8 +194,8 @@ def parse_args() -> Namespace:
     parser.add_argument('-g', '--template-gap', type=Path, required=True, help="The gap to use as a template for unchanging parameters when scanning")
     parser.add_argument('-w', '--work-dir', type=Path, required=True, help="A directory to use as scratch space")
     parser.add_argument('-o', '--output', type=Path, required=True, help="Where to write the results to")
-    parser.add_argument(      '--output-format', type=str, choices=('json', 'csv'), default='json', help="Which output format to use")
-    parser.add_argument(      '--input-format', type=str, choices=('csv', 'json'), default='json', help="The format of the input file. CSV Files need to have the commas for the parameter ranges escaped ")
+    parser.add_argument(      '--output-format', type=str, choices=('json', 'csv'), default=None, help="Which output format to use. Defaults to guessing from the filename")
+    parser.add_argument(      '--input-format', type=str, choices=('csv', 'json'), default=None, help="The format of the input file. Defaults to guessing from the filename. CSV Files start every line with a parameter name and continue it with its possible values ")
     parser.add_argument('-i', '--input-file', type=Path, help="The input file for the scanning parameters")
 
     parser.add_argument(      '--crop', nargs='*', type=FOCUSCrop.from_acronym, default=list(FOCUSCrop), help="The crops to simulate. Can be specified multiple times. Should be listed as a two letter acronym. The selected crops have to be present in the FOCUS zip, the bundled zip includes all crops. Defaults to all crops.")

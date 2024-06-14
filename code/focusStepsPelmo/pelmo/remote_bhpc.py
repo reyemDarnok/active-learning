@@ -208,7 +208,7 @@ def parse_args() -> Namespace:
     parser.add_argument('--notification-email', type=str, default=None, help="The email address which will be notified if the bhpc run finishes")
     parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")
     parser.add_argument('--batchsize', type=int, default=100, help="How many psm files to batch together into one bhpc job")
-    parser.add_argument('--output-format', type=str.lower, choices=("json", "csv"), default="json", help="The output format. Defaults to JSON, but csv is more ram efficient")
+    parser.add_argument('--output-format', type=str.lower, choices=("json", "csv"), default=None, help="The output format. Defaults to guessing from the file name")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()

@@ -1,9 +1,13 @@
 from dataclasses import dataclass
 from pathlib import Path
 import re
+import sys
 from typing import List
+sys.path += [str(Path(__file__).parent.parent)]
 
-from util.conversions import map_to_class
+from ioTypes.compound import Compound
+from ioTypes.gap import GAP, FOCUSCrop, Scenario
+from util.conversions import map_to_class, str_to_enum
 
 
 @dataclass()
@@ -101,8 +105,20 @@ class ChemPLM:
 
 @dataclass(frozen=True)
 class PelmoResult:
-    psm: str
-    scenario: str
-    crop: str
+    psm: Path
+    scenario: Scenario
+    crop: FOCUSCrop
     pec: List[float]
 
+    def __post_init__(self):
+        object.__setattr__(self, 'psm', Path(self.psm))
+        object.__setattr__(self, 'scenario', str_to_enum(self.scenario, Scenario))
+        object.__setattr__(self, 'crop', str_to_enum(self.crop, FOCUSCrop))
+
+@dataclass(frozen=True)
+class PECResult:
+    compound: Compound
+    gap: GAP
+    scenario: Scenario
+    crop: FOCUSCrop
+    pec: List[float]
