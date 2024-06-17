@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Tuple, Union, Dict
 from pathlib import Path
 import sys
@@ -48,10 +48,11 @@ class Compound:
     '''A sorption behaviour'''
     degradation: Degradation
     '''Degradation behaviours'''
-    metabolites: Optional[List['Compound']] = None
+    metabolites: List['Compound'] = field(default_factory=list)
     '''The parent Compound, if any'''
     plant_uptake: float = 0
     '''Fraction of plant uptake'''
+    name: str = "Unknown Name"
     
 
     def __post_init__(self):
@@ -60,8 +61,10 @@ class Compound:
         object.__setattr__(self, 'plant_uptake', float(self.plant_uptake))
         object.__setattr__(self, 'sorption', map_to_class(self.sorption, Sorption))
         object.__setattr__(self, 'degradation', map_to_class(self.degradation, Degradation))
-        if self.metabolites is not None:
+        if self.metabolites:
             object.__setattr__(self, 'metabolites', [map_to_class(metabolite, Compound) for metabolite in self.metabolites])
+        else:
+            object.__setattr__(self, 'metabolites', [])
 
 
 

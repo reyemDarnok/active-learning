@@ -1,5 +1,22 @@
 {
-    "parent": null,
+    "metabolites": [{
+      "name": "A1",
+      "metabolites": null,
+      "molarMass": 300,
+      "waterSolubility": 6000.0,
+      "sorption": {
+          "koc": 1724,
+          "freundlich": 0.9
+      },
+      "plant_uptake": 0.5,
+      "degradation": {
+        "metabolites": [],
+        "system": 6,
+        "soil": 6,
+        "surfaceWater": 6,
+        "sediment": 6
+      }
+  }],
     "molarMass": 300,
     "waterSolubility": 6000.0,
     "sorption": {

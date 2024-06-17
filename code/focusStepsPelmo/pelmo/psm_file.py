@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
 import math
-from typing import Dict, Tuple
+from typing import Dict, Generator, List, Tuple
 
 from util.conversions import map_to_class, str_to_enum
 from ioTypes.compound import Compound, Degradation, Sorption
@@ -138,33 +138,45 @@ class PsmAdsorption:
     kdes: float = 0
 
 @dataclass
+class PsmCompound:
+    molar_mass: float
+    adsorptions: Tuple[PsmAdsorption]
+    degradations: List[DegradationData]
+    volatizations: Tuple[Volatization] = field(default_factory=lambda: tuple(
+        [Volatization(henry=3.33E-04, solubility=90, vaporization_pressure=1.00E-04), 
+         Volatization(henry=6.67E-10, solubility=180, vaporization_pressure=4.00E-04)]
+         ))
+    plant_uptake: float = 0.5
+    degradation_type: DegradationType = DegradationType.FACTORS
+
+    @staticmethod
+    def from_compound(compound: Compound) -> 'PsmCompound':
+        full_rate = math.log(2)/compound.degradation.soil
+        degradations = [DegradationData(rate=full_rate*metabolite.molarMass/compound.molarMass) for metabolite in compound.metabolites]
+        return PsmCompound(molar_mass=compound.molarMass, 
+                    adsorptions=tuple([PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)]),
+                    plant_uptake=compound.plant_uptake,degradations=degradations)
+
+@dataclass
 class PsmFile:
     application: PsmApplication
-    degradations: Dict[str, PsmDegradation] # rate calculation with metabolites is still suspect - works for parent only
-    adsorptions: Tuple[PsmAdsorption]
+    compound: PsmCompound
+    first_order_metabolites: List[PsmCompound]
+    second_order_metabolites: List[PsmCompound]
     crop: FOCUSCrop
-    molar_mass: float
     comment: str = "No comment"
     num_soil_horizons: int = 0
-    do_henry_calc: bool = True
-    do_kd_calc: bool = True
-    volatizations: Tuple[Volatization] = field(default_factory=lambda: tuple([Volatization(henry=3.33E-04, solubility=90, vaporization_pressure=1.00E-04), Volatization(henry=6.67E-10, solubility=180, vaporization_pressure=4.00E-04)]))
-    plant_uptake: float = 0.5
     degradation_type: DegradationType = DegradationType.FACTORS
 
     def _asdict(self):
         return {
             "application": self.application,
-            "degradations": self.degradations,
-            "adsorptions": self.adsorptions,
+            "compound": self.compound,
             "crop": self.crop,
-            "molar_mass": self.molar_mass,
             "comment": self.comment,
             "num_soil_horizons": self.num_soil_horizons,
-            "do_henry_calc": self.do_henry_calc,
-            "do_kd_calc": self.do_kd_calc,
-            "volatizations": self.volatizations,
-            "plant_uptake": self.plant_uptake,
+            "first_order_metabolites": self.first_order_metabolites,
+            "second_order_metabolites": self.second_order_metabolites,
             "degradation_type": self.degradation_type
             }
     
@@ -172,19 +184,33 @@ class PsmFile:
     def fromInput(compound: Compound, gap: GAP) -> 'PsmFile':
         """Convert ioTypes input data to the pelmo specific PsmFile"""
         application = PsmApplication(**asdict(gap.application))
-        
-        degradations = {
-            PsmDegradation(to_disregard= DegradationData(rate=math.log(2) / compound.degradation.system), metabolites=[])
-        }
-        
-        adsorptions = tuple([PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)])
-        crop = gap.modelCrop
-        molar_mass = compound.molarMass
-        return PsmFile(application=application, 
-                       degradations=degradations, 
-                       adsorptions=adsorptions, 
-                       crop=crop, molar_mass=molar_mass,
-                       plant_uptake=compound.plant_uptake
+    
+
+        psmCompound = PsmCompound.from_compound(compound)
+        @dataclass
+        class sentinel:
+            metabolites: List[Compound] = field(default_factory=list)
+
+        a1 = next((c for c in compound.metabolites if c.name.lower() == "a1"), sentinel())
+        b1 = next((c for c in compound.metabolites + a1.metabolites if c.name.lower() == "b1"), sentinel())
+        c1 = next((c for c in compound.metabolites + b1.metabolites if c.name.lower() == "c1"), sentinel())
+        d1 = next((c for c in compound.metabolites + c1.metabolites if c.name.lower() == "d1"), sentinel())
+        a2 = next((c for c in a1.metabolites if c.name.lower() == "a2"), sentinel())
+        b2 = next((c for c in a1.metabolites + b1.metabolites + a2.metabolites if c.name.lower() == "b2"), sentinel())
+        c2 = next((c for c in b1.metabolites + c1.metabolites + b2.metabolites if c.name.lower() == "c2"), sentinel())
+        d2 = next((c for c in c1.metabolites + d1.metabolites + c2.metabolites if c.name.lower() == "d2"), sentinel())
+        first_order_metabolites = [a1, b1, c2, d2]
+        second_order_metabolites = [a2, b2, c2, d2]
+        first_order_metabolites = [PsmCompound.from_compound(x) for x in first_order_metabolites if type(x) != sentinel]
+        second_order_metabolites = [PsmCompound.from_compound(x) for x in second_order_metabolites if type(x) != sentinel]
+        return PsmFile(application=application,
+                       compound=psmCompound,
+                       first_order_metabolites=first_order_metabolites,
+                       second_order_metabolites=second_order_metabolites,
+                       crop=gap.modelCrop,
+                       comment="No comment",
+                       num_soil_horizons=0,
+                       degradation_type=DegradationType.FACTORS,
         )
 
     def toInput(self) -> Tuple[Compound, GAP]:
@@ -202,11 +228,21 @@ class PsmFile:
         gap = GAP(modelCrop=self.crop, application=self.application)
         return (compound, gap)
 
+
+    application: PsmApplication
+    compound: PsmCompound
+    first_order_metabolites: List[PsmCompound]
+    second_order_metabolites: List[PsmCompound]
+    crop: FOCUSCrop
+    comment: str = "No comment"
+    num_soil_horizons: int = 0
+    degradation_type: DegradationType = DegradationType.FACTORS
     def __post_init__(self):
-        object.__setattr__(self, 'application', map_to_class(self.application, PsmApplication))
-        object.__setattr__(self, 'degradations', map_to_class(self.degradations, PsmDegradation))
-        object.__setattr__(self, 'adsorptions', tuple([map_to_class(x, PsmAdsorption) for x in self.adsorptions]))
-        object.__setattr__(self, 'crop', str_to_enum(self.crop, FOCUSCrop))
-        object.__setattr__(self, 'volatizations', tuple([map_to_class(x, Volatization) for x in self.volatizations]))
-        object.__setattr__(self, 'degradation_type', str_to_enum(self.degradation_type, DegradationType))
+        self.application = map_to_class(self.application, PsmApplication)
+        self.compound = map_to_class(self.compound, PsmCompound)
+        self.first_order_metabolites = [map_to_class(metabolite, PsmCompound) for metabolite in self.first_order_metabolites]
+        self.second_order_metabolites = [map_to_class(metabolite, PsmCompound) for metabolite in self.second_order_metabolites]
+        self.crop = str_to_enum(self.crop, FOCUSCrop)
+        self.num_soil_horizons = int(self.num_soil_horizons)
+        self.degradation_type = str_to_enum(self.degradation_type, DegradationType)
 
