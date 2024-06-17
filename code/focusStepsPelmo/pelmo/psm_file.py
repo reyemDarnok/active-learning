@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass, field
 from enum import Enum, auto
 import math
-from typing import Tuple
+from typing import Dict, Tuple
 
 from util.conversions import map_to_class, str_to_enum
 from ioTypes.compound import Compound, Degradation, Sorption
@@ -48,7 +48,7 @@ class PsmApplication(Application):
     def __post_init__(self):
         super().__post_init__()
         if self.stage == None:
-            object.__setattr__(self, 'stage', Emergence.fromStage(self.timing.principal_stage()))
+            object.__setattr__(self, 'stage', Emergence.fromStage(self.timing.principal_stage))
         if self.offset == None:
             if self.timing.bbch_state > 90: object.__setattr__(self, 'offset', self.timing.bbch_state - 90)
             elif self.timing.bbch_state > 80: object.__setattr__(self, 'offset', self.timing.bbch_state - 80)
@@ -140,7 +140,7 @@ class PsmAdsorption:
 @dataclass
 class PsmFile:
     application: PsmApplication
-    degradations: PsmDegradation # rate calculation with metabolites is still suspect - works for parent only
+    degradations: Dict[str, PsmDegradation] # rate calculation with metabolites is still suspect - works for parent only
     adsorptions: Tuple[PsmAdsorption]
     crop: FOCUSCrop
     molar_mass: float
@@ -170,9 +170,12 @@ class PsmFile:
     
     @staticmethod
     def fromInput(compound: Compound, gap: GAP) -> 'PsmFile':
+        """Convert ioTypes input data to the pelmo specific PsmFile"""
         application = PsmApplication(**asdict(gap.application))
         
-        degradations = PsmDegradation(to_disregard= DegradationData(rate=math.log(2) / compound.degradation.system), metabolites=[])
+        degradations = {
+            PsmDegradation(to_disregard= DegradationData(rate=math.log(2) / compound.degradation.system), metabolites=[])
+        }
         
         adsorptions = tuple([PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)])
         crop = gap.modelCrop
@@ -185,6 +188,8 @@ class PsmFile:
         )
 
     def toInput(self) -> Tuple[Compound, GAP]:
+        """Convert this psmFile to ioTypes input data.
+        WARNING: This is lossy, as psmFiles do not use all data from the input files"""
         compound = Compound(molarMass=self.molar_mass,
                             waterSolubility=self.volatizations[0].solubility,
                             sorption=Sorption(koc=self.adsorptions[0].koc, freundlich=self.adsorptions[0].freundlich),

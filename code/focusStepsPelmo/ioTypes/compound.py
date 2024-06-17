@@ -48,7 +48,7 @@ class Compound:
     '''A sorption behaviour'''
     degradation: Degradation
     '''Degradation behaviours'''
-    parent: Optional['Compound'] = None
+    metabolites: Optional[List['Compound']] = None
     '''The parent Compound, if any'''
     plant_uptake: float = 0
     '''Fraction of plant uptake'''
@@ -60,8 +60,8 @@ class Compound:
         object.__setattr__(self, 'plant_uptake', float(self.plant_uptake))
         object.__setattr__(self, 'sorption', map_to_class(self.sorption, Sorption))
         object.__setattr__(self, 'degradation', map_to_class(self.degradation, Degradation))
-        if self.parent is not None:
-            object.__setattr__(self, 'parent', map_to_class(self.parent, Compound))
+        if self.metabolites is not None:
+            object.__setattr__(self, 'metabolites', [map_to_class(metabolite, Compound) for metabolite in self.metabolites])
 
 
 

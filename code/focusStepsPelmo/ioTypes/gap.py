@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 import math
 from typing import Dict, List, OrderedDict, Tuple, Union, NamedTuple
@@ -128,13 +128,35 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
 
     @staticmethod
     def from_acronym( acronym: str) -> 'FOCUSCrop':
+        """Fetches the crop defined by the acronym
+        :param acronym: the acronym to fetch
+        :return: The crop with the name of the acronym
+        >>> crop = FOCUSCrop.from_acronym('VI')
+        >>> crop.name == 'VI'
+        True
+        >>> type(crop)
+        <enum 'FOCUSCrop'>
+        """
         return FOCUSCrop[acronym]
     
     def get_interception(self, bbch: int) -> float:
+        """Gets the interception of this plant for a given development stadium.
+        Returns no interception for bbch < 0
+        :param bbch: The stadium to check
+        :return: The interception for that stadium
+        >>> FOCUSCrop.VI.get_interception(80)
+        85
+        >>> FOCUSCrop.VI.get_interception(50)
+        50
+        >>> FOCUSCrop.VI.get_interception(20)
+        40"""
+        t = Timing(bbch)
+        if t.principal_stage == PrincipalStage.Unplanted:
+            t = replace(t, bbch_state = 0)
         for key, value in self.interception.items():
-            if bbch >= key:
+            if t.principal_stage >= key:
                 return value
-        return 0
+        raise AssertionError("No fitting interception was defined or bbch was not comparable to float")
 
 @dataclass(frozen=True)
 class Timing:
@@ -142,7 +164,13 @@ class Timing:
     bbch_state: int
     '''Relative to which development state'''
 
+    @property
     def principal_stage(self):
+        """Returns the principal stage for the timing
+        >>> Timing(80).principal_stage == PrincipalStage.Maturity
+        True
+        >>> Timing(-5).principal_stage == PrincipalStage.Unplanted
+        True"""
         return PrincipalStage(max(-1, min(9, math.floor(self.bbch_state / 10))))
     
     def __post_init__(self):
@@ -177,6 +205,13 @@ class GAP:
     '''The values of the actual application'''
 
     def _asdict(self):
+        """Fixes issues with serialization but relies on a custom JSON Encoder
+        >>> import json
+        >>> from util.conversions import EnhancedJSONEncoder
+        >>> g = GAP("AP", {"rate": 1, "number": 1, "interval": 1, "timing": {"bbch_state": 50}})
+        >>> json.dumps(g, cls=EnhancedJSONEncoder)
+        '{"modelCrop": "AP", "application": {"rate": 1.0, "timing": {"bbch_state": 50}, "number": 1, "interval": 1, "factor": 1.0}}'
+        """
         return {"modelCrop": self.modelCrop.name, "application": self.application}
     
     def __post_init__(self):

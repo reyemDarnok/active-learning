@@ -14,7 +14,8 @@ import util.jsonLogger as jsonLogger
 
 
 
-jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(), undefined=StrictUndefined)
+jinja_env = Environment(loader=FileSystemLoader([Path(__file__).parent / "templates", Path(__file__).parent / "templates" / "psm-fragments"]), 
+                        autoescape=select_autoescape(), undefined=StrictUndefined)
 
 def main():
     args = parse_args()
@@ -27,25 +28,27 @@ def generate_psm_files(compound_file: Path, gap_file: Path, output_dir: Path):
     :param gap_file: Either a gap file or a directory filled with gap.json files. If a directory all *.json files are assumed to be gap files'''
     output_dir.mkdir(exist_ok=True, parents=True)
     if compound_file.is_dir():
-        if gap_file.is_dir():
-            for actual_compound_file in compound_file.glob('*.json'):
-                for actual_gap_file in gap_file.glob('*.json'):
-                    _generate_psm(actual_compound_file, actual_gap_file, output_dir)
-        else:
-            for actual_compound_file in compound_file.glob('*.json'):
-                _generate_psm(actual_compound_file, gap_file, output_dir)
+        compounds = compound_file.glob('*.json')
     else:
-        if gap_file.is_dir():
-            for actual_gap_file in gap_file.glob('*.json'):
-                _generate_psm(compound_file, actual_gap_file, output_dir)
-        else:
-            _generate_psm(compound_file, gap_file, output_dir)
+        compounds = [compound_file]
+    if gap_file.is_dir():
+        gaps = gap_file.glob('*.json')
+    else:
+        gaps = [gap_file]
+    for compound in compounds:
+        for gap in gaps:
+            output_file = output_dir / f"{compound.stem}-{gap.stem}.psm"
+            output_file.write_text(_generate_psm_contents(compound, gap))
 
-def _generate_psm(compound_file: Path, gap_file: Path, output_dir: Path):
-    '''For a given compound and gap file, generate the matching psm files and write them to output_dir
-    :param output_dir: Where to save the .psm files. The files will be named {COMPOUND_FILE}-{GAP_FILE}.psm
-    :param gap_file: The gap file to use when generating psm files
-    :param compound_file: The compound file to use when generating psm files'''
+
+
+def _generate_psm_contents(compound_file: Path, gap_file: Path) -> str:
+    '''For a given compound and gap file, generate the matching psm files 
+    :param gap_file: The gap file to use when generating psm file
+    :param compound_file: The compound file to use when generating psm file
+    :return: The contents of the psm file
+    >>> c = Compound()
+    >>> _generate_psm_contents'''
     with compound_file.open() as fp:
         psm_compound = compound.Compound(**json.load(fp))
     with gap_file.open() as fp:
@@ -53,8 +56,7 @@ def _generate_psm(compound_file: Path, gap_file: Path, output_dir: Path):
     psm_file = PsmFile.fromInput(compound=psm_compound, gap=psm_gap)
     psm_template = jinja_env.get_template('general.psm.j2')
     psm_file.comment = json.dumps({"compound": str(compound_file), "gap": str(gap_file)})
-    psm_content = psm_template.render(**psm_file._asdict())
-    (output_dir / f'{compound_file.stem}-{gap_file.stem}.psm').write_text(psm_content)
+    return psm_template.render(**psm_file._asdict())
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()

@@ -18,7 +18,6 @@ def pushd(new_dir):
     During the context the current working directory will be new_dir, 
     and after closing the working directory will be restored to its old value. 
     This contextmanager can be nested and overwrites working directory changes made inside it when exiting
-    
     :param new_dir: The directory to move to during the context'''
     previous_dir = os.getcwd()
     os.chdir(new_dir)
@@ -26,6 +25,14 @@ def pushd(new_dir):
         yield
     finally:
         os.chdir(previous_dir)
+
+def setup_env(webpage_copy_paste: str):
+    """aws acces key id, aws secret access key and aws session token change """
+    vardefs = webpage_copy_paste.splitlines()[:-2]
+    env_vars = {vardef.split(":", 2)[1].split("=", 2)[0]: vardef.split(":", 2)[1].split("=", 2)[1] for vardef in vardefs}
+    for key, value in env_vars.items():
+        os.environ[key] = value
+
 
 def start_submit_file(submit_folder: Path, 
                       session_name_prefix: str = "Unknown session", session_name_suffix: Optional[str] = None, submit_file_regex = r".+\.sub", 
