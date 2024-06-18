@@ -1,5 +1,6 @@
 {
-    "metabolites": [{
+    "metabolites": { 
+      "0.5" :{
       "name": "A1",
       "metabolites": null,
       "molarMass": 300,
@@ -16,7 +17,7 @@
         "surfaceWater": 6,
         "sediment": 6
       }
-  }],
+  }},
     "molarMass": 300,
     "waterSolubility": 6000.0,
     "sorption": {

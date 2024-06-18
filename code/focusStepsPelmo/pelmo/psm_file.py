@@ -152,10 +152,24 @@ class PsmCompound:
     @staticmethod
     def from_compound(compound: Compound) -> 'PsmCompound':
         full_rate = math.log(2)/compound.degradation.soil
-        degradations = [DegradationData(rate=full_rate*metabolite.molarMass/compound.molarMass) for metabolite in compound.metabolites]
+        remaining_degradation_fraction = 1.0
+        degradations = []
+        for formation_fraction, _ in compound.metabolites.items():
+            remaining_degradation_fraction -= formation_fraction
+            degradations += [DegradationData(rate=full_rate*formation_fraction)]
+        assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
+        if compound.name in ('a1', 'b1', 'c1', 'd1'):
+            missing_metabolites = 3 - len(degradations)
+        elif compound.name in ('a2', 'b2', 'c2', 'd2'):
+            missing_metabolites = 2 - len(degradations)
+        else:
+            missing_metabolites = 4 - len(degradations)
+        degradations += [DegradationData(rate=0.0)] * missing_metabolites
+        degradations += [DegradationData(rate=full_rate*remaining_degradation_fraction)]
         return PsmCompound(molar_mass=compound.molarMass, 
                     adsorptions=tuple([PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)]),
                     plant_uptake=compound.plant_uptake,degradations=degradations)
+PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(koc = 0, freundlich=1)]),degradations=[])
 
 @dataclass
 class PsmFile:
@@ -187,22 +201,21 @@ class PsmFile:
     
 
         psmCompound = PsmCompound.from_compound(compound)
-        @dataclass
-        class sentinel:
-            metabolites: List[Compound] = field(default_factory=list)
+        
+        sentinel = Compound(0,0,Sorption(0,0),Degradation(0,0,0,0,tuple()))
 
-        a1 = next((c for c in compound.metabolites if c.name.lower() == "a1"), sentinel())
-        b1 = next((c for c in compound.metabolites + a1.metabolites if c.name.lower() == "b1"), sentinel())
-        c1 = next((c for c in compound.metabolites + b1.metabolites if c.name.lower() == "c1"), sentinel())
-        d1 = next((c for c in compound.metabolites + c1.metabolites if c.name.lower() == "d1"), sentinel())
-        a2 = next((c for c in a1.metabolites if c.name.lower() == "a2"), sentinel())
-        b2 = next((c for c in a1.metabolites + b1.metabolites + a2.metabolites if c.name.lower() == "b2"), sentinel())
-        c2 = next((c for c in b1.metabolites + c1.metabolites + b2.metabolites if c.name.lower() == "c2"), sentinel())
-        d2 = next((c for c in c1.metabolites + d1.metabolites + c2.metabolites if c.name.lower() == "d2"), sentinel())
+        a1 = next((c for c in list(compound.metabolites.values()) if c.name.lower() == "a1"), sentinel)
+        b1 = next((c for c in list(compound.metabolites.values()) + list(a1.metabolites.values()) if c.name.lower() == "b1"), sentinel)
+        c1 = next((c for c in list(compound.metabolites.values()) + list(b1.metabolites.values()) if c.name.lower() == "c1"), sentinel)
+        d1 = next((c for c in list(compound.metabolites.values()) + list(c1.metabolites.values()) if c.name.lower() == "d1"), sentinel)
+        a2 = next((c for c in list(a1.metabolites.values()) if c.name.lower() == "a2"), sentinel)
+        b2 = next((c for c in list(a1.metabolites.values()) + list(b1.metabolites.values()) + list(a2.metabolites.values()) if c.name.lower() == "b2"), sentinel)
+        c2 = next((c for c in list(b1.metabolites.values()) + list(c1.metabolites.values()) + list(b2.metabolites.values()) if c.name.lower() == "c2"), sentinel)
+        d2 = next((c for c in list(c1.metabolites.values()) + list(d1.metabolites.values()) + list(c2.metabolites.values()) if c.name.lower() == "d2"), sentinel)
         first_order_metabolites = [a1, b1, c2, d2]
         second_order_metabolites = [a2, b2, c2, d2]
-        first_order_metabolites = [PsmCompound.from_compound(x) for x in first_order_metabolites if type(x) != sentinel]
-        second_order_metabolites = [PsmCompound.from_compound(x) for x in second_order_metabolites if type(x) != sentinel]
+        first_order_metabolites = [PsmCompound.from_compound(x) if x != sentinel else PsmCompound.empty for x in first_order_metabolites]
+        second_order_metabolites = [PsmCompound.from_compound(x) if x != sentinel else PsmCompound.empty for x in second_order_metabolites]
         return PsmFile(application=application,
                        compound=psmCompound,
                        first_order_metabolites=first_order_metabolites,

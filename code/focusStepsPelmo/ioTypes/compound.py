@@ -48,7 +48,7 @@ class Compound:
     '''A sorption behaviour'''
     degradation: Degradation
     '''Degradation behaviours'''
-    metabolites: List['Compound'] = field(default_factory=list)
+    metabolites: Dict[float, 'Compound'] = field(default_factory=dict)
     '''The parent Compound, if any'''
     plant_uptake: float = 0
     '''Fraction of plant uptake'''
@@ -62,9 +62,9 @@ class Compound:
         object.__setattr__(self, 'sorption', map_to_class(self.sorption, Sorption))
         object.__setattr__(self, 'degradation', map_to_class(self.degradation, Degradation))
         if self.metabolites:
-            object.__setattr__(self, 'metabolites', [map_to_class(metabolite, Compound) for metabolite in self.metabolites])
+            object.__setattr__(self, 'metabolites', {float(formation_fraction): map_to_class(metabolite, Compound) for formation_fraction, metabolite in self.metabolites.items()})
         else:
-            object.__setattr__(self, 'metabolites', [])
+            object.__setattr__(self, 'metabolites', {})
 
 
 
