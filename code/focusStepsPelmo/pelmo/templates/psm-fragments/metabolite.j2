@@ -1,0 +1,21 @@
+###############################################
+<COMMENT>
+METABOLITE {{ metabolite.name }}     Metabolite {{ metabolite.name}}
+<END COMMENT>
+<FLAGS>
+ 1   <kd_flag(0=direct 1=calc.)>
+<END FLAGS>
+<MOLMASS>
+ {{ metabolite.molar_mass }} 
+<END MOLMASS>
+<PLANT UPTAKE>
+ {{ metabolite.plant_uptake }}      <plant uptake factor>
+<END PLANT UPTAKE>
+{% with compound = metabolite %}{% include "degradations.j2" %}{% endwith %}
+<ADSORPTION>
+<Koc-value    Fr.exp.Koc  pH          pKa     limit for Freundl.  ann.incr.> <k_doc> <% change> KOC2      pH2    f_neq       kdes>
+{% for adsorption in metabolite.adsorptions%}{% include "adsorption.j2" %}{% endfor %}
+<END ADSORPTION>
+<DEPTH DEPENDENT SORPTION AND TRANSFORMATION VALUES>
+<Kd          Fr.exp.     BR/CO2   Met D2   BR/CO2   BR/CO2 >
+<END DEPTH DEPENDENT>

@@ -9,11 +9,7 @@
 <PLANT UPTAKE>
  {{ compound.plant_uptake }}      <plant uptake factor
 <END PLANT UPTAKE>
-{% include "degradations.j2" %}
-<PHOTODEGRADATION>
-<rate 1/n>  <I_Ref W>
-{% for degradation in compound.degradations %}{% include "photodegradation.j2" %}{%endfor%}
-<END DEGRADATION>
+{% include "compound-degradation.j2" %}
 <ADSORPTION>
 <Koc-value    Fr.exp.Koc  pH          pKa     limit for Freundl.  ann.incr.> <k_doc> <% change> KOC2      pH2 f_neq       kdes>
 {% for adsorption in compound.adsorptions %}{% include "adsorption.j2" %}{% if not loop.last %}
