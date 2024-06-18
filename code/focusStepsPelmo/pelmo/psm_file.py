@@ -159,9 +159,9 @@ class PsmCompound:
             remaining_degradation_fraction -= formation_fraction
             degradations += [DegradationData(rate=full_rate*formation_fraction)]
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
-        if compound.name in ('a1', 'b1', 'c1', 'd1'):
+        if compound.name.lower() in ('a1', 'b1', 'c1', 'd1'):
             missing_metabolites = 3 - len(degradations)
-        elif compound.name in ('a2', 'b2', 'c2', 'd2'):
+        elif compound.name.lower() in ('a2', 'b2', 'c2', 'd2'):
             missing_metabolites = 2 - len(degradations)
         else:
             missing_metabolites = 4 - len(degradations)
