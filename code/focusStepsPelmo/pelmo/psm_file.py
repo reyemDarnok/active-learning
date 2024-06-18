@@ -148,6 +148,7 @@ class PsmCompound:
          ))
     plant_uptake: float = 0.5
     degradation_type: DegradationType = DegradationType.FACTORS
+    name: str = "Unknown name"
 
     @staticmethod
     def from_compound(compound: Compound) -> 'PsmCompound':
@@ -168,15 +169,14 @@ class PsmCompound:
         degradations += [DegradationData(rate=full_rate*remaining_degradation_fraction)]
         return PsmCompound(molar_mass=compound.molarMass, 
                     adsorptions=tuple([PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)]),
-                    plant_uptake=compound.plant_uptake,degradations=degradations)
+                    plant_uptake=compound.plant_uptake,degradations=degradations, name=compound.name)
 PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(koc = 0, freundlich=1)]),degradations=[])
 
 @dataclass
 class PsmFile:
     application: PsmApplication
     compound: PsmCompound
-    first_order_metabolites: List[PsmCompound]
-    second_order_metabolites: List[PsmCompound]
+    metabolites: List[PsmCompound]
     crop: FOCUSCrop
     comment: str = "No comment"
     num_soil_horizons: int = 0
@@ -189,8 +189,7 @@ class PsmFile:
             "crop": self.crop,
             "comment": self.comment,
             "num_soil_horizons": self.num_soil_horizons,
-            "first_order_metabolites": self.first_order_metabolites,
-            "second_order_metabolites": self.second_order_metabolites,
+            "metabolites": self.metabolites,
             "degradation_type": self.degradation_type
             }
     
@@ -212,14 +211,11 @@ class PsmFile:
         b2 = next((c for c in list(a1.metabolites.values()) + list(b1.metabolites.values()) + list(a2.metabolites.values()) if c.name.lower() == "b2"), sentinel)
         c2 = next((c for c in list(b1.metabolites.values()) + list(c1.metabolites.values()) + list(b2.metabolites.values()) if c.name.lower() == "c2"), sentinel)
         d2 = next((c for c in list(c1.metabolites.values()) + list(d1.metabolites.values()) + list(c2.metabolites.values()) if c.name.lower() == "d2"), sentinel)
-        first_order_metabolites = [a1, b1, c2, d2]
-        second_order_metabolites = [a2, b2, c2, d2]
-        first_order_metabolites = [PsmCompound.from_compound(x) if x != sentinel else PsmCompound.empty for x in first_order_metabolites]
-        second_order_metabolites = [PsmCompound.from_compound(x) if x != sentinel else PsmCompound.empty for x in second_order_metabolites]
+        metabolites = [a1, b1, c2, d2, a2, b2, c2, d2]
+        metabolites = [PsmCompound.from_compound(x) for x in metabolites if x != sentinel]
         return PsmFile(application=application,
                        compound=psmCompound,
-                       first_order_metabolites=first_order_metabolites,
-                       second_order_metabolites=second_order_metabolites,
+                       metabolites=metabolites,
                        crop=gap.modelCrop,
                        comment="No comment",
                        num_soil_horizons=0,
@@ -240,21 +236,11 @@ class PsmFile:
                             )
         gap = GAP(modelCrop=self.crop, application=self.application)
         return (compound, gap)
-
-
-    application: PsmApplication
-    compound: PsmCompound
-    first_order_metabolites: List[PsmCompound]
-    second_order_metabolites: List[PsmCompound]
-    crop: FOCUSCrop
-    comment: str = "No comment"
-    num_soil_horizons: int = 0
-    degradation_type: DegradationType = DegradationType.FACTORS
+    
     def __post_init__(self):
         self.application = map_to_class(self.application, PsmApplication)
         self.compound = map_to_class(self.compound, PsmCompound)
-        self.first_order_metabolites = [map_to_class(metabolite, PsmCompound) for metabolite in self.first_order_metabolites]
-        self.second_order_metabolites = [map_to_class(metabolite, PsmCompound) for metabolite in self.second_order_metabolites]
+        self.metabolites = [map_to_class(metabolite, PsmCompound) for metabolite in self.metabolites]
         self.crop = str_to_enum(self.crop, FOCUSCrop)
         self.num_soil_horizons = int(self.num_soil_horizons)
         self.degradation_type = str_to_enum(self.degradation_type, DegradationType)

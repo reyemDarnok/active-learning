@@ -6,10 +6,8 @@
 <END NUMBER OF SOIL HORIZONS>
 {% include "psm-fragments/applications.j2"%}
 {% include "psm-fragments/compound.j2" %}
-{#{% for metabolite in compound.metabolites_first_order %}{% include "psm-fragments/metabolite-first-order.j2"%}{% if not loop.last %}
+{% for metabolite in metabolites %}{% include "psm-fragments/metabolite.j2"%}{% if not loop.last %}
 {% endif %}{% endfor %}
-{% for metabolite in compound.metabolites_second_order %}{% include "psm-fragments/metabolites-second-order.j2"%}{% if not loop.last%}
-{% endif %}{% endfor %}#}
 <THE FOLLOWING SECTION IS USED BY THE SHELL ONLY NOT BY PELMO>
 <FORMATION FRACTIONS ENTERED BY THE USER (0=NO,1=YES)>
  0 
