@@ -2,51 +2,33 @@
     "metabolites": { 
       "0.5" :{
       "name": "A1",
-      "metabolites": { 
-        "0.1" :{
-        "name": "A2",
-        "metabolites": null,
-        "molarMass": 300,
-        "waterSolubility": 6000.0,
-        "sorption": {
-            "koc": 1724,
-            "freundlich": 0.9
-        },
-        "plant_uptake": 0.5,
-        "degradation": {
-          "metabolites": [],
-          "system": 6,
-          "soil": 20,
-          "surfaceWater": 6,
-          "sediment": 6
-        }
-    }},
-      "molarMass": 300,
+      "metabolites": null,
+      "molarMass": 100,
       "waterSolubility": 6000.0,
       "sorption": {
-          "koc": 1724,
+          "koc": 20,
           "freundlich": 0.9
       },
       "plant_uptake": 0.5,
       "degradation": {
         "metabolites": [],
         "system": 6,
-        "soil": 6,
+        "soil": -1,
         "surfaceWater": 6,
         "sediment": 6
       }
   }},
     "molarMass": 300,
-    "waterSolubility": 6000.0,
+    "waterSolubility": 90.0,
     "sorption": {
-        "koc": 1724,
+        "koc": 60,
         "freundlich": 0.9
     },
     "plant_uptake": 0.5,
     "degradation": {
       "metabolites": [],
       "system": 6,
-      "soil": 6,
+      "soil": 5,
       "surfaceWater": 6,
       "sediment": 6
     }

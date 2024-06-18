@@ -152,7 +152,10 @@ class PsmCompound:
 
     @staticmethod
     def from_compound(compound: Compound) -> 'PsmCompound':
-        full_rate = math.log(2)/compound.degradation.soil
+        if compound.degradation.soil > 0:
+            full_rate = math.log(2)/compound.degradation.soil
+        else:
+            full_rate = 0
         remaining_degradation_fraction = 1.0
         degradations = []
         for formation_fraction, _ in compound.metabolites.items():
@@ -167,9 +170,11 @@ class PsmCompound:
             missing_metabolites = 4 - len(degradations)
         degradations += [DegradationData(rate=0.0)] * missing_metabolites
         degradations += [DegradationData(rate=full_rate*remaining_degradation_fraction)]
+        volatizations = tuple([Volatization(henry=3.33E-04, solubility=compound.waterSolubility, vaporization_pressure=1e-4),
+                              Volatization(henry=6.67E-10, solubility=compound.waterSolubility * 2, vaporization_pressure=4.00E-04, temperature=30)])
         return PsmCompound(molar_mass=compound.molarMass, 
                     adsorptions=tuple([PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)]),
-                    plant_uptake=compound.plant_uptake,degradations=degradations, name=compound.name)
+                    plant_uptake=compound.plant_uptake,degradations=degradations, name=compound.name, volatizations=volatizations)
 PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(koc = 0, freundlich=1)]),degradations=[])
 
 @dataclass
