@@ -162,7 +162,7 @@ class PsmCompound:
         if compound.name.lower() in ('a1', 'b1', 'c1', 'd1'):
             missing_metabolites = 3 - len(degradations)
         elif compound.name.lower() in ('a2', 'b2', 'c2', 'd2'):
-            missing_metabolites = 2 - len(degradations)
+            missing_metabolites = 1 - len(degradations)
         else:
             missing_metabolites = 4 - len(degradations)
         degradations += [DegradationData(rate=0.0)] * missing_metabolites

@@ -124,7 +124,8 @@ def single_pelmo_run(psm_file: Path, working_dir: Path,
         raise ValueError(f"Pelmo completed with error while calculating {psm_file.name} {crop.display_name} {scenario.value}. The Pelmo output was {process.stdout.decode(errors='backslashreplace')}")
 
     result = PelmoResult(psm = psm_file, scenario=scenario, crop=crop, pec=parse_pelmo_result(crop_dir))
-    rmtree(crop_dir)
+    if logger.level > logging.DEBUG:
+        rmtree(crop_dir)
     return result
 
 
