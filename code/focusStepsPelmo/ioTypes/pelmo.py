@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 import re
 import sys
@@ -115,6 +115,12 @@ class PelmoResult:
         object.__setattr__(self, 'scenario', str_to_enum(self.scenario, Scenario))
         object.__setattr__(self, 'crop', str_to_enum(self.crop, FOCUSCrop))
 
+    def _asdict(self):
+        return {"psm": str(self.psm),
+                "scenario": self.scenario.name,
+                "crop": self.crop.name,
+                "pec": self.pec}
+
 @dataclass(frozen=True)
 class PECResult:
     compound: Compound
@@ -122,3 +128,10 @@ class PECResult:
     scenario: Scenario
     crop: FOCUSCrop
     pec: List[float]
+
+    def _asdict(self):
+        return {"compound": asdict(self.compound),
+                "gap": self.gap._asdict(),
+                "scenario": self.scenario.name,
+                "crop": self.crop.name,
+                "pec": self.pec}

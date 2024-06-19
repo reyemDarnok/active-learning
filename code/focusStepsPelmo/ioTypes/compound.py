@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple, Union, Dict
 from pathlib import Path
 import sys
 sys.path += [str(Path(__file__).parent.parent)]
+from util.datastructures import HashableDict
 from util.conversions import map_to_class
 
 @dataclass(frozen=True)
@@ -16,11 +17,8 @@ class Degradation:
     '''DT50 in water'''
     sediment: float
     '''DT50 in sediment'''
-    metabolites: Tuple['Degradation']
-    '''Information on which metabolites will form'''
 
     def __post_init__(self):
-        object.__setattr__(self, 'metabolites', tuple([map_to_class(x) for x in self.metabolites]))
         object.__setattr__(self, 'system', float(self.system))
         object.__setattr__(self, 'soil', float(self.soil))
         object.__setattr__(self, 'surfaceWater', float(self.surfaceWater))
@@ -48,11 +46,11 @@ class Compound:
     '''A sorption behaviour'''
     degradation: Degradation
     '''Degradation behaviours'''
-    metabolites: Dict[float, 'Compound'] = field(default_factory=dict)
-    '''The parent Compound, if any'''
     plant_uptake: float = 0
     '''Fraction of plant uptake'''
     name: str = "Unknown Name"
+    metabolites: Dict[float, 'Compound'] = field(default_factory=HashableDict)
+    '''The compounds metabolites'''
     
 
     def __post_init__(self):
@@ -62,9 +60,12 @@ class Compound:
         object.__setattr__(self, 'sorption', map_to_class(self.sorption, Sorption))
         object.__setattr__(self, 'degradation', map_to_class(self.degradation, Degradation))
         if self.metabolites:
-            object.__setattr__(self, 'metabolites', {float(formation_fraction): map_to_class(metabolite, Compound) for formation_fraction, metabolite in self.metabolites.items()})
+            hd = HashableDict()
+            for formation_fraction, metabolite in self.metabolites.items():
+                hd[float(formation_fraction)] = map_to_class(metabolite, Compound)
+            object.__setattr__(self, 'metabolites', hd)
         else:
-            object.__setattr__(self, 'metabolites', {})
+            object.__setattr__(self, 'metabolites', HashableDict())
 
 
 

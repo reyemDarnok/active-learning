@@ -16,6 +16,10 @@ class RSDict(UserDict):
             data[key] = source[key]
         super().__init__(data)
 
+class HashableDict(UserDict):
+    def __hash__(self):
+        return hash(frozenset(self.items()))
+
 class HashableRSDict(RSDict):
     def __hash__(self):
         return hash(frozenset(self.items()))

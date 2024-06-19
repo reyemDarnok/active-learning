@@ -29,6 +29,7 @@ def main():
 def run_local(work_dir: Path, compound_files: Path, gap_files: Path, output_file: Path, output_format: str = 'json',
               crops: Sequence[FOCUSCrop]=FOCUSCrop, scenarios: Sequence[Scenario]=Scenario, threads: int = cpu_count() - 1):
     logger = logging.getLogger()
+    with suppress(FileNotFoundError): rmtree(work_dir)
     psm_dir: Path = work_dir / 'psm'
     psm_dir.mkdir(exist_ok=True, parents=True)
     focus_dir: Path = work_dir / 'FOCUS'

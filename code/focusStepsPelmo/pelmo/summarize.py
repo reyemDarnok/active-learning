@@ -1,5 +1,6 @@
 
 
+from collections import UserDict, UserList
 import csv
 from dataclasses import asdict
 import functools
@@ -7,7 +8,7 @@ import json
 import logging
 from pathlib import Path
 import sys
-from typing import Any, Dict, Generator, Iterable, List, Optional, Union
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
 sys.path += [str(Path(__file__).parent.parent)]
 
 from ioTypes.pelmo import PECResult
@@ -32,15 +33,38 @@ def write_results_to_file(results: Iterable[PECResult], file: Path, format: Opti
     elif format == 'csv':
         with file.with_suffix('.csv').open('w', newline='') as fp:
             writer = csv.writer(fp,)
-            header = ["molarMass", "waterSolubility", "dt50", "koc", "freundlich", "plant_uptake","bbch", "rate", "crop", "scenario", "pec"]
+            doubles = list(flatten_to_tuples(next(results)._asdict()))
+            header = [x[0] for x in doubles]
+            row = [x[1] for x in doubles]
             writer.writerow(header)
-            def to_list(r: PECResult) -> List[Any]:
-                return [r.compound.molarMass, r.compound.waterSolubility, r.compound.degradation.system, r.compound.sorption.koc, r.compound.sorption.freundlich,
-                        r.gap.application.timing.bbch_state, r.gap.application.rate, r.crop, r.scenario,
-                        r.pec]
-            writer.writerows(to_list(r) for r in results)
+            writer.writerow(row)
+            writer.writerows((x[1] for x in flatten_to_tuples(r._asdict())) for r in results)
     else:
         raise ValueError("Could not infer format, please specify explicitly")
+
+def flatten_to_tuples(o: Any, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
+    if isinstance(o, (dict, UserDict)):
+        for key, value in flatten_dict_to_tuples(o, prefix):
+            yield key, value
+    elif isinstance(o, (list, UserList)):
+        for key, value in flatten_list_to_tuples(o, prefix):
+            yield key, value
+    elif isinstance(o, Compound):
+        for key, value in flatten_to_tuples(asdict(o), prefix):
+            yield key, value
+    else:
+        yield ".".join(prefix), str(o)
+
+def flatten_dict_to_tuples(d: Dict, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
+    sys.stdout.flush()
+    for key, value in d.items():
+        for k, v in flatten_to_tuples(value, prefix=prefix + [str(key)]):
+            yield k, v
+        
+def flatten_list_to_tuples(l: List, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
+    for index, value in enumerate(l):
+        for k, v in flatten_to_tuples(value, prefix=prefix + [str(index)]):
+            yield k, v
 
 def rebuild_scattered_output(parent: Path, glob_pattern: str = "output.json", psm_root = Path.cwd()) -> Generator[PECResult, None, None]:
     logger = logging.getLogger()

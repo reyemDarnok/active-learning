@@ -206,7 +206,7 @@ class PsmFile:
 
         psmCompound = PsmCompound.from_compound(compound)
         
-        sentinel = Compound(0,0,Sorption(0,0),Degradation(0,0,0,0,tuple()))
+        sentinel = Compound(0,0,Sorption(0,0),Degradation(0,0,0,0))
 
         a1 = next((c for c in list(compound.metabolites.values()) if c.name.lower() == "a1"), sentinel)
         b1 = next((c for c in list(compound.metabolites.values()) + list(a1.metabolites.values()) if c.name.lower() == "b1"), sentinel)

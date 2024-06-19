@@ -1,4 +1,4 @@
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, replace
 from enum import Enum
 import math
 from typing import Dict, List, OrderedDict, Tuple, Union, NamedTuple
@@ -212,7 +212,7 @@ class GAP:
         >>> json.dumps(g, cls=EnhancedJSONEncoder)
         '{"modelCrop": "AP", "application": {"rate": 1.0, "timing": {"bbch_state": 50}, "number": 1, "interval": 1, "factor": 1.0}}'
         """
-        return {"modelCrop": self.modelCrop.name, "application": self.application}
+        return {"modelCrop": self.modelCrop.name, "application": asdict(self.application)}
     
     def __post_init__(self):
         object.__setattr__(self, 'modelCrop', str_to_enum(self.modelCrop, FOCUSCrop))

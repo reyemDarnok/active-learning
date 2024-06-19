@@ -72,6 +72,8 @@ def run_bhpc(work_dir: Path, compound_file: Path, gap_file: Path, submit: Path, 
         logger.info('Started Pelmo run as session %s', session)
         commands.download_session(session)
         result = rebuild_scattered_output(submit, "psm*.d-output.json", psm_root=submit)
+        if output_format is None:
+            output_format = output.suffix[1:]
         with output.with_suffix(f".{output_format}").open('w') as fp:
             if output_format == "json":
                 result = list(result)
@@ -101,16 +103,9 @@ def copy_common_files(output: Path):
     """
     logger = logging.getLogger()
     output.mkdir(exist_ok=True, parents=True)
-    (output / 'pelmo').mkdir(exist_ok=True, parents=True)
     script_dir = Path(__file__).parent
-    logger.debug('Copying runner.py')
-    shutil.copy(script_dir / 'runner.py', output / 'pelmo' / 'runner.py')
-    logger.debug('Copying data files')
-    shutil.copytree(script_dir / 'data', output / 'pelmo' / 'data')
-    
-    logger.debug('Copying templates')
-    shutil.copytree(script_dir / 'templates', output / 'pelmo' / 'templates')
-    
+    logger.debug('Copying script')
+    shutil.copytree(script_dir, output / 'pelmo')
     logger.debug('Copying pythonwrapper')
     shutil.copy(script_dir / 'pythonwrapper.bat', output / 'pythonwrapper.bat')     
     logger.debug('Getting requirements')
