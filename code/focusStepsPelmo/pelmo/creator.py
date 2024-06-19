@@ -32,11 +32,13 @@ def generate_psm_files(compound_file: Path, gap_file: Path, output_dir: Path):
     else:
         compounds = [compound_file]
     if gap_file.is_dir():
-        gaps = gap_file.glob('*.json')
+        gaps = list(gap_file.glob('*.json'))
     else:
         gaps = [gap_file]
     for compound in compounds:
+        print(compound.name)
         for gap in gaps:
+            print(gap.name)
             output_file = output_dir / f"{compound.stem}-{gap.stem}.psm"
             output_file.write_text(_generate_psm_contents(compound, gap))
 

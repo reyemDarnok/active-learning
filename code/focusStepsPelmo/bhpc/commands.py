@@ -7,7 +7,7 @@ import random
 import subprocess
 from sys import stdin
 import time
-from subprocess import PIPE, CalledProcessError
+from subprocess import DEVNULL, PIPE, CalledProcessError
 from typing import Generator, List, Optional, Tuple
 
 bhpc_dir = Path('C:\\_AWS', 'actualVersion')
@@ -28,20 +28,33 @@ def pushd(new_dir):
         os.chdir(previous_dir)
 
 def request_auth_data():
-    print("To authorize against the BHPC, please copy the CLI Credentials from http://go/bhpc-prod\n")
+    logger = logging.getLogger()
+    logger.debug("Asking user for credentials")
+    print("To authorize against the BHPC, please copy the CLI Credentials from http://go/bhpc-prod")
     authdata = []
     for line in stdin:
+        logger.debug({"credentials_line": line})
+        line = line.strip()
         if line:
             authdata += [line]
+        elif line == 'cls':
+            authdata += [line]
+            break
         else:
             break
+    print("Thank you for the credentials. This script can now make requests to the BHPC")
     authdata = "\n".join(authdata)
     setup_env_from_copy_paste(authdata)
+    logger.info("Set credentials from user input")
 
 def setup_env_from_copy_paste(webpage_copy_paste: str):
     """aws access key id, aws secret access key and aws session token change """
+    logger = logging.getLogger()
+    logger.debug({"authdata": webpage_copy_paste})
     vardefs = webpage_copy_paste.splitlines()[:-2]
-    env_vars = {vardef.split(":", 2)[1].split("=", 2)[0]: vardef.split(":", 2)[1].split("=", 2)[1] for vardef in vardefs}
+    logger.debug({"lines": vardefs})
+    env_vars = {vardef.split(":", 2)[1].split("=", 2)[0]: vardef.split(":", 2)[1].split("=", 2)[1].strip('"') for vardef in vardefs}
+    logger.info({"new_env_vars": env_vars})
     setup_env(key_id = env_vars["AWS_ACCESS_KEY_ID"], 
               key= env_vars["AWS_SECRET_ACCESS_KEY"], 
               session_token=env_vars["AWS_SESSION_TOKEN"], 
@@ -54,7 +67,7 @@ def setup_env(key_id: str, key: str, session_token: str,
               proxy: str = "http://MVHNG:jA54QWMy@10.185.190.10:8080",
               no_proxy: str = ".bayer.biz",
               default_region: str = "eu-central-1",
-              ca_bundle: str = "ca-certificates.crt"):
+              ca_bundle: str = "ca-certificates.crt"): 
     os.environ["AWS_ACCESS_KEY_ID"] = key_id
     os.environ["AWS_SECRET_ACCESS_KEY"] = key
     os.environ["AWS_SESSION_TOKEN"] = session_token
@@ -93,7 +106,7 @@ def start_submit_file(submit_folder: Path,
 
 def run(machines, cores, multithreading, notificationemail, session_timeout, session):
     assert cores in (2,4,8,16,96), f"Invalid core number {cores}. Only 2,4,8,16 or 96 are permitted"
-
+    logger = logging.getLogger()
     command_args = [str(bhpc_exe.absolute()), 'run', 
                 '-force',
                 '-cores', str(cores), 
@@ -106,6 +119,7 @@ def run(machines, cores, multithreading, notificationemail, session_timeout, ses
     if session_timeout > 12:
         command_args += ['-longRun']
     run_process = subprocess.run(command_args, text=True, capture_output=True)
+    logger.debug(run_process.stdout)
     if is_auth_message(run_process.stdout):
         request_auth_data()
         run(machines, cores, multithreading, notificationemail, session_timeout, session)
@@ -121,6 +135,8 @@ def upload(submit_folder, submit_file_regex, session):
             '-path', str(submit_folder), 
             '-search', submit_file_regex, 
             session], text=True, capture_output=True)
+    logger.debug(upload_process.stdout)
+
     if is_auth_message(upload_process.stdout):
         request_auth_data()
         upload(submit_folder, submit_file_regex, session)
@@ -136,13 +152,12 @@ def download(session: str, wait_until_finished: bool = True, retry_interval: flo
         if wait_until_finished:
             while not bhpc_job_finished(session):
                 time.sleep(retry_interval)
-
-
         with pushd(bhpc_dir):
             logger.info('Running download command')
             download_process = subprocess.run([
                 str(bhpc_exe.absolute()), 'download', session
             ], text=True, capture_output=True)
+            logger.debug(download_process.stdout)
             if is_auth_message(download_process.stderr):
                 request_auth_data()
                 return download(session, wait_until_finished, retry_interval)
@@ -169,9 +184,11 @@ def remove(session: str, kill: bool = True):
                 str(bhpc_exe.absolute()), "remove", session],
             stdin=PIPE, text=True)
         if kill:
-            remove_stdout, _ = p.communicate("yes".encode())
+            remove_stdout, _ = p.communicate("yes")
         else:
-            remove_stdout, _ = p.communicate("no".encode())
+            remove_stdout, _ = p.communicate("no")
+        logger.debug(remove_stdout)
+
         if is_auth_message(remove_stdout):
             request_auth_data()
             remove_stdout(session, kill)
@@ -230,5 +247,5 @@ def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
         yield Status(initial, started, done, path)
 
 def is_auth_message(response: str) -> bool:
-    auth_message = "--> Authorization environment variables not set. Check if you have file with certificates in the same folder as the executable. You will be redirected to http://go/bhpc-prod. Please get variables and .crt File to use the bhpc cli <--"
+    auth_message = "--> Authorization environment variables not set. Check if you have file with certificates in the same folder as the executable. You will be redirected to http://go/bhpc-prod. Please get variables and .crt File to use the bhpc cli <--\n"
     return auth_message == response

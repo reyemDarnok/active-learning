@@ -44,11 +44,9 @@ def write_results_to_file(results: Iterable[PECResult], file: Path, format: Opti
 
 def flatten_to_tuples(o: Any, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
     if isinstance(o, (dict, UserDict)):
-        for key, value in flatten_dict_to_tuples(o, prefix):
-            yield key, value
+        yield from flatten_dict_to_tuples(o, prefix)
     elif isinstance(o, (list, UserList)):
-        for key, value in flatten_list_to_tuples(o, prefix):
-            yield key, value
+        yield from flatten_list_to_tuples(o, prefix)
     elif isinstance(o, Compound):
         for key, value in flatten_to_tuples(asdict(o), prefix):
             yield key, value
