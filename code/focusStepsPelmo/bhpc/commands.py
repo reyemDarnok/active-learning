@@ -5,6 +5,7 @@ import os
 import logging
 import random
 import subprocess
+from sys import stdin
 import time
 from subprocess import PIPE, CalledProcessError
 from typing import Generator, List, Optional, Tuple
@@ -26,12 +27,41 @@ def pushd(new_dir):
     finally:
         os.chdir(previous_dir)
 
-def setup_env(webpage_copy_paste: str):
-    """aws acces key id, aws secret access key and aws session token change """
+def request_auth_data():
+    print("To authorize against the BHPC, please copy the CLI Credentials from http://go/bhpc-prod\n")
+    authdata = []
+    for line in stdin:
+        if line:
+            authdata += [line]
+        else:
+            break
+    authdata = "\n".join(authdata)
+    setup_env_from_copy_paste(authdata)
+
+def setup_env_from_copy_paste(webpage_copy_paste: str):
+    """aws access key id, aws secret access key and aws session token change """
     vardefs = webpage_copy_paste.splitlines()[:-2]
     env_vars = {vardef.split(":", 2)[1].split("=", 2)[0]: vardef.split(":", 2)[1].split("=", 2)[1] for vardef in vardefs}
-    for key, value in env_vars.items():
-        os.environ[key] = value
+    setup_env(key_id = env_vars["AWS_ACCESS_KEY_ID"], 
+              key= env_vars["AWS_SECRET_ACCESS_KEY"], 
+              session_token=env_vars["AWS_SESSION_TOKEN"], 
+              proxy = env_vars["HTTPS_PROXY"],
+              no_proxy = env_vars["NO_PROXY"],
+              default_region = env_vars["AWS_DEFAULT_REGION"],
+              ca_bundle = env_vars["AWS_DEFAULT_REGION"])
+
+def setup_env(key_id: str, key: str, session_token: str, 
+              proxy: str = "http://MVHNG:jA54QWMy@10.185.190.10:8080",
+              no_proxy: str = ".bayer.biz",
+              default_region: str = "eu-central-1",
+              ca_bundle: str = "ca-certificates.crt"):
+    os.environ["AWS_ACCESS_KEY_ID"] = key_id
+    os.environ["AWS_SECRET_ACCESS_KEY"] = key
+    os.environ["AWS_SESSION_TOKEN"] = session_token
+    os.environ["AWS_CA_BUNDLE"] = ca_bundle
+    os.environ["HTTPS_PROXY"] = proxy
+    os.environ["NO_PROXY"] = no_proxy
+    os.environ["AWS_DEFAULT_REGION"] = default_region
 
 
 def start_submit_file(submit_folder: Path, 
@@ -50,91 +80,101 @@ def start_submit_file(submit_folder: Path,
     :param notificationemail: Who to notify when the bhpc session completes
     :param session_timeout: Maximum time for the bhpc session. Automatically enables longRun mode if over 12. CURRENTLY BUGGED
     :return: The ID of the created bhpc session"""
-    assert cores in (2,4,8,16,96)
-    assert bhpc_exe.exists()
-
     logger = logging.getLogger()
     submit_folder = submit_folder.absolute()
     with pushd(bhpc_dir):
         suffix = session_name_suffix if session_name_suffix else random.getrandbits(32)
         session = f"{session_name_prefix}{suffix}"
         logger.info('Using sessionID %s', session)
-        logger.info('Running upload command')
-        try:
-            subprocess.run([
-                str(bhpc_exe.absolute()), 'upload', 
-                '-path', str(submit_folder), 
-                '-search', submit_file_regex, 
-                session], check=True)
-        except CalledProcessError as e:
-            logger.error('Failed to upload bhpc job. A frequent problem is that the credentials have not been configured in the past 8 hours.')
-            raise e
-        
-        try:
-            logging.info('Running run command')
-            command_args = [str(bhpc_exe.absolute()), 'run', 
+        upload(submit_folder, submit_file_regex, session)
+        logging.info('Running run command')
+        run(machines, cores, multithreading, notificationemail, session_timeout, session)
+        return session
+
+def run(machines, cores, multithreading, notificationemail, session_timeout, session):
+    assert cores in (2,4,8,16,96), f"Invalid core number {cores}. Only 2,4,8,16 or 96 are permitted"
+
+    command_args = [str(bhpc_exe.absolute()), 'run', 
                 '-force',
                 '-cores', str(cores), 
                 '-count', str(machines),
                 session]
-            if multithreading:
-                command_args += ['-multi']
-            if notificationemail:
-                command_args += ['-notificationEmail', notificationemail]
-            if session_timeout > 12:
-                command_args += ['-longRun']
-            subprocess.run(command_args, check=True)
-        except CalledProcessError as e:
-            logger.error('Failed to run bhpc job. A frequent problem is that the credentials have not been configured in the past 8 hours.')
-            raise e
-        return session
+    if multithreading:
+        command_args += ['-multi']
+    if notificationemail:
+        command_args += ['-notificationEmail', notificationemail]
+    if session_timeout > 12:
+        command_args += ['-longRun']
+    run_process = subprocess.run(command_args, text=True, capture_output=True)
+    if is_auth_message(run_process.stdout):
+        request_auth_data()
+        run(machines, cores, multithreading, notificationemail, session_timeout, session)
+    if run_process.stdout.startswith('Session ') and run_process.stdout.endswith(' is not initialized.'):
+        raise ValueError(f"Session {session} was not initialized. Start upload command for that session first")
 
-def download_session(session: str, wait_until_finished: bool = True, retry_interval: float = 60)-> bool:
+
+def upload(submit_folder, submit_file_regex, session):
+    logger = logging.getLogger()
+    logger.info('Running upload command')
+    upload_process = subprocess.run([
+            str(bhpc_exe.absolute()), 'upload', 
+            '-path', str(submit_folder), 
+            '-search', submit_file_regex, 
+            session], text=True, capture_output=True)
+    if is_auth_message(upload_process.stdout):
+        request_auth_data()
+        upload(submit_folder, submit_file_regex, session)
+
+def download(session: str, wait_until_finished: bool = True, retry_interval: float = 60)-> bool:
     """Download the results of a bhpc session The results will be in the directory where the submit file that started the session is.
     :param session: The sesssionId of the session to download
     :param wait_until_finished: Whether to wait until the session is finished
     :param retry_interval: How long to wait between checks of the session status
     :return: If wait_until_finished is False return False if the session is not finished yet. Otherwise returns True after download"""
     logger = logging.getLogger()
+    try:
+        if wait_until_finished:
+            while not bhpc_job_finished(session):
+                time.sleep(retry_interval)
 
-    if wait_until_finished:
-        while not bhpc_job_finished(session):
-            time.sleep(retry_interval)
 
-
-    with pushd(bhpc_dir):
-        try:
-            logging.info('Running download command')
-            subprocess.run([
+        with pushd(bhpc_dir):
+            logger.info('Running download command')
+            download_process = subprocess.run([
                 str(bhpc_exe.absolute()), 'download', session
-            ])
-        except CalledProcessError as e:
-            logger.error('Failed to download the bhpc job. A frequent problem is that the credentials have not been configured in the past 8 hours.')
+            ], text=True, capture_output=True)
+            if is_auth_message(download_process.stderr):
+                request_auth_data()
+                return download(session, wait_until_finished, retry_interval)
+            return True
+    except KeyboardInterrupt as e:
+        if wait_until_finished:
+            answer = input(f"Stopping monitoring session {session}. Should the session also be removed and killed? y/N:")
+            if answer.casefold == "y".casefold():
+                print("Removing session")
+                logger.warn(f"Removing session {session} on request of interactive user")
+                remove(session, True)
             raise e
-        return True
+        else:
+            raise e
     
-def remove_session(session: str, kill: bool = True):
+def remove(session: str, kill: bool = True):
     """Remove a session from the bhpc
     :param session: The session to remove
     :param kill: Whether to also kill the session"""
     logger = logging.getLogger()
     with pushd(bhpc_dir):
-        try:
-            logging.info('Running remove command')
-            p = subprocess.Popen([
-                    str(bhpc_exe.absolute()), "remove", session],
-                stdin=PIPE)
-            if kill:
-                p.communicate("yes".encode())
-            else:
-                p.communicate("no".encode())
-            rc = p.wait() != 0
-            if rc != 0:
-                raise CalledProcessError(rc, [
-                    str(bhpc_exe.absolute()), "remove", session], output=p.stdout, stderr=p.stderr)
-        except CalledProcessError as e:
-            logger.error('Failed to remove the bhpc job. A frequent problem is that the credentials have not been configured in the past 8 hours.')
-            raise e  
+        logger.info('Running remove command')
+        p = subprocess.Popen([
+                str(bhpc_exe.absolute()), "remove", session],
+            stdin=PIPE, text=True)
+        if kill:
+            remove_stdout, _ = p.communicate("yes".encode())
+        else:
+            remove_stdout, _ = p.communicate("no".encode())
+        if is_auth_message(remove_stdout):
+            request_auth_data()
+            remove_stdout(session, kill)
 
 def bhpc_job_finished(session: str) -> bool:
     """Checks whether the status message is a finished bhpc session
@@ -167,13 +207,12 @@ def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
     :return: The statuses of each submit file in the order BHPC show presents them"""
     logger = logging.getLogger()
     with pushd(bhpc_dir):
-        try:
-            logging.info('Running show command for session %s', session)
-            p = subprocess.run([
-            str(bhpc_exe.absolute()), 'show', session], capture_output=True, check=True, text=True)
-        except CalledProcessError as e:
-            logger.error('Failed to show the bhpc job status. A frequent problem is that the credentials have not been configured in the past 8 hours.')
-            raise e
+        logging.info('Running show command for session %s', session)
+        p = subprocess.run([
+        str(bhpc_exe.absolute()), 'show', session], text=True, capture_output=True)
+    if is_auth_message(p.stdout):
+            request_auth_data()
+            return get_bhpc_job_status(session)
     logger.debug("%s", p.stdout)
     lines = p.stdout.splitlines()
     lines = lines[3:]
@@ -189,3 +228,7 @@ def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
         path = Path(" ".join(path))
         logger.debug("%s %s %s %s", initial, started, done, path)
         yield Status(initial, started, done, path)
+
+def is_auth_message(response: str) -> bool:
+    auth_message = "--> Authorization environment variables not set. Check if you have file with certificates in the same folder as the executable. You will be redirected to http://go/bhpc-prod. Please get variables and .crt File to use the bhpc cli <--"
+    return auth_message == response

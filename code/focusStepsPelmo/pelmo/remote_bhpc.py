@@ -70,7 +70,7 @@ def run_bhpc(work_dir: Path, compound_file: Path, gap_file: Path, submit: Path, 
                                machines=machines, cores=cores, multithreading=True,
                                notificationemail=notificationemail, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
-        commands.download_session(session)
+        commands.download(session)
         result = rebuild_scattered_output(submit, "psm*.d-output.json", psm_root=submit)
         if output_format is None:
             output_format = output.suffix[1:]
@@ -83,7 +83,7 @@ def run_bhpc(work_dir: Path, compound_file: Path, gap_file: Path, submit: Path, 
                     fp.write(row)
             else:
                 raise ValueError(f"Invalid output format {output_format}")
-        commands.remove_session(session)
+        commands.remove(session)
 
 
 def zip_common_directories(target: Path):
@@ -109,7 +109,7 @@ def copy_common_files(output: Path):
     logger.debug('Copying pythonwrapper')
     shutil.copy(script_dir / 'pythonwrapper.bat', output / 'pythonwrapper.bat')     
     logger.debug('Getting requirements')
-    subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', str((script_dir / 'requirements.txt').absolute()),  '--platform', 'win32',  '--upgrade', '--only-binary', ':all:', '--target', str(output.absolute())])
+    subprocess.run([sys.executable, '-m', 'pip', 'install', '-r', str((script_dir / 'requirements.txt').absolute()),  '--platform', 'win32',  '--upgrade', '--only-binary', ':all:', '--target', str(output.absolute())], capture_output=True, check=True)
     logger.debug('Getting datatypes')
     shutil.copytree(script_dir / '..' / 'ioTypes', output / 'ioTypes')
     logger.debug('Getting utils')
