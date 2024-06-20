@@ -35,13 +35,18 @@ class Sorption:
         object.__setattr__(self, 'koc', float(self.koc))
         object.__setattr__(self, 'freundlich', float(self.freundlich))
 
+@dataclass(frozen=True)
+class Volatility:
+    water_solubility: float
+    vaporization_pressure: float
+    reference_temperature: float
 
 @dataclass(frozen=True)
 class Compound:
     '''A Compound definition'''
     molarMass: float
     '''molar mass in g/mol'''
-    waterSolubility: float
+    volatility: Volatility
     sorption: Sorption
     '''A sorption behaviour'''
     degradation: Degradation
@@ -55,8 +60,8 @@ class Compound:
 
     def __post_init__(self):
         object.__setattr__(self, 'molarMass', float(self.molarMass))
-        object.__setattr__(self, 'waterSolubility', float(self.waterSolubility))
         object.__setattr__(self, 'plant_uptake', float(self.plant_uptake))
+        object.__setattr__(self, 'volatility', map_to_class(self.volatility, Volatility))
         object.__setattr__(self, 'sorption', map_to_class(self.sorption, Sorption))
         object.__setattr__(self, 'degradation', map_to_class(self.degradation, Degradation))
         if self.metabolites:

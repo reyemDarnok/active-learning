@@ -1,17 +1,22 @@
 
+from collections import UserDict, UserList
 from contextlib import suppress
 import csv
 from argparse import ArgumentParser, Namespace
 from dataclasses import replace
 import json
 import logging
+import math
 from os import cpu_count
 import os
 from pathlib import Path
+import random
 from shutil import rmtree
-from typing import Generator, Iterable, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, List, Optional, Sequence, Tuple, Union
 import sys
 sys.path += [str(Path(__file__).parent.parent)]
+from ioTypes.combination import Combination
+from util.datastructures import HashableDict
 from pelmo.remote_bhpc import run_bhpc
 from pelmo.local import run_local
 from util import conversions, jsonLogger
@@ -23,43 +28,100 @@ def main():
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
-    span_params = {"bbch": args.bbch, "rate": args.rate, 
-                    "dt50": args.dt50, "koc": args.koc, "freundlich": args.freundlich, "plant_uptake": args.plant_uptake}
-    span_params = {key: value for key, value in span_params.items() if value}
+    compound_dir = args.work_dir / 'compounds'
+    gap_dir = args.work_dir / 'gaps'
+    combination_dir = args.work_dir / 'combination'
     crops = args.crop
     scenarios = args.scenario
-    if args.input_file:
-        if args.input_format == None:
-            args.input_format = args.input_file.suffix[1:]
-        with args.input_file.open() as fp:
-            if args.input_format == 'json':
-                file_span_params: dict = json.load(fp)
-            elif args.input_format == 'csv':
-                rows = csv.reader(fp)
-                file_span_params = {row[0]: row[1:] for row in rows}
-            else:
-                raise ValueError("Cannot infer input format, please specify explictly")
-            if not crops:
-                crops = file_span_params.pop('crop', FOCUSCrop)
-            if not scenarios:
-                scenarios = file_span_params.pop('scenario', Scenario)
-            span_params = {**file_span_params, **span_params}   
+    with args.input_file.open() as input_file:
+        if args.input_format == 'json':
+            create_samples_in_dirs(definition=json.load(input_file), output_dir=combination_dir, sample_size = args.sample_size)
+        elif args.input_format == 'csv':
+            with args.template_gap.open() as gap_file:
+                template_gap = GAP(**json.load(gap_file))
+            with args.template_compound.open() as compound_file:
+                template_compound = Compound(**json.load(compound_file))
+            rows = csv.reader(input_file)
+            file_span_params = {row[0]: row[1:] for row in rows}
+            span_to_dir(template_gap=template_gap, template_compound=template_compound, compound_dir=compound_dir, gap_dir=gap_dir,
+                **file_span_params)
+        else:
+            raise ValueError("Cannot infer input format, please specify explictly")
+    if not crops:
+        crops = file_span_params.pop('crop', FOCUSCrop)
+    if not scenarios:
+        scenarios = file_span_params.pop('scenario', Scenario)
 
-    with args.template_gap.open() as fp:
-        template_gap = GAP(**json.load(fp))
-    with args.template_compound.open() as fp:
-        template_compound = Compound(**json.load(fp))
-    span_to_dir(template_gap=template_gap, template_compound=template_compound, compound_dir=args.work_dir / "compounds", gap_dir=args.work_dir / "gaps",
-                **span_params)
+    
+
     if args.run == 'bhpc':
-        run_bhpc(work_dir=args.work_dir / 'remote', compound_file=args.work_dir / 'compounds', gap_file=args.work_dir / 'gaps',
+        run_bhpc(work_dir=args.work_dir / 'remote', compound_file=compound_dir, gap_file=gap_dir, combination_dir=combination_dir,
                  submit=args.work_dir / 'submit', output=args.output, output_format=args.output_format, crops=crops, scenarios=scenarios,
-                 batchsize=args.batchsize, cores=args.cores, machines=args.count, notificationemail=args.notification_email, session_timeout=args.session_timeout, run=True)
+                 notificationemail=args.notification_email, session_timeout=args.session_timeout, run=True)
     elif args.run == 'local':
-        run_local(work_dir=args.work_dir / 'local', compound_files=args.work_dir / 'compounds', gap_files=args.work_dir / 'gaps', 
+        run_local(work_dir=args.work_dir / 'local', compound_files=compound_dir, gap_files=gap_dir, combination_dir=combination_dir,
                   output_file=args.output, output_format=args.output_format, crops=crops, scenarios=scenarios, threads=args.threads)
 
     
+def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int):
+    with suppress(FileNotFoundError): rmtree(output_dir)
+    output_dir.mkdir(parents=True)
+    samples = create_samples(definition)
+    for _ in range(sample_size):
+        combination = next(samples)
+        with (output_dir / f"{hash(combination)}.json").open('w') as fp:
+            json.dump(combination, fp, cls=EnhancedJSONEncoder)
+
+def create_samples(definition: Dict) -> Generator[Combination,None, None]:
+    while True:
+        yield Combination(**create_dict_sample(definition))
+
+def create_any_sample(definition: Any) -> Any:
+    if isinstance(definition, (dict, UserDict)):
+        if 'type' in definition.keys() and 'parameters' in definition.keys():
+            return evaluate_template(definition)
+        return create_dict_sample(definition)
+    elif isinstance(definition, (list, UserList)):
+        return create_list_sample(definition)
+    else:
+        return definition
+
+def create_dict_sample(definition: Dict) -> Dict:
+    return {key: create_any_sample(value) for key, value in definition.items()}
+        
+def create_list_sample(definition: List) -> List:
+    return [create_any_sample(value) for value in definition]
+
+def evaluate_template(definition: Dict) -> Any:
+    types = {
+        'choices': choices_template,
+        'steps': steps_template,
+        'random': random_template,
+        'copies': copies_template,
+        'dict_copies': dict_copies_template,
+    }
+    return types[definition['type']](**definition['parameters'])
+
+def random_template(lower_bound: float, upper_bound: float, log_random: bool) -> float:
+    if log_random:
+        lower_bound = math.log(lower_bound)
+        upper_bound = math.log(upper_bound)
+    result = random.uniform(lower_bound, upper_bound)
+    if log_random:
+        result = math.exp(result)
+    return result
+
+def copies_template(minimum: int, maximum: int, value: Any) -> List[Any]:
+    return [create_any_sample(value) for _ in range(random.randint(minimum, maximum))]
+
+def dict_copies_template(minimum: int, maximum: int, key: Any, value: Any) -> List[Any]:
+    return {create_any_sample(key): create_any_sample(value) for _ in range(random.randint(minimum, maximum))}
+
+def choices_template(options: List) -> Any:
+    return create_any_sample(random.choice(options))
+
+def steps_template(start: int, stop: int, step: int = 1, scale_factor: float = 1) -> float:
+    return random.randrange(start, stop, step) * scale_factor
 
 def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Path, gap_dir: Optional[Path] = None,
          bbch: Iterable[int] = None, rate: Iterable[float] = None,
@@ -194,37 +256,32 @@ def span_plant_uptake(compounds: Iterable[Compound], plant_uptakes: Iterable[flo
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
-    parser.add_argument('-c', '--template-compound', type=Path, required=True, help="The compound to use as a template for unchanging parameters when scanning")
-    parser.add_argument('-g', '--template-gap', type=Path, required=True, help="The gap to use as a template for unchanging parameters when scanning")
-    parser.add_argument('-w', '--work-dir', type=Path, required=True, help="A directory to use as scratch space")
-    parser.add_argument('-o', '--output', type=Path, required=True, help="Where to write the results to")
+    parser.add_argument('-c', '--template-compound', type=Path, default=None, help="The compound to use as a template for unchanging parameters when scanning")
+    parser.add_argument('-g', '--template-gap', type=Path, default=None, help="The gap to use as a template for unchanging parameters when scanning")
+    parser.add_argument('-w', '--work-dir', type=Path, default=Path('scan') / 'work', help="A directory to use as scratch space")
+    parser.add_argument('-o', '--output', type=Path, default='output.csv', help="Where to write the results to")
     parser.add_argument(      '--output-format', type=str, choices=('json', 'csv'), default=None, help="Which output format to use. Defaults to guessing from the filename")
     parser.add_argument(      '--input-format', type=str, choices=('csv', 'json'), default=None, help="The format of the input file. Defaults to guessing from the filename. CSV Files start every line with a parameter name and continue it with its possible values ")
-    parser.add_argument('-i', '--input-file', type=Path, help="The input file for the scanning parameters")
-
+    parser.add_argument('-i', '--input-file', type=Path, required=True, help="The input file for the scanning parameters")
+    parser.add_argument('-s', '--sample-size', type=int, default=1000, help="If given an json input, how many random samples to take")
     parser.add_argument(      '--crop', nargs='*', type=FOCUSCrop.from_acronym, default=list(FOCUSCrop), help="The crops to simulate. Can be specified multiple times. Should be listed as a two letter acronym. The selected crops have to be present in the FOCUS zip, the bundled zip includes all crops. Defaults to all crops.")
     parser.add_argument(      '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
-    parser.add_argument(      '--bbch', nargs='*', default=None, help="The bbch values to scan")
-    parser.add_argument(      '--rate', nargs='*', default=None, help="The application rate values to scan")
-    parser.add_argument(      '--dt50', nargs='*', default=None, help="The dt50 values to scan")
-    parser.add_argument(      '--koc', nargs='*', default=None, help="The koc values to scan")
-    parser.add_argument(      '--freundlich', nargs='*', default=None, help="The freundlich values to scan")
-    parser.add_argument(      '--plant_uptake', nargs='*', default=None, help="The plant uptake values to scan")
+    
     
     run_subparsers = parser.add_subparsers(dest="run", help="Where to run Pelmo. The script will only generate files but not run anything if this is not specified")
     local_parser = run_subparsers.add_parser("local", help="Run Pelmo locally")
     local_parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1, help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
     bhpc_parser = run_subparsers.add_parser("bhpc", help="Run Pelmo on the bhpc")
-    bhpc_parser.add_argument('--count', type=int, default=1, help="How many machines to use on the bhpc")
-    bhpc_parser.add_argument('--cores', type=int, choices=(2,4,8,16,96), default=2, help="How many cores per machine to use. One core per machine is always overhead, so larger machines are more efficient")
     bhpc_parser.add_argument('--notification-email', type=str, default=None, help="The email address which will be notified if the bhpc run finishes")
     bhpc_parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")
-    bhpc_parser.add_argument('--batchsize', type=int, default=100, help="How many psm files to batch together into one bhpc job") 
 
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
-    logger = logging.getLogger()
+    if args.input_format == None:
+        args.input_format = args.input_file.suffix[1:]
 
+    assert args.input_format != 'csv' or (args.template_compound and args.template_gap), "CSV input requires gap and compound templates" 
+    logger = logging.getLogger()
     jsonLogger.configure_logger_from_argparse(logger, args)
     return args
 

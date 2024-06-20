@@ -26,7 +26,7 @@ def main():
     run_local(work_dir=args.work_dir, compound_files=args.compound_file, gap_files=args.gap_file, output_file=args.output_file, output_format=args.output_format,
               crops=args.crop, scenarios=args.scenario, threads=args.threads)
 
-def run_local(work_dir: Path, compound_files: Path, gap_files: Path, output_file: Path, output_format: str = 'json',
+def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None, combination_dir: Path = None,  output_format: str = 'json',
               crops: Sequence[FOCUSCrop]=FOCUSCrop, scenarios: Sequence[Scenario]=Scenario, threads: int = cpu_count() - 1):
     logger = logging.getLogger()
     with suppress(FileNotFoundError): rmtree(work_dir)
@@ -36,7 +36,7 @@ def run_local(work_dir: Path, compound_files: Path, gap_files: Path, output_file
     focus_dir.mkdir(exist_ok=True, parents=True)
 
     logger.info('Starting to generate psm files')
-    generate_psm_files(output_dir=psm_dir, compound_file=compound_files, gap_file=gap_files)
+    generate_psm_files(output_dir=psm_dir, compound_file=compound_files, gap_file=gap_files, combination_dir=combination_dir)
 
     logger.info('Starting to run Pelmo')
     results = run_psms(psm_files=psm_dir.glob('*.psm'), working_dir=focus_dir,crops=crops, scenarios=scenarios, max_workers=threads)

@@ -6,7 +6,7 @@ import math
 from typing import Dict, Generator, List, Tuple
 
 from util.conversions import map_to_class, str_to_enum
-from ioTypes.compound import Compound, Degradation, Sorption
+from ioTypes.compound import Compound, Degradation, Sorption, Volatility
 from ioTypes.gap import GAP, Application, FOCUSCrop
 
 PELMO_UNSET = -99
@@ -142,10 +142,7 @@ class PsmCompound:
     molar_mass: float
     adsorptions: Tuple[PsmAdsorption]
     degradations: List[DegradationData]
-    volatizations: Tuple[Volatization] = field(default_factory=lambda: tuple(
-        [Volatization(henry=3.33E-04, solubility=90, vaporization_pressure=1.00E-04), 
-         Volatization(henry=6.67E-10, solubility=180, vaporization_pressure=4.00E-04)]
-         ))
+    volatizations: Tuple[Volatization]
     plant_uptake: float = 0.5
     degradation_type: DegradationType = DegradationType.FACTORS
     name: str = "Unknown name"
@@ -170,12 +167,12 @@ class PsmCompound:
             missing_metabolites = 4 - len(degradations)
         degradations += [DegradationData(rate=0.0)] * missing_metabolites
         degradations += [DegradationData(rate=full_rate*remaining_degradation_fraction)]
-        volatizations = tuple([Volatization(henry=3.33E-04, solubility=compound.waterSolubility, vaporization_pressure=1e-4),
-                              Volatization(henry=6.67E-10, solubility=compound.waterSolubility * 2, vaporization_pressure=4.00E-04, temperature=30)])
+        volatizations = tuple([Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility, vaporization_pressure=compound.volatility.vaporization_pressure, temperature=compound.volatility.reference_temperature - 1),
+                              Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility, vaporization_pressure=compound.volatility.vaporization_pressure, temperature=compound.volatility.reference_temperature + 1)])
         return PsmCompound(molar_mass=compound.molarMass, 
                     adsorptions=tuple([PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)]),
                     plant_uptake=compound.plant_uptake,degradations=degradations, name=compound.name, volatizations=volatizations)
-PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(koc = 0, freundlich=1)]),degradations=[])
+PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(koc = 0, freundlich=1)]),degradations=[],volatizations=tuple())
 
 @dataclass
 class PsmFile:
@@ -206,7 +203,7 @@ class PsmFile:
 
         psmCompound = PsmCompound.from_compound(compound)
         
-        sentinel = Compound(0,0,Sorption(0,0),Degradation(0,0,0,0))
+        sentinel = Compound(0,Volatility(0,0,0),Sorption(0,0),Degradation(0,0,0,0))
 
         a1 = next((c for c in list(compound.metabolites.values()) if c.name.lower() == "a1"), sentinel)
         b1 = next((c for c in list(compound.metabolites.values()) + list(a1.metabolites.values()) if c.name.lower() == "b1"), sentinel)

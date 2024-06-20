@@ -1,24 +1,11 @@
 {
-    "metabolites": { 
-      "0.5" :{
-      "name": "A1",
-      "metabolites": null,
-      "molarMass": 100,
-      "waterSolubility": 6000.0,
-      "sorption": {
-          "koc": 20,
-          "freundlich": 0.9
-      },
-      "plant_uptake": 0.5,
-      "degradation": {
-        "system": 6,
-        "soil": -1,
-        "surfaceWater": 6,
-        "sediment": 6
-      }
-  }},
+    "metabolites": null,
     "molarMass": 300,
-    "waterSolubility": 90.0,
+    "volatility": {
+      "water_solubility": 90.0,
+      "vaporization_pressure": 1e-4,
+      "reference_temperature": 20
+    },
     "sorption": {
         "koc": 60,
         "freundlich": 0.9

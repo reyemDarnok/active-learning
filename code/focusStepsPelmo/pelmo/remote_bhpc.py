@@ -40,7 +40,7 @@ def split_into_batches(sequence: Sequence[T], batchsize=1) -> Generator[Sequence
 
 def split_into_n_batches(sequence: Sequence[T], batchnumber=1) -> Generator[Sequence[T], None, None]:
     length = len(sequence)
-    batchsize = length / batchnumber
+    batchsize = length // batchnumber
     if length % batchnumber != 0:
         batchsize += 1
     yield from split_into_batches(sequence, batchsize)
@@ -51,52 +51,42 @@ def main():
     logger.debug(args)
     run_bhpc(work_dir=args.work_dir, compound_file=args.compound_file,gap_file=args.gap_file, submit=args.submit, output=args.output, output_format=args.output_format,
              crops=args.crops, scenarios=args.scenarios, 
-             batchsize=args.batchsize, cores=args.cores, machines=args.count,
              notificationemail=args.notification_email, session_timeout=args.session_timeout, run=args.run)
 
-def run_bhpc(work_dir: Path, compound_file: Path, gap_file: Path, submit: Path, output: Path, output_format: str = 'json',
+def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None, combination_dir: Path = None, output_format: str = 'json',
              crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
-             batchnumber: Optional[int] = None, cores: Optional[int] = None, machines: Optional[int] = None,
              notificationemail: Optional[str] = None, session_timeout: int = 6, run: bool = True):
     logger = logging.getLogger()
-
-    if not batchnumber and not cores and not machines:
-        single_pelmo_instance = 10 # seconds
-        crop_scenario_combinations = 0
-        crops = list(crops)
-        scenarios = list(scenarios)
-        for crop in crops:
-            crop_scenario_combinations += len(set(crop.defined_scenarios).intersection(scenarios))
-        single_pelmo = single_pelmo_instance * crop_scenario_combinations # in seconds
-        target_duration = 120 * 60 # two hours
-        desired_core_count = target_duration / single_pelmo
-        machines = 0
-        while desired_core_count > 95:
-            desired_core_count /= 2
-            machines += 1
-        if desired_core_count >= 48:
-            cores = 96
-        elif desired_core_count >= 15:
-            cores = 16
-        elif desired_core_count >= 7:
-            cores = 8
-        elif desired_core_count >= 3:
-            cores = 4
-        else:
-            cores = 2
-        batchnumber = machines
-        logger.info(f'Determined to run with {cores} cores on {machines} machines')
         
-    if not batchnumber:
-        batchnumber = 1000
-    if not cores:
-        cores = 2
-    if not machines:
-        machines = 1
-
     logger.info('Starting to genearte psm files')
     psm_dir: Path = work_dir / 'psm'
-    generate_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file)
+    psm_count = generate_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file, combination_dir=combination_dir)
+
+    single_pelmo_instance = 10 # seconds
+    crop_scenario_combinations = 0
+    crops = list(crops)
+    scenarios = list(scenarios)
+    for crop in crops:
+        crop_scenario_combinations += len(set(crop.defined_scenarios).intersection(scenarios))
+    single_pelmo = single_pelmo_instance * crop_scenario_combinations # in seconds
+    target_duration = 120 * 60 # two hours
+    single_core_duration = single_pelmo * psm_count
+    desired_core_count = single_core_duration / target_duration
+    machines = 1
+    if desired_core_count < 3:
+        cores = 2
+    elif desired_core_count < 7:
+        cores = 4
+    elif desired_core_count < 15:
+        cores = 8
+    elif desired_core_count < 47:
+        cores = 16
+    else:
+        cores = 96
+        machines = desired_core_count // 95
+    batchnumber = machines
+    logger.info(f'Determined to run with {cores} cores on {machines} machines')
+
     with suppress(FileNotFoundError): rmtree(submit)
     logger.info('Generating sub files for bhpc')
     psm_files = list(psm_dir.glob('*.psm'))
@@ -232,6 +222,7 @@ def make_batches(psm_files: Iterable[Path], target_dir: Path, batchnumber: int):
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
+    parser.add
     parser.add_argument('-c', '--compound-file', required=True, type=Path, help='The compound to create a psm file for. If this is a directory, create psm files for every compound file in the directory, with .json files assumed to be compound files and no recursion')
     parser.add_argument('-g', '--gap-file', required=True, type=Path, help='The gap to create a psm file for. If this is a directory, create psm files for every gap file in the directory, with .json files assumed to be compound files and no recursion')
     parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path, help='The directory in which files for Pelmo will be created. Defaults to the current directory')
@@ -240,11 +231,8 @@ def parse_args() -> Namespace:
     parser.add_argument(      '--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.from_acronym, help="Which crops to run. Defaults to all crops")
     parser.add_argument(      '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('-r', '--run', action='store_true', default=False, help="Run the created submit files on the bhpc")
-    parser.add_argument('--count', type=int, default=None, help="How many machines to use on the bhpc")
-    parser.add_argument('--cores', type=int, choices=(2,4,8,16,96), default=None, help="How many cores per machine to use. One core per machine is always overhead, so larger machines are more efficient")
     parser.add_argument('--notification-email', type=str, default=None, help="The email address which will be notified if the bhpc run finishes")
     parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")
-    parser.add_argument('--batchsize', type=int, default=None, help="How many psm files to batch together into one bhpc job")
     parser.add_argument('--output-format', type=str.lower, choices=("json", "csv"), default=None, help="The output format. Defaults to guessing from the file name")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
