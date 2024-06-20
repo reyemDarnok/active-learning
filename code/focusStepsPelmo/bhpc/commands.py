@@ -164,8 +164,9 @@ def download(session: str, wait_until_finished: bool = True, retry_interval: flo
             return True
     except KeyboardInterrupt as e:
         if wait_until_finished:
+            logger.warn(f"Download wait interrupted by interactive user")
             answer = input(f"Stopping monitoring session {session}. Should the session also be removed and killed? y/N:")
-            if answer.casefold == "y".casefold():
+            if answer.strip().casefold() == "y".casefold():
                 print("Removing session")
                 logger.warn(f"Removing session {session} on request of interactive user")
                 remove(session, True)
