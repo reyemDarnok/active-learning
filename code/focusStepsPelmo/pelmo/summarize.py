@@ -94,7 +94,7 @@ def rebuild_output(source: Union[Path, List[PelmoResult]], psm_root = Path.cwd()
         elif 'combination' in input_data_locations.keys():
             combination_file = Path(input_data_locations['combination'])
             with combination_file.open() as fp:
-                combination = Combination(**json.loads(fp))
+                combination = Combination(**json.load(fp))
             compound = combination.compound
             gap = combination.gap
         else:

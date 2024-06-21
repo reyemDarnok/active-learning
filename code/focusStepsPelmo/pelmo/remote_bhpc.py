@@ -83,7 +83,7 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
         cores = 16
     else:
         cores = 96
-        machines = desired_core_count // 95
+        machines = max(1, desired_core_count // 95)
     batchnumber = machines
     logger.info(f'Determined to run with {cores} cores on {machines} machines')
 

@@ -42,7 +42,7 @@ def main():
             with args.template_compound.open() as compound_file:
                 template_compound = Compound(**json.load(compound_file))
             rows = csv.reader(input_file)
-            file_span_params = {row[0]: row[1:] for row in rows}
+            file_span_params = {row[0]: [x.strip() for x in row[1:]] for row in rows}
             span_to_dir(template_gap=template_gap, template_compound=template_compound, compound_dir=compound_dir, gap_dir=gap_dir,
                 **file_span_params)
         else:
@@ -223,7 +223,7 @@ def span_compounds(template_compounds: Union[Compound, Iterable[Compound]], dt50
         template_compounds = span_koc(template_compounds, koc)
     if freundlich is not None:
         logger.info('Spanning over freundlich values')
-        template_compounds = span_freundlich(template_compounds, koc)
+        template_compounds = span_freundlich(template_compounds, freundlich)
     if plant_uptake is not None:
         logger.info('Spanning over plant uptake values')
         template_compounds = span_plant_uptake(template_compounds, plant_uptake)

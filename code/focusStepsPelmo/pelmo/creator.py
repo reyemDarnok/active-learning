@@ -35,12 +35,16 @@ def generate_psm_files(output_dir: Path, compound_file: Path = None, gap_file: P
     if compound_file and gap_file:
         if compound_file.is_dir():
             compounds = compound_file.glob('*.json')
-        else:
+        elif compound_file.exists():
             compounds = [compound_file]
+        else:
+            compounds = []
         if gap_file.is_dir():
             gaps = list(gap_file.glob('*.json'))
-        else:
+        elif gap_file.exists():
             gaps = [gap_file]
+        else:
+            gaps = []
         for compound_file in compounds:
             for gap_file in gaps:
                 with compound_file.open() as fp:
@@ -54,8 +58,10 @@ def generate_psm_files(output_dir: Path, compound_file: Path = None, gap_file: P
     if combination_dir:
         if combination_dir.is_dir():
             combinations = combination_dir.glob('*.json')
-        else:
+        elif combination_dir.exists():
             combinations = [combination_dir]
+        else:
+            combinations = []
         for combination_file in combinations:
             with combination_file.open() as fp:
                 combination = Combination(**json.load(fp))

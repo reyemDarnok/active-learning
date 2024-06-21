@@ -45,6 +45,10 @@ class PsmApplication(Application):
     stage: Emergence = None
     offset: int = None
 
+    @property
+    def rate_in_kg(self):
+        return self.rate / 1000
+
     def __post_init__(self):
         super().__post_init__()
         if self.stage == None:
