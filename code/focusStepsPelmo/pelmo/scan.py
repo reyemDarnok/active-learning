@@ -4,6 +4,7 @@ from contextlib import suppress
 import csv
 from argparse import ArgumentParser, Namespace
 from dataclasses import replace
+import itertools
 import json
 import logging
 import math
@@ -12,7 +13,7 @@ import os
 from pathlib import Path
 import random
 from shutil import rmtree
-from typing import Any, Dict, Generator, Iterable, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, List, Optional, Sequence, Set, Tuple, Union
 import sys
 sys.path += [str(Path(__file__).parent.parent)]
 from ioTypes.combination import Combination
@@ -35,7 +36,8 @@ def main():
     scenarios = args.scenario
     with args.input_file.open() as input_file:
         if args.input_format == 'json':
-            create_samples_in_dirs(definition=json.load(input_file), output_dir=combination_dir, sample_size = args.sample_size)
+            create_samples_in_dirs(definition=json.load(input_file), output_dir=combination_dir, 
+                                   sample_size = args.sample_size, make_test_set = args.make_testset, test_set = args.use_testset, test_set_buffer = args.testset_buffer)
         elif args.input_format == 'csv':
             with args.template_gap.open() as gap_file:
                 template_gap = GAP(**json.load(gap_file))
@@ -63,14 +65,108 @@ def main():
                   output_file=args.output, output_format=args.output_format, crops=crops, scenarios=scenarios, threads=args.threads)
 
     
-def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int):
+def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int, 
+                           test_set_size: int = 10000, make_test_set: bool = False, test_set: Path = None, test_set_buffer: float = 0.1):
     with suppress(FileNotFoundError): rmtree(output_dir)
     output_dir.mkdir(parents=True)
     samples = create_samples(definition)
-    for _ in range(sample_size):
+    test_set = set()
+    if make_test_set:
+        test_set = set(itertools.islice(samples, test_set_size))
+    else:
+        test_set = set(load_test_set(test_set))
+    collected_samples = 0
+    while collected_samples < sample_size:
         combination = next(samples)
-        with (output_dir / f"{hash(combination)}.json").open('w') as fp:
-            json.dump(combination, fp, cls=EnhancedJSONEncoder)
+        if not test_set or distance_to_set(combination, test_set, definition) > test_set_buffer:
+            with (output_dir / f"{hash(combination)}.json").open('w') as fp:
+                json.dump(combination, fp, cls=EnhancedJSONEncoder)
+            collected_samples += 1
+
+def load_test_set(location: Path) -> Generator[Combination, None, None]:
+    for combination_path in location.glob('*.json'):
+        with combination_path.open() as combination_file:
+            yield Combination(**json.load(combination_file))
+
+def distance_to_set(element: Combination, testset: Set[Combination], definition: Dict) -> float:
+    logger = logging.getLogger()
+    current_max = 0
+    testlist = [json.dumps(c, cls=EnhancedJSONEncoder) for c in testset]
+    element = json.dumps(element, cls=EnhancedJSONEncoder)
+    for test_combination in testlist:
+        current_max = max(distance_of_elements(element, test_combination, definition), current_max)
+    logger.debug('Found sample with distance %s', current_max)
+    return current_max
+
+def distance_of_elements(a: Dict, b: Dict, definition: Dict) -> float:
+    diff_vector = []
+    add_to_diff_vector(a, b, definition, diff_vector)
+    distance = math.sqrt(sum(x * x for x in diff_vector)) if diff_vector else 0
+    return distance
+    
+def add_to_diff_vector(a: Any, b: Any, definition: Any, diff_vector: List[float]):
+    if isinstance(definition, (dict, UserDict)):
+        if 'type' in definition.keys() and 'parameters' in definition.keys():
+            add_template_to_diff_vector(a, b, diff_vector)
+        else:
+            for key in definition.keys():
+                add_to_diff_vector(a[key], b[key], definition[key], diff_vector)
+    elif isinstance(definition, (list, UserList)):
+        for index in range(len(definition)):
+            add_to_diff_vector(a[index], b[index], definition[index], diff_vector)
+
+def add_template_to_diff_vector(a: Any, b: Any, definition: Dict, diff_vector: List):
+    types = {
+        'choices': add_choices_to_diff_vector,
+        'steps': add_steps_to_diff_vector,
+        'random': add_random_to_diff_vector,
+        'copies': add_copies_to_diff_vector,
+        'dict_copies': add_dict_copies_to_diff_vector,
+    }
+    types[definition['type']](a, b, definition['parameters'], diff_vector)
+
+def add_dict_copies_to_diff_vector(a, b, definition, diff_vector):
+    if len(a.keys()) - len(b.keys()) == 0:
+        diff_vector += [0]
+    else:
+        diff_vector += [abs((definition['maximum'] - definition['minimum']) / ( len(a.keys()) - len(b.keys())))]
+    for a_key, b_key in zip(a.keys(), b.keys()):
+        add_to_diff_vector(a_key, b_key, definition['key'], diff_vector)
+        add_to_diff_vector(a[a_key], b[b_key], definition['value'], diff_vector)
+
+def add_copies_to_diff_vector(a, b, definition, diff_vector):
+    if len(a) - len(b) == 0:
+        diff_vector += [0]
+    else:
+        diff_vector += [abs((definition['maximum'] - definition['minimum']) / ( len(a) - len(b)))]
+    for index in range(min(len(a), len(b))):
+        add_to_diff_vector(a[index], b[index], definition['value'], diff_vector)
+
+def add_choices_to_diff_vector(a, b, definition, diff_vector):
+    if a != b:
+        diff_vector += [1 / len(definition['options'])]
+    else:
+        diff_vector += [0]
+
+def add_steps_to_diff_vector(a, b, definition, diff_vector):
+    if a - b == 0:
+        diff_vector += [0]
+    else:
+        diff_vector += [abs((definition['stop'] - definition['start']) / ( a - b))]
+
+def add_random_to_diff_vector(a, b, definition, diff_vector):
+    if definition['log_random']:
+        lower_bound = math.log(definition['lower_bound'])
+        upper_bound = math.log(definition['upper_bound'])
+        a = math.log(a)
+        b = math.log(b)
+    else:
+        lower_bound = definition['lower_bound']
+        upper_bound = definition['upper_bound']
+    if a - b == 0:
+        diff_vector += [0]
+    else:
+        diff_vector += [abs((upper_bound - lower_bound) / ( a - b))]
 
 def create_samples(definition: Dict) -> Generator[Combination,None, None]:
     while True:
@@ -266,7 +362,12 @@ def parse_args() -> Namespace:
     parser.add_argument('-s', '--sample-size', type=int, default=1000, help="If given an json input, how many random samples to take")
     parser.add_argument(      '--crop', nargs='*', type=FOCUSCrop.from_acronym, default=list(FOCUSCrop), help="The crops to simulate. Can be specified multiple times. Should be listed as a two letter acronym. The selected crops have to be present in the FOCUS zip, the bundled zip includes all crops. Defaults to all crops.")
     parser.add_argument(      '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
-    
+    parser.add_argument('--testset-size', type=int, default=1000, help="How big a testset to generate if --make-testset is set")
+    parser.add_argument('--testset-buffer', type=float, default=0.1, help="How far a point has to be from the test set to be allowed in the sample")
+    test_set_group = parser.add_argument_group('Test Set')
+    test_set = test_set_group.add_mutually_exclusive_group()
+    test_set.add_argument('--make-testset', action="store_true", default=False, help="Generate a Testset of a given size")
+    test_set.add_argument('--use-testset', type=Path, default=None, help="Use a preexisting testset (should be a directory)")
     
     run_subparsers = parser.add_subparsers(dest="run", help="Where to run Pelmo. The script will only generate files but not run anything if this is not specified")
     local_parser = run_subparsers.add_parser("local", help="Run Pelmo locally")
