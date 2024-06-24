@@ -105,19 +105,16 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
                                notificationemail=notificationemail, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         commands.download(session)
-        if output_format == "json":
-            with output.with_suffix(".json").open('w') as fp:
-                result = rebuild_scattered_output(submit, "psm*.d-output.json", psm_root=submit)
-                result = list(result)
-                json.dump(result, fp, cls=EnhancedJSONEncoder)
-        elif output_format == "csv":
-            with output.with_suffix('.csv').open('wb') as output_file:
-                for result in submit.glob("psm*.d-output.csv"):
-                    with result.open('rb') as result_file:
-                        shutil.copyfileobj(result_file, output_file)
-                        result_file.write(b'\n')
-        else:
-            raise ValueError(f"Invalid output format {output_format}")
+        results = rebuild_scattered_output(submit, "psm*.d-output.json", psm_root=submit)
+        with output.with_suffix(f'.{output_format}').open('w') as output_file:
+            if output_format == "json":
+                results = list(results)
+                json.dump(results, output_file, cls=EnhancedJSONEncoder)
+            elif output_format == "csv":
+                for result in conversions.flatten_to_csv(results):
+                    output_file.write(result)
+            else:
+                raise ValueError(f"Invalid output format {output_format}")
         commands.remove(session)
 
 
