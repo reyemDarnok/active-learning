@@ -94,6 +94,6 @@ class Compound:
         for _, row in metabolite_relationships.iterrows():
             parent: Compound = next(filter(lambda c: c.name == row['Parent'], compound_list))
             metabolite: Compound = next(filter(lambda c: c.name == row['Metabolite'], compound_list))
-            print(metabolite)
-            parent.metabolites[row['Formation Fraction']] = metabolite
+            met_des = MetaboliteDescription(formation_fraction=row['Formation Fraction'], metabolite=metabolite)
+            object.__setattr__(parent, 'metabolites', parent.metabolites.union([met_des]))
         return parents
