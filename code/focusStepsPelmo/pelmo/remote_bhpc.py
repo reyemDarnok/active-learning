@@ -57,7 +57,9 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
              crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
              notificationemail: Optional[str] = None, session_timeout: int = 6, run: bool = True):
     logger = logging.getLogger()
-        
+    
+    if output_format is None and output:
+            output_format = output.suffix[1:]
     logger.info('Starting to genearte psm files')
     psm_dir: Path = work_dir / 'psm'
     psm_count = generate_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file, combination_dir=combination_dir)
@@ -103,8 +105,6 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
                                notificationemail=notificationemail, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         commands.download(session)
-        if output_format is None:
-            output_format = output.suffix[1:]
         if output_format == "json":
             with output.with_suffix(".json").open('w') as fp:
                 result = rebuild_scattered_output(submit, "psm*.d-output.json", psm_root=submit)
