@@ -2,7 +2,9 @@ from collections import OrderedDict, UserDict
 import dataclasses
 from json import JSONEncoder
 import logging
+from pathlib import Path
 import re
+import sys
 from typing import Any, Generator, Iterable, List, NamedTuple, TypeVar, Union, Dict, Type
 from enum import Enum
 import enum
@@ -52,6 +54,8 @@ class EnhancedJSONEncoder(JSONEncoder):
                     return o.name
             if hasattr(o, '_asdict'):
                 return o._asdict()
+            if isinstance(o, frozenset):
+                return list(o)
             if dataclasses.is_dataclass(o):
                 return dataclasses.asdict(o)
             if isinstance(o, UserDict):
@@ -91,3 +95,4 @@ def flatten(to_flatten: Union[List, Dict, Any]) -> str:
     else:
         to_flatten = str(to_flatten)
         return re.sub(r'([\\,])', r"\\\1", to_flatten)
+

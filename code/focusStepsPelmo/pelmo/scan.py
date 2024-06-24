@@ -53,9 +53,7 @@ def main():
         crops = file_span_params.pop('crop', FOCUSCrop)
     if not scenarios:
         scenarios = file_span_params.pop('scenario', Scenario)
-
-    
-
+        
     if args.run == 'bhpc':
         run_bhpc(work_dir=args.work_dir / 'remote', compound_file=compound_dir, gap_file=gap_dir, combination_dir=combination_dir,
                  submit=args.work_dir / 'submit', output=args.output, output_format=args.output_format, crops=crops, scenarios=scenarios,

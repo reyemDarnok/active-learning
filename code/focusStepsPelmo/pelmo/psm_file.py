@@ -159,9 +159,9 @@ class PsmCompound:
             full_rate = 0
         remaining_degradation_fraction = 1.0
         degradations = []
-        for formation_fraction, _ in compound.metabolites.items():
-            remaining_degradation_fraction -= formation_fraction
-            degradations += [DegradationData(rate=full_rate*formation_fraction)]
+        for met_des in compound.metabolites:
+            remaining_degradation_fraction -= met_des.formation_fraction
+            degradations += [DegradationData(rate=full_rate*met_des.formation_fraction)]
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
         if compound.name.lower() in ('a1', 'b1', 'c1', 'd1'):
             missing_metabolites = 3 - len(degradations)
@@ -209,14 +209,14 @@ class PsmFile:
         
         sentinel = Compound(0,Volatility(0,0,0),Sorption(0,0),Degradation(0,0,0,0))
 
-        a1 = next((c for c in list(compound.metabolites.values()) if c.name.lower() == "a1"), sentinel)
-        b1 = next((c for c in list(compound.metabolites.values()) + list(a1.metabolites.values()) if c.name.lower() == "b1"), sentinel)
-        c1 = next((c for c in list(compound.metabolites.values()) + list(b1.metabolites.values()) if c.name.lower() == "c1"), sentinel)
-        d1 = next((c for c in list(compound.metabolites.values()) + list(c1.metabolites.values()) if c.name.lower() == "d1"), sentinel)
-        a2 = next((c for c in list(a1.metabolites.values()) if c.name.lower() == "a2"), sentinel)
-        b2 = next((c for c in list(a1.metabolites.values()) + list(b1.metabolites.values()) + list(a2.metabolites.values()) if c.name.lower() == "b2"), sentinel)
-        c2 = next((c for c in list(b1.metabolites.values()) + list(c1.metabolites.values()) + list(b2.metabolites.values()) if c.name.lower() == "c2"), sentinel)
-        d2 = next((c for c in list(c1.metabolites.values()) + list(d1.metabolites.values()) + list(c2.metabolites.values()) if c.name.lower() == "d2"), sentinel)
+        a1 = next((c for c in compound.metabolites if c.name.lower() == "a1"), sentinel)
+        b1 = next((c for c in compound.metabolites.union(a1.metabolites) if c.name.lower() == "b1"), sentinel)
+        c1 = next((c for c in compound.metabolites.union(b1.metabolites) if c.name.lower() == "c1"), sentinel)
+        d1 = next((c for c in compound.metabolites.union(c1.metabolites) if c.name.lower() == "d1"), sentinel)
+        a2 = next((c for c in a1.metabolites if c.name.lower() == "a2"), sentinel)
+        b2 = next((c for c in a1.metabolites.union(b1.metabolites, a2.metabolites) if c.name.lower() == "b2"), sentinel)
+        c2 = next((c for c in b1.metabolites.union(c1.metabolites, b2.metabolites) if c.name.lower() == "c2"), sentinel)
+        d2 = next((c for c in c1.metabolites.union(d1.metabolites, c2.metabolites) if c.name.lower() == "d2"), sentinel)
         metabolites = [a1, b1, c2, d2, a2, b2, c2, d2]
         metabolites = [PsmCompound.from_compound(x) for x in metabolites if x != sentinel]
         return PsmFile(application=application,
