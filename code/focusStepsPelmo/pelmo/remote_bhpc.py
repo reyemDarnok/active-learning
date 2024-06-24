@@ -62,7 +62,7 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
     psm_dir: Path = work_dir / 'psm'
     psm_count = generate_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file, combination_dir=combination_dir)
 
-    single_pelmo_instance = 10 # seconds
+    single_pelmo_instance = 5 # seconds
     crop_scenario_combinations = 0
     crops = list(crops)
     scenarios = list(scenarios)
@@ -94,7 +94,7 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
     logger.debug(psm_files)
     make_sub_file(psm_files=psm_files, target_dir=submit, 
                   crops=crops, scenarios=scenarios, 
-                  batchnumber=batchnumber)
+                  batchnumber=batchnumber, output_format=output_format)
 
     if run:
         logger.info('Starting Pelmo run')
@@ -103,18 +103,21 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
                                notificationemail=notificationemail, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         commands.download(session)
-        result = rebuild_scattered_output(submit, "psm*.d-output.json", psm_root=submit)
         if output_format is None:
             output_format = output.suffix[1:]
-        with output.with_suffix(f".{output_format}").open('w') as fp:
-            if output_format == "json":
+        if output_format == "json":
+            with output.with_suffix(".json").open('w') as fp:
+                result = rebuild_scattered_output(submit, "psm*.d-output.json", psm_root=submit)
                 result = list(result)
                 json.dump(result, fp, cls=EnhancedJSONEncoder)
-            elif output_format == "csv":
-                for row in conversions.flatten_to_csv(result):
-                    fp.write(row)
-            else:
-                raise ValueError(f"Invalid output format {output_format}")
+        elif output_format == "csv":
+            with output.with_suffix('.csv').open('wb') as output_file:
+                for result in submit.glob("psm*.d-output.csv"):
+                    with result.open('rb') as result_file:
+                        shutil.copyfileobj(result_file, output_file)
+                        result_file.write(b'\n')
+        else:
+            raise ValueError(f"Invalid output format {output_format}")
         commands.remove(session)
 
 
@@ -171,7 +174,7 @@ def zip_directory(directory: Path, zip_name:str, mode: str='a'):
 
 def make_sub_file(psm_files: Iterable[Path], target_dir: Path, 
                   crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
-                  batchnumber: int = 1):
+                  batchnumber: int = 1, output_format: str = 'csv'):
     '''Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_files: The files to run in Pelmo. WARNING: Will be moved to target_dir
     :param target_dir: The directory to write the sub file to
@@ -193,7 +196,8 @@ def make_sub_file(psm_files: Iterable[Path], target_dir: Path,
     subfile.write_text(sub_template.render(
         batches=batchdirs,
         crops= crops,
-        scenarios=scenarios
+        scenarios=scenarios,
+        output_format=output_format
     ))
     logger.info('Finished creating files')
 
