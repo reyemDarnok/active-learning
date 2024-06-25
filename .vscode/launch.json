@@ -1,0 +1,32 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Single Scan",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "code/focusStepsPelmo/pelmo/scan.py",
+            "console": "integratedTerminal",
+            "args": "-c examples/compound.json -g examples/gap.json -w test/minisample --crop AP --scenario C -o test/minisamp.csv -i micro-scan.json -s 1 --loglevel DEBUG local"
+        },
+        {
+            "name": "Microscan",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "code/focusStepsPelmo/pelmo/scan.py",
+            "console": "integratedTerminal",
+            "args": "-c examples/compound.json -g examples/gap.json -w test/minisample -o test/minisamp.csv -i micro-scan.json -s 5 --loglevel DEBUG local"
+        },
+        {
+            "name": "Python Debugger: Current File with Arguments",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": "${command:pickArgs}"
+        }
+    ]
+}

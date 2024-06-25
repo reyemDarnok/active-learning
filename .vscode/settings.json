@@ -1,0 +1,5 @@
+{
+    "python.venvPath": "venv",
+    "python.analysis.inlayHints.functionReturnTypes": false,
+    "python.analysis.inlayHints.pytestParameters": false
+}

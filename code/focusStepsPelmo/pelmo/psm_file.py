@@ -3,7 +3,7 @@
 from dataclasses import asdict, dataclass, field, replace
 from enum import Enum, auto
 import math
-from typing import Dict, Generator, List, Tuple
+from typing import Dict, Generator, List, Optional, Tuple
 
 from util.conversions import map_to_class, str_to_enum
 from ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption, Volatility
@@ -41,9 +41,13 @@ class PsmApplication(Application):
     ffield: float = 0
     frpex: float = 0
     time: float = 0
+    offset: int = 0
 
-    stage: Emergence = None
-    offset: int = None
+    @property
+    def stage(self) -> Emergence:
+        return Emergence.fromStage(self.timing.principal_stage)
+
+    offset: Optional[int] = None
 
     @property
     def rate_in_kg(self):
@@ -51,12 +55,11 @@ class PsmApplication(Application):
 
     def __post_init__(self):
         super().__post_init__()
-        if self.stage == None:
-            object.__setattr__(self, 'stage', Emergence.fromStage(self.timing.principal_stage))
         if self.offset == None:
             if self.timing.bbch_state > 90: object.__setattr__(self, 'offset', self.timing.bbch_state - 90)
             elif self.timing.bbch_state > 80: object.__setattr__(self, 'offset', self.timing.bbch_state - 80)
             else: object.__setattr__(self, 'offset', self.timing.bbch_state)
+
         
 
 
@@ -159,9 +162,10 @@ class PsmCompound:
             full_rate = 0
         remaining_degradation_fraction = 1.0
         degradations = []
-        for met_des in compound.metabolites:
-            remaining_degradation_fraction -= met_des.formation_fraction
-            degradations += [DegradationData(rate=full_rate*met_des.formation_fraction)]
+        if compound.metabolites:
+            for met_des in compound.metabolites:
+                remaining_degradation_fraction -= met_des.formation_fraction
+                degradations += [DegradationData(rate=full_rate*met_des.formation_fraction)]
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
         if compound.name.lower() in ('a1', 'b1', 'c1', 'd1'):
             missing_metabolites = 3 - len(degradations)
@@ -204,6 +208,14 @@ class PsmFile:
         """Convert ioTypes input data to the pelmo specific PsmFile"""
         application = PsmApplication(**asdict(gap.application))
     
+        a1 = None
+        b1 = None
+        c1 = None
+        d1 = None
+        a2 = None
+        b2 = None
+        c2 = None
+        d2 = None
         if 'pelmo' in compound.model_specific_data.keys():
             all_metabolites = [met for met in compound.metabolites] + \
                             [met for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
@@ -220,7 +232,7 @@ class PsmFile:
             b2 = compound_positions('b2', None)
             c2 = compound_positions('c2', None)
             d2 = compound_positions('d2', None)
-        else:
+        elif compound.metabolites:
             a1 = compound.metabolites[0] if 0 < len(compound.metabolites) else None
             b1 = compound.metabolites[1] if 1 < len(compound.metabolites) else None
             c1 = compound.metabolites[2] if 2 < len(compound.metabolites) else None

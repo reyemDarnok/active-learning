@@ -7,7 +7,7 @@ from pathlib import Path
 import sys
 import typing
 sys.path += [str(Path(__file__).parent.parent)]
-from util.datastructures import HashableRSDict
+from util.datastructures import HashableRSDict, TypeCorrecting
 from util.conversions import map_to_class, str_to_enum
 
 
@@ -159,7 +159,7 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
         raise AssertionError("No fitting interception was defined or bbch was not comparable to float")
 
 @dataclass(frozen=True)
-class Timing:
+class Timing(TypeCorrecting):
     '''During which bbch stadium will the application happen'''
     bbch_state: int
     '''Relative to which development state'''
@@ -172,12 +172,9 @@ class Timing:
         >>> Timing(-5).principal_stage == PrincipalStage.Unplanted
         True"""
         return PrincipalStage(max(-1, min(9, math.floor(self.bbch_state / 10))))
-    
-    def __post_init__(self):
-        object.__setattr__(self, 'bbch_state', int(self.bbch_state))
 
 @dataclass(frozen=True)
-class Application:
+class Application(TypeCorrecting):
     '''Application information'''
     rate: float
     '''How much compound will be applied in g/ha'''
@@ -188,16 +185,9 @@ class Application:
     interval: int = 1
     '''What is the minimum interval between applications'''
     factor: float = 1
-    
-    def __post_init__(self):
-        object.__setattr__(self, 'timing', map_to_class(self.timing, Timing))
-        object.__setattr__(self, 'rate', float(self.rate))
-        object.__setattr__(self, 'number', int(self.number))
-        object.__setattr__(self, 'interval', int(self.interval))
-        object.__setattr__(self, 'factor', float(self.factor))
 
 @dataclass(frozen=True)
-class GAP:
+class GAP(TypeCorrecting):
     '''Defines a GAP'''
     modelCrop: FOCUSCrop
     '''The crop that the field is modelled after'''
@@ -213,23 +203,4 @@ class GAP:
         '{"modelCrop": "AP", "application": {"rate": 1.0, "timing": {"bbch_state": 50}, "number": 1, "interval": 1, "factor": 1.0}}'
         """
         return {"modelCrop": self.modelCrop.name, "application": asdict(self.application)}
-    
-    def __post_init__(self):
-        object.__setattr__(self, 'modelCrop', str_to_enum(self.modelCrop, FOCUSCrop))
-        object.__setattr__(self, 'application', map_to_class(self.application, Application))
-
-    @property
-    def seasons(self):
-        """The seasons for which the gap is defined"""
-        return list(self.cropCover.keys())
-    
-    @property
-    def interception(self):
-        """A dictionary mapping seasons to the crop interception in that season"""
-        return {season: self.modelCrop.interception[self.cropCover[season]] for season in self.seasons}
-    
-    @property
-    def driftFactor(self):
-        """How much drift there is"""
-        return self.modelCrop.driftValues[self.application.number - 1]
 

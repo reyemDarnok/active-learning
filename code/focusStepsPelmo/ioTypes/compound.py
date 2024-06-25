@@ -4,11 +4,11 @@ from pathlib import Path
 import pandas
 import sys
 sys.path += [str(Path(__file__).parent.parent)]
-from util.datastructures import HashableDict
+from util.datastructures import HashableDict, TypeCorrecting
 from util.conversions import map_to_class
 
 @dataclass(frozen=True)
-class Degradation:
+class Degradation(TypeCorrecting):
     '''General Degradation information'''
     system: float
     '''Total System DT50'''
@@ -19,40 +19,26 @@ class Degradation:
     sediment: float
     '''DT50 in sediment'''
 
-    def __post_init__(self):
-        object.__setattr__(self, 'system', float(self.system))
-        object.__setattr__(self, 'soil', float(self.soil))
-        object.__setattr__(self, 'surfaceWater', float(self.surfaceWater))
-        object.__setattr__(self, 'sediment', float(self.sediment))
-
-
 @dataclass(frozen=True)
-class Sorption:
+class Sorption(TypeCorrecting):
     '''Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values'''
     koc: float
     freundlich: float
 
-    def __post_init__(self):
-        object.__setattr__(self, 'koc', float(self.koc))
-        object.__setattr__(self, 'freundlich', float(self.freundlich))
-
 @dataclass(frozen=True)
-class Volatility:
+class Volatility(TypeCorrecting):
     water_solubility: float
     vaporization_pressure: float
     reference_temperature: float
 
 
 @dataclass(frozen=True)
-class MetaboliteDescription:
+class MetaboliteDescription(TypeCorrecting):
     formation_fraction: float
     metabolite: 'Compound'
 
-    def __post_init__(self):
-        object.__setattr__(self, 'metabolite', map_to_class(self.metabolite, Compound))
-
 @dataclass(frozen=True)
-class Compound:
+class Compound(TypeCorrecting):
     '''A Compound definition'''
     molarMass: float
     '''molar mass in g/mol'''
@@ -65,20 +51,8 @@ class Compound:
     '''Fraction of plant uptake'''
     name: str = "Unknown Name"
     model_specific_data: Dict = field(hash=False, default_factory=HashableDict)
-    metabolites: Tuple[MetaboliteDescription] = field(default_factory=tuple)
+    metabolites: Optional[Tuple[MetaboliteDescription]] = field(default_factory=tuple)
     '''The compounds metabolites'''
-
-    def __post_init__(self):
-        object.__setattr__(self, 'molarMass', float(self.molarMass))
-        object.__setattr__(self, 'plant_uptake', float(self.plant_uptake))
-        object.__setattr__(self, 'volatility', map_to_class(self.volatility, Volatility))
-        object.__setattr__(self, 'sorption', map_to_class(self.sorption, Sorption))
-        object.__setattr__(self, 'degradation', map_to_class(self.degradation, Degradation))
-        if self.metabolites:
-            object.__setattr__(self, 'metabolites', tuple([map_to_class(met_des, MetaboliteDescription) if met_des else MetaboliteDescription(0, Compound.sentinel) for met_des in self.metabolites]))
-        else:
-            object.__setattr__(self, 'metabolites', tuple())
-
 
 
     def excel_to_compounds(excel_file: Path) -> List['Compound']:
