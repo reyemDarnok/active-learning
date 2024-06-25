@@ -208,15 +208,45 @@ class PsmFile:
         psmCompound = PsmCompound.from_compound(compound)
         
         sentinel = Compound(0,Volatility(0,0,0),Sorption(0,0),Degradation(0,0,0,0))
+        if 'pelmo' in compound.model_specific_data.keys():
+            all_compounds = [compound] + [met.metabolite for met in compound.metabolites] + \
+                            [met.metabolite for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
+            def compound_position(c: Compound) -> str:
+                return c.model_specific_data.get('pelmo', {}).get('position', 'Unknown Position').casefold()
+            compound_positions = {}
+            for c in all_compounds:
+                compound_positions[compound_position(c)] = c
+            a1 = compound_positions['a1']
+            b1 = compound_positions['b1']
+            c1 = compound_positions['c1']
+            d1 = compound_positions['d1']
+            a2 = compound_positions['a2']
+            b2 = compound_positions['b2']
+            c2 = compound_positions['c2']
+            d2 = compound_positions['d2']
+        else:
+            a1 = compound.metabolites[0] if 0 < len(compound.metabolites) else sentinel
+            b1 = compound.metabolites[1] if 1 < len(compound.metabolites) else sentinel
+            c1 = compound.metabolites[2] if 2 < len(compound.metabolites) else sentinel
+            d1 = compound.metabolites[3] if 3 < len(compound.metabolites) else sentinel
+            a2 = a1.metabolites[0] if a1.metabolites else sentinel
+            b2 = b1.metabolites[0] if b1.metabolites else sentinel
+            c2 = c1.metabolites[0] if c1.metabolites else sentinel
+            d2 = d1.metabolites[0] if d1.metabolites else sentinel
 
-        a1 = next((c for c in compound.metabolites if c.name.lower() == "a1"), sentinel)
-        b1 = next((c for c in compound.metabolites.union(a1.metabolites) if c.name.lower() == "b1"), sentinel)
-        c1 = next((c for c in compound.metabolites.union(b1.metabolites) if c.name.lower() == "c1"), sentinel)
-        d1 = next((c for c in compound.metabolites.union(c1.metabolites) if c.name.lower() == "d1"), sentinel)
-        a2 = next((c for c in a1.metabolites if c.name.lower() == "a2"), sentinel)
-        b2 = next((c for c in a1.metabolites.union(b1.metabolites, a2.metabolites) if c.name.lower() == "b2"), sentinel)
-        c2 = next((c for c in b1.metabolites.union(c1.metabolites, b2.metabolites) if c.name.lower() == "c2"), sentinel)
-        d2 = next((c for c in c1.metabolites.union(d1.metabolites, c2.metabolites) if c.name.lower() == "d2"), sentinel)
+        def maybe_from_compound(compound: Compound) -> PsmCompound:
+            return PsmCompound.from_compound(compound) if compound != sentinel else None
+        a1 = maybe_from_compound(a1)
+        b1 = maybe_from_compound(b1)
+        c1 = maybe_from_compound(c1)
+        d1 = maybe_from_compound(d1)
+        a2 = maybe_from_compound(a2)
+        b2 = maybe_from_compound(b2)
+        c2 = maybe_from_compound(c2)
+        d2 = maybe_from_compound(d2)
+
+
+
         metabolites = [a1, b1, c2, d2, a2, b2, c2, d2]
         metabolites = [PsmCompound.from_compound(x) for x in metabolites if x != sentinel]
         return PsmFile(application=application,

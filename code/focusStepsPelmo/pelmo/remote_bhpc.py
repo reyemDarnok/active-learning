@@ -64,7 +64,7 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
     psm_dir: Path = work_dir / 'psm'
     psm_count = generate_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file, combination_dir=combination_dir)
 
-    single_pelmo_instance = 5 # seconds
+    single_pelmo_instance = 15 # seconds
     crop_scenario_combinations = 0
     crops = list(crops)
     scenarios = list(scenarios)

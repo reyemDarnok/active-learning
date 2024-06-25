@@ -61,6 +61,7 @@ class Compound:
     plant_uptake: float = 0
     '''Fraction of plant uptake'''
     name: str = "Unknown Name"
+    model_specific_data: Dict = field(hash=False, default_factory=HashableDict)
     metabolites: Set[MetaboliteDescription] = field(default_factory=frozenset)
     '''The compounds metabolites'''
 
@@ -80,8 +81,8 @@ class Compound:
     def excel_to_compounds(excel_file: Path) -> List['Compound']:
         compounds = pandas.read_excel(io=excel_file, sheet_name = "Compound Properties")
         metabolite_relationships = pandas.read_excel(io=excel_file, sheet_name="Metabolite Relationships")
-        compound_list = [Compound(name=row['Name'], molarMass=row['Molar Mass'], 
-                                volatility=Volatility(water_solubility=row['Water Solubility'], 
+        compound_list = [Compound(  name=row['Name'], molarMass=row['Molar Mass'], 
+                                    volatility=Volatility(water_solubility=row['Water Solubility'], 
                                                         vaporization_pressure=row['Vaporization Pressure'], 
                                                         reference_temperature=row['Temperature']),
                                     sorption=Sorption(koc=row['Koc'], freundlich=row['Freundlich']),
@@ -89,7 +90,8 @@ class Compound:
                                     degradation=Degradation(system=row['DT50 System'],
                                                             soil=row['DT50 Soil'],
                                                             sediment=row['DT50 Sediment'],
-                                                            surfaceWater=row['DT50 Surface Water'])) for _, row in compounds.iterrows()]
+                                                            surfaceWater=row['DT50 Surface Water']),
+                                    model_specific_data={'pelmo': {'position': row['Pelmo Position']}}) for _, row in compounds.iterrows()]
         parents = [compound for compound in compound_list if compound.name not in metabolite_relationships['Metabolite'].values]
         for _, row in metabolite_relationships.iterrows():
             parent: Compound = next(filter(lambda c: c.name == row['Parent'], compound_list))
