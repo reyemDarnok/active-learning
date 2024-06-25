@@ -28,6 +28,7 @@ def pushd(new_dir):
         os.chdir(previous_dir)
 
 def request_auth_data():
+    """Prompts the user for the credentials for the BHPC and adds them to the environment if supplied"""
     logger = logging.getLogger()
     logger.debug("Asking user for credentials")
     print("To authorize against the BHPC, please copy the CLI Credentials from http://go/bhpc-prod")
@@ -48,7 +49,8 @@ def request_auth_data():
     logger.info("Set credentials from user input")
 
 def setup_env_from_copy_paste(webpage_copy_paste: str):
-    """aws access key id, aws secret access key and aws session token change """
+    """Takes the credentials for the BHPC from the webpage and adds them to the environment
+    :param webpage_copy_paste: The string that is placed into the clipboard by the webpage"""
     logger = logging.getLogger()
     logger.debug({"authdata": webpage_copy_paste})
     vardefs = webpage_copy_paste.splitlines()[:-2]
@@ -67,7 +69,8 @@ def setup_env(key_id: str, key: str, session_token: str,
               proxy: str = "http://MVHNG:jA54QWMy@10.185.190.10:8080",
               no_proxy: str = ".bayer.biz",
               default_region: str = "eu-central-1",
-              ca_bundle: str = "ca-certificates.crt"): 
+              ca_bundle: str = "ca-certificates.crt"):
+    """Set the environment variables for the BHPC""" 
     os.environ["AWS_ACCESS_KEY_ID"] = key_id
     os.environ["AWS_SECRET_ACCESS_KEY"] = key
     os.environ["AWS_SESSION_TOKEN"] = session_token
@@ -101,10 +104,16 @@ def start_submit_file(submit_folder: Path,
         logger.info('Using sessionID %s', session)
         upload(submit_folder, submit_file_regex, session)
         logging.info('Running run command')
-        run(machines, cores, multithreading, notificationemail, session_timeout, session)
+        run(session, machines, cores, multithreading, notificationemail, session_timeout)
         return session
 
-def run(machines, cores, multithreading, notificationemail, session_timeout, session):
+def run(session: str, machines: int = 1, cores: int = 2, multithreading: bool = False, notificationemail: Optional[str] = None, session_timeout: int = 6):
+    """Execute the run command on the BHPC
+    :param machines: How many ec2 instances should the BHPC use
+    :param cores: How many cores should each ec2 instance have (valid values are: 2,4,8,16,96)
+    :param notificationemail: Which email inbox should be notified upon completion of the BHPC Job
+    :param session_timout: When should the session time out
+    :param session: The session id to run"""
     assert cores in (2,4,8,16,96), f"Invalid core number {cores}. Only 2,4,8,16 or 96 are permitted"
     logger = logging.getLogger()
     command_args = [str(bhpc_exe.absolute()), 'run', 
@@ -122,12 +131,16 @@ def run(machines, cores, multithreading, notificationemail, session_timeout, ses
     logger.debug(run_process.stdout)
     if is_auth_message(run_process.stdout):
         request_auth_data()
-        run(machines, cores, multithreading, notificationemail, session_timeout, session)
+        run(session, machines, cores, multithreading, notificationemail, session_timeout)
     if run_process.stdout.startswith('Session ') and run_process.stdout.endswith(' is not initialized.'):
         raise ValueError(f"Session {session} was not initialized. Start upload command for that session first")
 
 
 def upload(submit_folder, submit_file_regex, session):
+    """Run the upload command for the BHPC
+    :param submit_folder: The parent directory for all the submit files to upload
+    :param submit_file_regex: The pattern that submit files need to match to be uploaded
+    :param session: The session name to use when uploading. Has to be unique on the BHPC for current jobs"""
     logger = logging.getLogger()
     logger.info('Running upload command')
     upload_process = subprocess.run([
@@ -248,5 +261,8 @@ def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
         yield Status(initial, started, done, path)
 
 def is_auth_message(response: str) -> bool:
+    """Returns True if response is the BHPC error message for missing authorization
+    :param response: The response from the BHPC executable
+    :return: True if response is the error response, False for all other values"""
     auth_message = "--> Authorization environment variables not set. Check if you have file with certificates in the same folder as the executable. You will be redirected to http://go/bhpc-prod. Please get variables and .crt File to use the bhpc cli <--\n"
     return auth_message == response
