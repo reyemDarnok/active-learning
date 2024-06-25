@@ -6,6 +6,8 @@ from typing import Dict, List, OrderedDict, Tuple, Union, NamedTuple
 from pathlib import Path
 import sys
 import typing
+
+import pandas
 sys.path += [str(Path(__file__).parent.parent)]
 from util.datastructures import HashableRSDict, TypeCorrecting
 from util.conversions import map_to_class, str_to_enum
@@ -204,3 +206,16 @@ class GAP(TypeCorrecting):
         """
         return {"modelCrop": self.modelCrop.name, "application": asdict(self.application)}
 
+    def excel_to_gaps(excel_file: Path) -> List['GAP']:
+        gaps = pandas.read_excel(io=excel_file, sheet = "GAP Properties")
+        return [GAP(
+            modelCrop=row['Model Crop'],
+            application=Application(
+                rate=row['Rate'],
+                number=row['Number'],
+                interval=row['Interval'],
+                timing=Timing(
+                    bbch_state=row['BBCH']
+                )
+            )
+        ) for row in gaps.iterrows()]
