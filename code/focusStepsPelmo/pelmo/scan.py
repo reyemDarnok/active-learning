@@ -37,7 +37,7 @@ def main():
     with args.input_file.open() as input_file:
         if args.input_format == 'json':
             create_samples_in_dirs(definition=json.load(input_file), output_dir=combination_dir, 
-                                   sample_size = args.sample_size, make_test_set = args.make_testset, test_set = args.use_testset, test_set_buffer = args.testset_buffer)
+                                   sample_size = args.sample_size, make_test_set = args.make_testset, test_set_path = args.use_testset, test_set_buffer = args.testset_buffer)
         elif args.input_format == 'csv':
             with args.template_gap.open() as gap_file:
                 template_gap = GAP(**json.load(gap_file))
@@ -53,7 +53,7 @@ def main():
         crops = file_span_params.pop('crop', FOCUSCrop)
     if not scenarios:
         scenarios = file_span_params.pop('scenario', Scenario)
-        
+
     if args.run == 'bhpc':
         run_bhpc(work_dir=args.work_dir / 'remote', compound_file=compound_dir, gap_file=gap_dir, combination_dir=combination_dir,
                  submit=args.work_dir / 'submit', output=args.output, output_format=args.output_format, crops=crops, scenarios=scenarios,
@@ -64,15 +64,15 @@ def main():
 
     
 def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int, 
-                           test_set_size: int = 10000, make_test_set: bool = False, test_set: Path = None, test_set_buffer: float = 0.1):
+                           test_set_size: int = 10000, make_test_set: bool = False, test_set_path: Path = None, test_set_buffer: float = 0.1):
     with suppress(FileNotFoundError): rmtree(output_dir)
     output_dir.mkdir(parents=True)
     samples = create_samples(definition)
     test_set = set()
     if make_test_set:
         test_set = set(itertools.islice(samples, test_set_size))
-    else:
-        test_set = set(load_test_set(test_set))
+    elif test_set_path:
+        test_set = set(load_test_set(test_set_path))
     collected_samples = 0
     while collected_samples < sample_size:
         combination = next(samples)
@@ -168,7 +168,8 @@ def add_random_to_diff_vector(a, b, definition, diff_vector):
 
 def create_samples(definition: Dict) -> Generator[Combination,None, None]:
     while True:
-        yield Combination(**create_dict_sample(definition))
+        d = create_dict_sample(definition)
+        yield Combination(**d)
 
 def create_any_sample(definition: Any) -> Any:
     if isinstance(definition, (dict, UserDict)):
@@ -196,7 +197,7 @@ def evaluate_template(definition: Dict) -> Any:
     }
     return types[definition['type']](**definition['parameters'])
 
-def random_template(lower_bound: float, upper_bound: float, log_random: bool) -> float:
+def random_template(lower_bound: float, upper_bound: float, log_random: bool = False) -> float:
     if log_random:
         lower_bound = math.log(lower_bound)
         upper_bound = math.log(upper_bound)

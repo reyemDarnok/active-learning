@@ -48,6 +48,9 @@ class MetaboliteDescription:
     formation_fraction: float
     metabolite: 'Compound'
 
+    def __post_init__(self):
+        object.__setattr__(self, 'metabolite', map_to_class(self.metabolite, Compound))
+
 @dataclass(frozen=True)
 class Compound:
     '''A Compound definition'''
@@ -62,7 +65,7 @@ class Compound:
     '''Fraction of plant uptake'''
     name: str = "Unknown Name"
     model_specific_data: Dict = field(hash=False, default_factory=HashableDict)
-    metabolites: Set[MetaboliteDescription] = field(default_factory=frozenset)
+    metabolites: Tuple[MetaboliteDescription] = field(default_factory=tuple)
     '''The compounds metabolites'''
 
     def __post_init__(self):
@@ -72,9 +75,9 @@ class Compound:
         object.__setattr__(self, 'sorption', map_to_class(self.sorption, Sorption))
         object.__setattr__(self, 'degradation', map_to_class(self.degradation, Degradation))
         if self.metabolites:
-            object.__setattr__(self, 'metabolites', frozenset([map_to_class(met_des, MetaboliteDescription) for met_des in self.metabolites]))
+            object.__setattr__(self, 'metabolites', tuple([map_to_class(met_des, MetaboliteDescription) if met_des else MetaboliteDescription(0, Compound.sentinel) for met_des in self.metabolites]))
         else:
-            object.__setattr__(self, 'metabolites', frozenset())
+            object.__setattr__(self, 'metabolites', tuple())
 
 
 
@@ -99,3 +102,4 @@ class Compound:
             met_des = MetaboliteDescription(formation_fraction=row['Formation Fraction'], metabolite=metabolite)
             object.__setattr__(parent, 'metabolites', parent.metabolites.union([met_des]))
         return parents
+Compound.sentinel = Compound(0, Volatility(0,0,0), Sorption(0,0), Degradation(0,0,0,0))

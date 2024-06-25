@@ -2,7 +2,7 @@
 
 from collections import UserDict, UserList
 import csv
-from dataclasses import asdict
+from dataclasses import asdict, is_dataclass
 import functools
 import json
 import logging
@@ -48,7 +48,7 @@ def flatten_to_tuples(o: Any, prefix: List[str] = []) -> Generator[Tuple[str, st
         yield from flatten_dict_to_tuples(o, prefix)
     elif isinstance(o, (list, UserList)):
         yield from flatten_list_to_tuples(o, prefix)
-    elif isinstance(o, Compound):
+    elif is_dataclass(o):
         for key, value in flatten_to_tuples(asdict(o), prefix):
             yield key, value
     else:

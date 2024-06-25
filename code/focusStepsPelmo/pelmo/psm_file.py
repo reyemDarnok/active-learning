@@ -1,12 +1,12 @@
 
 
-from dataclasses import asdict, dataclass, field
+from dataclasses import asdict, dataclass, field, replace
 from enum import Enum, auto
 import math
 from typing import Dict, Generator, List, Tuple
 
 from util.conversions import map_to_class, str_to_enum
-from ioTypes.compound import Compound, Degradation, Sorption, Volatility
+from ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption, Volatility
 from ioTypes.gap import GAP, Application, FOCUSCrop
 
 PELMO_UNSET = -99
@@ -204,38 +204,52 @@ class PsmFile:
         """Convert ioTypes input data to the pelmo specific PsmFile"""
         application = PsmApplication(**asdict(gap.application))
     
-
-        psmCompound = PsmCompound.from_compound(compound)
-        
-        sentinel = Compound(0,Volatility(0,0,0),Sorption(0,0),Degradation(0,0,0,0))
         if 'pelmo' in compound.model_specific_data.keys():
-            all_compounds = [compound] + [met.metabolite for met in compound.metabolites] + \
-                            [met.metabolite for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
+            all_metabolites = [met for met in compound.metabolites] + \
+                            [met for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
             def compound_position(c: Compound) -> str:
                 return c.model_specific_data.get('pelmo', {}).get('position', 'Unknown Position').casefold()
-            compound_positions = {}
-            for c in all_compounds:
-                compound_positions[compound_position(c)] = c
-            a1 = compound_positions['a1']
-            b1 = compound_positions['b1']
-            c1 = compound_positions['c1']
-            d1 = compound_positions['d1']
-            a2 = compound_positions['a2']
-            b2 = compound_positions['b2']
-            c2 = compound_positions['c2']
-            d2 = compound_positions['d2']
+            compound_positions: Dict[str, MetaboliteDescription] = {}
+            for c in all_metabolites:
+                compound_positions[compound_position(c.metabolite)] = c
+            a1 = compound_positions('a1', None)
+            b1 = compound_positions('b1', None)
+            c1 = compound_positions('c1', None)
+            d1 = compound_positions('d1', None)
+            a2 = compound_positions('a2', None)
+            b2 = compound_positions('b2', None)
+            c2 = compound_positions('c2', None)
+            d2 = compound_positions('d2', None)
         else:
-            a1 = compound.metabolites[0] if 0 < len(compound.metabolites) else sentinel
-            b1 = compound.metabolites[1] if 1 < len(compound.metabolites) else sentinel
-            c1 = compound.metabolites[2] if 2 < len(compound.metabolites) else sentinel
-            d1 = compound.metabolites[3] if 3 < len(compound.metabolites) else sentinel
-            a2 = a1.metabolites[0] if a1.metabolites else sentinel
-            b2 = b1.metabolites[0] if b1.metabolites else sentinel
-            c2 = c1.metabolites[0] if c1.metabolites else sentinel
-            d2 = d1.metabolites[0] if d1.metabolites else sentinel
+            a1 = compound.metabolites[0] if 0 < len(compound.metabolites) else None
+            b1 = compound.metabolites[1] if 1 < len(compound.metabolites) else None
+            c1 = compound.metabolites[2] if 2 < len(compound.metabolites) else None
+            d1 = compound.metabolites[3] if 3 < len(compound.metabolites) else None
+            a2 = a1.metabolite.metabolites[0] if a1 and a1.metabolite.metabolites else None
+            b2 = b1.metabolite.metabolites[0] if b1 and b1.metabolite.metabolites else None
+            c2 = c1.metabolite.metabolites[0] if c1 and c1.metabolite.metabolites else None
+            d2 = d1.metabolite.metabolites[0] if d1 and d1.metabolite.metabolites else None
 
-        def maybe_from_compound(compound: Compound) -> PsmCompound:
-            return PsmCompound.from_compound(compound) if compound != sentinel else None
+        if d2:
+            d2 = replace(d2, metabolite = replace(d2.metabolite, metabolites=[None], name='D2'))
+        if c2:
+            c2 = replace(c2, metabolite = replace(c2.metabolite, metabolites=[d2], name='C2'))
+        if b2:
+            b2 = replace(b2, metabolite = replace(b2.metabolite, metabolites=[c2], name='B2'))
+        if a2:
+            a2 = replace(a2, metabolite = replace(a2.metabolite, metabolites=[b2], name='A2'))
+        if d1:
+            d1 = replace(d1, metabolite = replace(d1.metabolite, metabolites=[None, d2, None], name='D1'))
+        if c1:
+            c1 = replace(c1, metabolite = replace(c1.metabolite, metabolites=[d1, c2, d2], name='C1'))
+        if b1:
+            b1 = replace(b1, metabolite = replace(b1.metabolite, metabolites=[c1, b2, c2], name='B1'))
+        if a1:
+            a1 = replace(a1, metabolite = replace(a1.metabolite, metabolites=[b1, a2, b2], name='A1'))
+        compound = replace(compound, metabolites=[a1, b1, c1, d1])
+        def maybe_from_compound(met_des: MetaboliteDescription) -> PsmCompound:
+            return PsmCompound.from_compound(met_des.metabolite) if met_des else None
+        psmCompound = PsmCompound.from_compound(compound)
         a1 = maybe_from_compound(a1)
         b1 = maybe_from_compound(b1)
         c1 = maybe_from_compound(c1)
@@ -245,10 +259,8 @@ class PsmFile:
         c2 = maybe_from_compound(c2)
         d2 = maybe_from_compound(d2)
 
-
-
         metabolites = [a1, b1, c2, d2, a2, b2, c2, d2]
-        metabolites = [PsmCompound.from_compound(x) for x in metabolites if x != sentinel]
+        metabolites = list(filter(None, metabolites))
         return PsmFile(application=application,
                        compound=psmCompound,
                        metabolites=metabolites,
@@ -276,7 +288,7 @@ class PsmFile:
     def __post_init__(self):
         self.application = map_to_class(self.application, PsmApplication)
         self.compound = map_to_class(self.compound, PsmCompound)
-        self.metabolites = [map_to_class(metabolite, PsmCompound) for metabolite in self.metabolites]
+        self.metabolites = [map_to_class(metabolite, PsmCompound) if metabolite else PsmCompound.empty for metabolite in self.metabolites]
         self.crop = str_to_enum(self.crop, FOCUSCrop)
         self.num_soil_horizons = int(self.num_soil_horizons)
         self.degradation_type = str_to_enum(self.degradation_type, DegradationType)
