@@ -71,7 +71,7 @@ def rebuild_scattered_output(parent: Path, glob_pattern: str = "output.json", ps
         for output in rebuild_output(file, psm_root):
             yield output
 
-def rebuild_output(source: Union[Path, List[PelmoResult]], psm_root = Path.cwd()) -> Generator[PECResult, None, None]:
+def rebuild_output(source: Union[Path, Iterable[PelmoResult]], psm_root = Path.cwd()) -> Generator[PECResult, None, None]:
     logger = logging.getLogger()
     if isinstance(source, Path):
         with source.open() as fp:

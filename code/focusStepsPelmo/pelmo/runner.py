@@ -4,11 +4,13 @@ import json
 import logging
 from argparse import Namespace, ArgumentParser
 from multiprocessing import cpu_count
+from os import PathLike
 from pathlib import Path
 import sys
+
 sys.path += [str(Path(__file__).parent.parent)]
 import subprocess
-from typing import Generator, Iterable, List
+from typing import Generator, Iterable, List, Tuple, TypeVar, Union
 from zipfile import ZipFile
 from shutil import copytree, rmtree
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -21,6 +23,7 @@ from ioTypes import gap
 from ioTypes.pelmo import ChemPLM, PelmoResult, WaterPLM
 import util.jsonLogger as jsonLogger
 
+from pelmo.summarize import rebuild_output, rebuild_output_to_file
 
 from contextlib import suppress
 
@@ -52,7 +55,27 @@ def main():
     with args.output.open('w') as fp:
         json.dump(list(results), fp, cls=conversions.EnhancedJSONEncoder)
 
-def run_psms(psm_files: Iterable[Path], working_dir: Path, 
+def write_psm_results(output_file: Path, psm_files: Iterable[Path, str], working_dir: Path = Path.cwd() / 'pelmo', 
+                      crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
+                      max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
+    results = run_psms(psm_files=psm_files, working_dir=working_dir,
+                       crops=crops, scenarios=scenarios, max_workers=max_workers)
+    rebuild_output_to_file(file=output_file, source=results, psm_root=working_dir)
+    
+def _make_runs(psm_files: Iterable[Path, str], crops: Iterable[FOCUSCrop], scenarios: Iterable[Scenario]) -> Generator[Tuple[Union[Union[Path, str], FOCUSCrop, Scenario]], None, None]:
+    crops = list(crops)
+    scenarios = list(scenarios)
+    for psm_file in psm_files:
+        for crop in crops:
+            for scenario in scenarios:
+                yield psm_file, crop, scenario
+
+T = TypeVar('T')
+def repeat_infinite(value: T) -> Generator[T, None, None]:
+    while True:
+        yield value
+
+def run_psms(psm_files: Iterable[Path, str], working_dir: Path, 
              crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
              max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
     '''Run all given psm_files using working_dir as scratch space. 
@@ -64,28 +87,13 @@ def run_psms(psm_files: Iterable[Path], working_dir: Path,
     :param max_workers: How many worker threads to use at most
     :return: A Generator of the results of the calculations. Makes new results available as their calculations finish.
                 No particular ordering is guaranteed but the calulations are started in order of psm_file, then crop, then scenario'''
-    logger = logging.getLogger()
     with suppress(FileNotFoundError): rmtree(working_dir)
     extract_zip(working_dir / 'sample', Path(__file__).parent / 'data' / 'FOCUS.zip')
     pool = ThreadPoolExecutor(max_workers=max_workers, initializer=_init_thread, initargs=(working_dir,))
-    futures: List[Future] = []
-    for psm_file in psm_files:
-        logging.info('Registering Jobs for %s', psm_file.name)
-        for crop in crops:
-            logging.debug('Registering Jobs for %s with crop %s', psm_file.name, crop.display_name)
-            for scenario in set(crop.defined_scenarios).intersection(scenarios):
-                logging.debug('Registering Job for %s with crop %s and scenario %s', psm_file.name, crop.display_name, scenario.value)
-                futures.append(pool.submit(single_pelmo_run, psm_file=psm_file, working_dir=working_dir, crop=crop, scenario=scenario))
-    for f in futures:
-        try:
-            result = f.result()
-            yield result
-        except ValueError as e:
-            logger.warn(e)
+    yield from pool.map(single_pelmo_run, _make_runs(psm_files=psm_files, crops=crops, scenarios=scenarios), repeat_infinite(working_dir))
     pool.shutdown()
 
-def single_pelmo_run(psm_file: Path, working_dir: Path, 
-                     crop: FOCUSCrop, scenario: Scenario) -> PelmoResult:
+def single_pelmo_run(run_data: Tuple[Union[Union[Path, str], FOCUSCrop, Scenario]], working_dir: Path) -> PelmoResult:
     '''Runs a single psm/crop/scenario combination.
     Assumes that it is in a multithreading context after _init_thread as run
     :param pelmo_exe: The pelmo exe to use for running the psm file
@@ -95,6 +103,7 @@ def single_pelmo_run(psm_file: Path, working_dir: Path,
     :param scenario: Which scenario to calculate
     :return: The result of the Pelmo run'''
     logger = logging.getLogger()
+    psm_file, crop, scenario = run_data
     inp_file_template = jinja_env.get_template('pelmo.inp.j2')
     dat_file_template = jinja_env.get_template('input.dat')
     scenario_dirs = working_dir / current_thread().name
@@ -109,8 +118,11 @@ def single_pelmo_run(psm_file: Path, working_dir: Path,
     target_inp_file = crop_dir / 'pelmo.inp'
     target_dat_file = crop_dir / 'input.dat'
 
-    logger.info('Creating pelmo input files')
-    target_psm_file.write_text(psm_file.read_text())
+    logger.debug('Creating pelmo input files')
+    if isinstance(psm_file, Path):
+        target_psm_file.write_text(psm_file.read_text())
+    else:
+        target_psm_file.write_text(psm_file)
     target_inp_file.write_text(inp_file_template.render(psm_file = psm_file, crop=crop, scenario=scenario))
     target_dat_file.write_text(dat_file_template.render())
 
