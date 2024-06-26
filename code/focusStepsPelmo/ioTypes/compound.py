@@ -50,7 +50,7 @@ class Compound(TypeCorrecting):
     '''Degradation behaviours'''
     plant_uptake: float = 0
     '''Fraction of plant uptake'''
-    name: str = "Unknown Name"
+    name: str = field(hash=False, default="Unknown Name") # str hash is not stable
     model_specific_data: Dict = field(hash=False, default_factory=HashableDict)
     metabolites: Optional[Tuple[MetaboliteDescription]] = field(default_factory=tuple)
     '''The compounds metabolites'''

@@ -21,7 +21,7 @@ import util.jsonLogger as jsonLogger
 from util import conversions
 from util.conversions import EnhancedJSONEncoder
 from ioTypes.gap import FOCUSCrop, Scenario
-from pelmo.creator import generate_psm_files
+from pelmo.creator import generate_psm_files, write_psm_files
 from pelmo.summarize import rebuild_scattered_output
 
 
@@ -62,7 +62,7 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
             output_format = output.suffix[1:]
     logger.info('Starting to genearte psm files')
     psm_dir: Path = work_dir / 'psm'
-    psm_count = generate_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file, combination_dir=combination_dir)
+    psm_count = write_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file, combination_dir=combination_dir)
     crops = list(crops)
     scenarios = list(scenarios)
     machines, cores, batchnumber = find_core_bhpc_configuration(crops, scenarios, psm_count)

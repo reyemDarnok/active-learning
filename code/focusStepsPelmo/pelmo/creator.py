@@ -22,7 +22,7 @@ jinja_env = Environment(loader=FileSystemLoader([Path(__file__).parent / "templa
 
 def main():
     args = parse_args()
-    generate_psm_files(output_dir=args.output_dir, compound_file=args.compound_file, gap_file=args.gap_file)
+    write_psm_files(output_dir=args.output_dir, compounds=args.compound_file, gaps=args.gap_file, combinations=args.combination_file)
 
 def write_psm_files(output_dir: Path, 
                     compounds: Iterable[Union[Path, Compound]] = None,
@@ -34,6 +34,8 @@ def write_psm_files(output_dir: Path,
         gaps = load_or_use(gaps, GAP)
     if combinations:
         combinations = load_or_use(combinations, Combination)
+    for psm_file in generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations):
+        (output_dir / f"{hash(psm_file)}.psm").write_text(psm_file)
 
 T = TypeVar('T')
 def load_or_use(it: Iterable[Union[Path, T]], t: Type[T]) -> Generator[T, None, None]:
@@ -44,85 +46,31 @@ def load_or_use(it: Iterable[Union[Path, T]], t: Type[T]) -> Generator[T, None, 
             yield from load_class(element, t)
 
 
-def load_class(source: Path, t: Type[T]) -> List[T]:
+def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
     if source.suffix == '.json':
         with source.open() as file:
             json_content = json.load(file)
         if isinstance(json_content, list):
-            return [t(**element) for element in json_content]
+            for element in json_content:
+                yield t(**element)
         else:
-            return [t(**json_content)]
+            yield t(**json_content)
     elif source.suffix == 'xlsx':
-        return t.from_excel(source)
+        yield from t.from_excel(source)
 
-def generate_psm_files(output_dir: Path, compound_file: Path = None, gap_file: Path = None, combination_dir: Path = None) -> int:
-    '''Creates the crossproduct of compound and gap files and saves the resulting psm files in output_dir
-    :param output_dir: Where to save the .psm files. The files will be named {COMPOUND_FILE}-{GAP_FILE}-{MATURATION}-{DAY}.psm
-    :param compound_file: Either a compound file or a directory filled with compound.json files. If a directory all *.json files are assumed to be compound files
-    :param gap_file: Either a gap file or a directory filled with gap.json files. If a directory all *.json files are assumed to be gap files
-    :return: How many files were generated'''
-    assert not (bool(compound_file) ^ bool(gap_file)), "Either both or neither of compound file have to be specified"
-    output_dir.mkdir(exist_ok=True, parents=True)
-    total = 0
-    if combination_dir:
-        if combination_dir.is_dir():
-            combinations = combination_dir.glob('*.json')
-        elif combination_dir.exists():
-            combinations = [combination_dir]
-        else:
-            combinations = []
-        for combination_file in combinations:
-            with combination_file.open() as fp:
-                combination = Combination(**json.load(fp))
-            output_file = output_dir / f"{hash(combination_file)}.psm"
-            comment = json.dumps({"combination": str(combination_file)})
-            total += 1
-            output_file.write_text(_generate_psm_contents(combination.compound, combination.gap, comment))
-    if compound_file and gap_file:
-        if compound_file.is_dir():
-            compounds = compound_file.glob('*.{json,xslx}')
-        elif compound_file.exists():
-            compounds = [compound_file]
-        else:
-            compounds = []
-        if gap_file.is_dir():
-            gaps = list(gap_file.glob('*.{json,xslx}'))
-        elif gap_file.exists():
-            gaps = [gap_file]
-        else:
-            gaps = []
-
-        compounds = [compound for compound_group in compounds for compound in load_compound(compound_group)]
-        gaps = [gap for gap_group in gaps for gap in load_gap(gap_group)]
+def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None, combinations: Iterable[Combination] = None) -> Iterable[str]:
+    assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
+    if combinations:
+        for combination in combinations:
+            comment = json.dumps({"combination": hash(Combination)})
+            yield _generate_psm_contents(compound=combination.compound, gap=combination.gap, comment=comment)
+    if compounds and gaps:
+        compounds = [compound for compound_group in compounds for compound in load_class(compound_group, Compound)]
+        gaps = [gap for gap_group in gaps for gap in load_class(gap_group, GAP)]
         for compound in compounds:
             for gap in gaps:
-                output_file = output_dir / f"{hash(compound)}-{hash(gap)}.psm"
-                comment = json.dumps({"compound": str(compound_file), "gap": str(gap_file)})
-                total += 1
-                output_file.write_text(_generate_psm_contents(compound, gap, comment))
-    return total
-
-def load_gap(gap: Path) -> List[GAP]:
-    if gap.suffix == '.json':
-        with gap.open() as file:
-            json_content = json.load(file)
-        if isinstance(json_content, list):
-            return [GAP(**element) for element in json_content]
-        else:
-            return [GAP(**json_content)]
-    elif gap.suffix == '.xlsx':
-        return GAP.from_excel(gap)
-
-def load_compound(compound: Path) -> List[Compound]:
-    if compound.suffix == '.json':
-        with compound.open() as file:
-            json_content = json.load(file)
-        if isinstance(json_content, list):
-            return [Compound(**element) for element in json_content]
-        else:
-            return [Compound(**json_content)]
-    elif compound.suffix == '.xlsx':
-        return Compound.from_excel(compound) 
+                comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
+                yield _generate_psm_contents(compound, gap, comment)
 
 def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
     '''For a given compound and gap file, generate the matching psm files 
@@ -137,8 +85,9 @@ def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
-    parser.add_argument('-c', '--compound-file', required=True, type=Path, help='The compound to create a psm file for. If this is a directory, create psm files for every compound file in the directory, with .json files assumed to be compound files and no recursion')
-    parser.add_argument('-g', '--gap-file', required=True, type=Path, help='The gap to create a psm file for. If this is a directory, create psm files for every gap file in the directory, with .json files assumed to be compound files and no recursion')
+    parser.add_argument('-c', '--compound-file', default=None, type=Path, help='The compound to create a psm file for. If this is a directory, create psm files for every compound file in the directory, with .json files assumed to be compound files and no recursion')
+    parser.add_argument(      '--combination_file', default=None, type=Path, help='A file of combinations of gap and compounds. If this is a directory, read all files in that directory')
+    parser.add_argument('-g', '--gap-file', default=None, type=Path, help='The gap to create a psm file for. If this is a directory, create psm files for every gap file in the directory, with .json files assumed to be compound files and no recursion')
     parser.add_argument('-o', '--output-dir', default=Path('output'), type=Path, help='The directory for output files. The files will be named {COMPOUND_FILE}-{GAP_FILE}-{MATURATION}-{DAY}.psm. Defaults to a folder named output')
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()

@@ -36,10 +36,10 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
     focus_dir.mkdir(exist_ok=True, parents=True)
 
     logger.info('Starting to generate psm files')
-    generate_psm_files(output_dir=psm_dir, compound_file=compound_files, gap_file=gap_files, combination_dir=combination_dir)
+    psm_files = generate_psm_files(compound_file=compound_files, gap_file=gap_files, combination_dir=combination_dir)
 
     logger.info('Starting to run Pelmo')
-    results = run_psms(psm_files=psm_dir.glob('*.psm'), working_dir=focus_dir,crops=crops, scenarios=scenarios, max_workers=threads)
+    results = run_psms(psm_files=psm_files, working_dir=focus_dir,crops=crops, scenarios=scenarios, max_workers=threads)
     
     logger.info('Dumping results of Pelmo runs to %s', output_file)
     rebuild_output_to_file(output_file, results)

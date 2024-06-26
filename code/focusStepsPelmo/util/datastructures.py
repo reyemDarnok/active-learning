@@ -34,6 +34,7 @@ class TypeCorrecting:
         for m_name, m_type in sys.modules.items():
             if module_name == m_name:
                 class_globals = vars(m_type)
+                break
         type_hint_list = [typing.get_type_hints(cls, class_globals) for cls in self.__class__.mro()]
         type_hint_list.reverse()
         type_hints = {key: value for d in type_hint_list for key, value in d.items()}

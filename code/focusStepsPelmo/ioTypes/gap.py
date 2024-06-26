@@ -196,6 +196,9 @@ class GAP(TypeCorrecting):
     application: Application
     '''The values of the actual application'''
 
+    def __hash__(self) -> int: # make GAP hash stable
+        return hash((self.application, tuple(ord(c) for c in self.modelCrop.name)))
+
     def _asdict(self):
         """Fixes issues with serialization but relies on a custom JSON Encoder
         >>> import json
