@@ -23,10 +23,10 @@ def main():
     logger = logging.getLogger()
 
     logger.debug(args)
-    run_local(work_dir=args.work_dir, compound_files=args.compound_file, gap_files=args.gap_file, output_file=args.output_file, output_format=args.output_format,
+    run_local(work_dir=args.work_dir, compound_files=args.compound_file, gap_files=args.gap_file, output_file=args.output_file,
               crops=args.crop, scenarios=args.scenario, threads=args.threads)
 
-def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None, combination_dir: Path = None,  output_format: str = 'json',
+def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None, combination_dir: Path = None, 
               crops: Sequence[FOCUSCrop]=FOCUSCrop, scenarios: Sequence[Scenario]=Scenario, threads: int = cpu_count() - 1):
     logger = logging.getLogger()
     with suppress(FileNotFoundError): rmtree(work_dir)
@@ -42,7 +42,7 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
     results = run_psms(psm_files=psm_dir.glob('*.psm'), working_dir=focus_dir,crops=crops, scenarios=scenarios, max_workers=threads)
     
     logger.info('Dumping results of Pelmo runs to %s', output_file)
-    rebuild_output_to_file(output_file, results, output_format)
+    rebuild_output_to_file(output_file, results)
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
@@ -53,7 +53,6 @@ def parse_args() -> Namespace:
     parser.add_argument(      '--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.from_acronym, help="Which crops to run. Defaults to all crops")
     parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1, help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
     parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
-    parser.add_argument('--output-format', type=str.lower, choices=("json", "csv"), default=None, help="The output format. Defaults to guessing from the filename")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()

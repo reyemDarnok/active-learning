@@ -206,8 +206,8 @@ class GAP(TypeCorrecting):
         """
         return {"modelCrop": self.modelCrop.name, "application": asdict(self.application)}
 
-    def excel_to_gaps(excel_file: Path) -> List['GAP']:
-        gaps = pandas.read_excel(io=excel_file, sheet = "GAP Properties")
+    def from_excel(excel_file: Path) -> List['GAP']:
+        gaps = pandas.read_excel(io=excel_file, sheet_name = "GAP Properties")
         return [GAP(
             modelCrop=row['Model Crop'],
             application=Application(
@@ -218,4 +218,4 @@ class GAP(TypeCorrecting):
                     bbch_state=row['BBCH']
                 )
             )
-        ) for row in gaps.iterrows()]
+        ) for _, row in gaps.iterrows()]

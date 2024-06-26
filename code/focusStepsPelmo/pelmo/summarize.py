@@ -18,15 +18,14 @@ from pelmo.runner import PelmoResult
 from ioTypes.compound import Compound
 from ioTypes.gap import GAP
 
-def rebuild_scatterd_to_file(file: Path, parent: Path, output_format: Optional[str] = None, glob_pattern: str = "output.json", psm_root = Path.cwd()):
-    write_results_to_file(rebuild_scattered_output(parent, glob_pattern, psm_root), file, output_format)
+def rebuild_scatterd_to_file(file: Path, parent: Path, glob_pattern: str = "output.json", psm_root = Path.cwd()):
+    write_results_to_file(rebuild_scattered_output(parent, glob_pattern, psm_root), file)
 
-def rebuild_output_to_file(file: Path, source: Union[Path, List[PelmoResult]], output_format: Optional[str], psm_root = Path.cwd()):
-    write_results_to_file(rebuild_output(source, psm_root), file, output_format)
+def rebuild_output_to_file(file: Path, source: Union[Path, List[PelmoResult]], psm_root = Path.cwd()):
+    write_results_to_file(rebuild_output(source, psm_root), file)
 
-def write_results_to_file(results: Iterable[PECResult], file: Path, format: Optional[str] = None):
-    if format == None:
-        format = file.suffix[1:]
+def write_results_to_file(results: Iterable[PECResult], file: Path):
+    format = file.suffix[1:]
     if format == 'json':
         with file.with_suffix('.json').open('w') as fp:
             results = list(results)

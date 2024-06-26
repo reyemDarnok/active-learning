@@ -63,31 +63,9 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
     logger.info('Starting to genearte psm files')
     psm_dir: Path = work_dir / 'psm'
     psm_count = generate_psm_files(output_dir=psm_dir, compound_file=compound_file, gap_file=gap_file, combination_dir=combination_dir)
-
-    single_pelmo_instance = 15 # seconds
-    crop_scenario_combinations = 0
     crops = list(crops)
     scenarios = list(scenarios)
-    for crop in crops:
-        crop_scenario_combinations += len(set(crop.defined_scenarios).intersection(scenarios))
-    single_pelmo = single_pelmo_instance * crop_scenario_combinations # in seconds
-    target_duration = 120 * 60 # two hours
-    single_core_duration = single_pelmo * psm_count
-    desired_core_count = single_core_duration / target_duration
-    machines = 1
-    if desired_core_count < 3:
-        cores = 2
-    elif desired_core_count < 7:
-        cores = 4
-    elif desired_core_count < 15:
-        cores = 8
-    elif desired_core_count < 47:
-        cores = 16
-    else:
-        cores = 96
-        machines = max(1, desired_core_count // 95)
-    batchnumber = machines
-    logger.info(f'Determined to run with {cores} cores on {machines} machines')
+    machines, cores, batchnumber = find_core_bhpc_configuration(crops, scenarios, psm_count)
 
     with suppress(FileNotFoundError): rmtree(submit)
     logger.info('Generating sub files for bhpc')
@@ -116,6 +94,34 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
             else:
                 raise ValueError(f"Invalid output format {output_format}")
         commands.remove(session)
+
+def find_core_bhpc_configuration(crops, scenarios, psm_count):
+    logger = logging.getLogger()
+    single_pelmo_instance = 15 # seconds
+    crop_scenario_combinations = 0
+    crops = list(crops)
+    scenarios = list(scenarios)
+    for crop in crops:
+        crop_scenario_combinations += len(set(crop.defined_scenarios).intersection(scenarios))
+    single_pelmo = single_pelmo_instance * crop_scenario_combinations # in seconds
+    target_duration = 120 * 60 # two hours
+    single_core_duration = single_pelmo * psm_count
+    desired_core_count = single_core_duration / target_duration
+    machines = 1
+    if desired_core_count < 3:
+        cores = 2
+    elif desired_core_count < 7:
+        cores = 4
+    elif desired_core_count < 15:
+        cores = 8
+    elif desired_core_count < 47:
+        cores = 16
+    else:
+        cores = 96
+        machines = max(1, desired_core_count // 95)
+    batchnumber = machines
+    logger.info(f'Determined to run with {cores} cores on {machines} machines')
+    return machines,cores,batchnumber
 
 
 def zip_common_directories(target: Path):

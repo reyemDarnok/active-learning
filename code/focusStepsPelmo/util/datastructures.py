@@ -4,7 +4,7 @@ from collections import OrderedDict, UserDict
 from dataclasses import is_dataclass
 from enum import Enum
 import sys
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
 import typing
 
 
@@ -45,29 +45,56 @@ T = TypeVar('T')
 def correct_type(input_value: Any, t: Type[T]) -> T:
     if type(input_value) == t:
         return input_value
-    if hasattr(t, '_name'):
-        if t._name == 'Union' and type(None) in t.__args__:
+    if hasattr(t, '__origin__'): # Typing with Type Vars
+        origin = t.__origin__
+        if origin == Union and type(None) in t.__args__:
             if input_value:
                 return correct_type(input_value, t.__args__[0])
             else:
                 t = t.__args__[0]
-                if hasattr(t, '_name'):
-                    if t._name == 'Tuple':
-                        return tuple()
-                    elif t._name == 'List':
-                        return list()
-                    elif t._name == 'Dict':
-                        return dict()
-                    else:
-                        raise NotImplementedError('Type Correction for Optional %s' % t._name)
-                else:
-                    return None
-        if t._name == 'Tuple':
-            return tuple([correct_type(x, t.__args__[0]) for x in input_value])
-        elif t._name == 'List':
-            return [correct_type(x, t.__args__[0]) for x in input_value]
-        elif t._name == 'Dict':
-            return dict({correct_type(key, t.__args__[0]): correct_type(value, t.__args__[1]) for key, value in input_value.items()})
+                return correct_type(None, t)
+        elif origin == Tuple:
+            if not input_value:
+                return tuple()
+            type_args = t.__args__
+            if not isinstance(type_args[0], TypeVar):
+                return tuple([correct_type(x, type_args[0]) for x in input_value])
+            else:
+                return tuple(input_value)
+        elif origin == tuple:
+            if input_value:
+                return tuple(input_value)
+            else:
+                return tuple()
+        elif origin == List:
+            if not input_value:
+                return list(input_value)
+            type_args = t.__args__
+            if not isinstance(type_args[0], TypeVar):
+                return [correct_type(x, t.__args__[0]) for x in input_value]
+            else:
+                return list(input_value)
+        elif origin == list:
+            if input_value:
+                return list(input_value)
+            else:
+                return list()
+        elif origin == Dict:
+            if not input_value:
+                return {}
+            type_args = t.__args__
+            keys = input_value.keys()
+            if not isinstance(type_args[0], TypeVar):
+                keys = (correct_type(key, type_args[0]) for key in keys)
+            if not isinstance(type_args[1], TypeVar):
+                return {key: correct_type(input_value[key], type_args[1]) for key in keys}
+            else:
+                return {key: input_value[key] for key in keys}
+        elif origin == dict:
+            if origin:
+                return dict(input_value)
+            else:
+                return dict()
         elif t._name == None:
             return None
         else:
@@ -79,6 +106,8 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
             return t(input_value)
         else:
             return t[input_value]
+    if input_value is None:
+        return None
     return t(input_value)
 
 
