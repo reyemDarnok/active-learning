@@ -86,7 +86,7 @@ def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
     :param compound_file: The compound file to use when generating psm file
     :return: The contents of the psm file'''
 
-    psm_file = PsmFile.fromInput(compound=compound, gap=gap)
+    psm_file = PsmFile.from_input(compound=compound, gap=gap)
     psm_template = jinja_env.get_template('general.psm.j2')
     psm_file.comment = comment
     # noinspection PyProtectedMember

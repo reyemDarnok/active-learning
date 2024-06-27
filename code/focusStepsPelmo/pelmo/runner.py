@@ -190,8 +190,8 @@ def parse_pelmo_result(run_dir: Path, target_compartment=21) -> List[float]:
         pecs.sort()
         percentile = 0.8
         lower = int((len(pecs) - 1) * percentile)
-        PECgw = (pecs[lower] + pecs[lower + 1]) / 2
-        results.append(PECgw)
+        pec_groundwater = (pecs[lower] + pecs[lower + 1]) / 2
+        results.append(pec_groundwater)
 
     return results
 

@@ -20,7 +20,7 @@ class Emergence(int, Enum):
     second_harvest = 5
 
     @staticmethod
-    def fromStage(stage: int) -> 'Emergence':
+    def from_stage(stage: int) -> 'Emergence':
         if stage >= 9:
             return Emergence.first_harvest
         if stage >= 8:
@@ -49,7 +49,7 @@ class PsmApplication(Application):
 
     @property
     def stage(self) -> Emergence:
-        return Emergence.fromStage(self.timing.principal_stage)
+        return Emergence.from_stage(self.timing.principal_stage)
 
     offset: Optional[int] = None
 
@@ -218,7 +218,7 @@ class PsmFile:
         }
 
     @staticmethod
-    def fromInput(compound: Compound, gap: GAP) -> 'PsmFile':
+    def from_input(compound: Compound, gap: GAP) -> 'PsmFile':
         application = PsmApplication(**asdict(gap.application))
 
         metabolites: Dict[str, Compound] = {}
@@ -265,13 +265,13 @@ class PsmFile:
         c1_formation = find_formation(compound, 'C1')
         d1_formation = find_formation(compound, 'D1')
         compound = replace(compound, metabolites=[a1_formation, b1_formation, c1_formation, d1_formation])
-        psmCompound = PsmCompound.from_compound(compound)
+        psm_compound = PsmCompound.from_compound(compound)
         metabolite_list: List[PsmCompound] = []
         for position in ('A1', 'B1', 'C1', 'D1', 'A2', 'B2', 'C2', 'D2'):
             if position in metabolites.keys():
                 metabolite_list.append(PsmCompound.from_compound(metabolites[position]))
         return PsmFile(application=application,
-                       compound=psmCompound,
+                       compound=psm_compound,
                        metabolites=metabolite_list,
                        crop=gap.modelCrop,
                        comment="No comment",
@@ -279,7 +279,7 @@ class PsmFile:
                        degradation_type=DegradationType.FACTORS,
                        )
 
-    def toInput(self) -> Tuple[Compound, GAP]:
+    def to_input(self) -> Tuple[Compound, GAP]:
         """Convert this psmFile to ioTypes input data.
         WARNING: This is lossy, as psmFiles do not use all data from the input files"""
         compound = Compound(molarMass=self.molar_mass,
