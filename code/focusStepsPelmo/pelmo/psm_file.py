@@ -45,13 +45,11 @@ class PsmApplication(Application):
     ffield: float = 0
     frpex: float = 0
     time: float = 0
-    offset: int = 0
+    offset: Optional[int] = 0
 
     @property
     def stage(self) -> Emergence:
         return Emergence.from_stage(self.timing.principal_stage)
-
-    offset: Optional[int] = None
 
     @property
     def rate_in_kg(self):
@@ -226,11 +224,11 @@ class PsmFile:
             all_metabolites = [met for met in compound.metabolites] + \
                               [met for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
 
-            def compound_position(c: Compound) -> str:
-                return c.model_specific_data.get('pelmo', {}).get('position', 'Unknown Position').upper()
+            def compound_position(to_find: Compound) -> str:
+                return to_find.model_specific_data.get('pelmo', {}).get('position', 'Unknown Position').upper()
 
-            for c in all_metabolites:
-                metabolites[compound_position(c.metabolite)] = c.metabolite
+            for current in all_metabolites:
+                metabolites[compound_position(current.metabolite)] = current.metabolite
         else:
             for index, metabolite in enumerate(compound.metabolites):
                 metabolites[chr(ord('A') + index) + "1"] = metabolite.metabolite
@@ -292,7 +290,7 @@ class PsmFile:
                             plant_uptake=self.plant_uptake
                             )
         gap = GAP(modelCrop=self.crop, application=self.application)
-        return (compound, gap)
+        return compound, gap
 
     def __post_init__(self):
         self.application = map_to_class(self.application, PsmApplication)

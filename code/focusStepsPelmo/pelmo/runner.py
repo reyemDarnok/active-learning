@@ -200,8 +200,8 @@ def extract_zip(working_dir: Path, focus_zip: Path):
     logger = logging.getLogger()
 
     logger.info(f'Extracting {focus_zip.name} to {working_dir.name}')
-    with ZipFile(focus_zip) as zip:
-        zip.extractall(path=working_dir)
+    with ZipFile(focus_zip) as zip_file:
+        zip_file.extractall(path=working_dir)
     logger.info('Finished extracting zip')
 
 

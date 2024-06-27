@@ -26,12 +26,12 @@ def rebuild_output_to_file(file: Path, results: Union[Path, Iterable[PelmoResult
 
 
 def write_results_to_file(results: Iterable[PECResult], file: Path):
-    format = file.suffix[1:]
-    if format == 'json':
+    output_format = file.suffix[1:]
+    if output_format == 'json':
         with file.with_suffix('.json').open('w') as fp:
             results = list(results)
             json.dump(results, fp, cls=EnhancedJSONEncoder)
-    elif format == 'csv':
+    elif output_format == 'csv':
         with file.with_suffix('.csv').open('w', newline='') as fp:
             writer = csv.writer(fp, )
             # noinspection PyProtectedMember,PyTypeChecker

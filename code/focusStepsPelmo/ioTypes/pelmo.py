@@ -10,7 +10,7 @@ from ..util.conversions import map_to_class, str_to_enum
 
 
 @dataclass()
-class WaterHorizon():
+class WaterHorizon:
     '''Class describing a horizon segment line of a WASSER.PLM'''
     horizon: int
     compartment: int
@@ -51,7 +51,7 @@ class WaterHorizon():
 
 
 @dataclass()
-class WaterPLM():
+class WaterPLM:
     '''A parsed form of a WASSER.PLM file in the Pelmo output. Does not yet parse all fields'''
     horizons: List[List[WaterHorizon]]
     '''A 2d List of horizons. Accessed as horizons[year][compartment]'''
@@ -65,7 +65,7 @@ class WaterPLM():
 
 
 @dataclass()
-class ChemHorizon():
+class ChemHorizon:
     '''Class describing a horizon segment line of a CHEM.PLM'''
     horizon: int
     compartment: int

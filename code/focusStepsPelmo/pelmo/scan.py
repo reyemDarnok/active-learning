@@ -292,7 +292,7 @@ def span(template_gap: GAP, template_compound: Compound,
     :return: A generator that lazily creates compound/gap combinations"""
     for gap in span_gap(template_gap, bbch, rate):
         for compound in span_compounds(template_compound, dt50, koc, freundlich, plant_uptake):
-            yield (gap, compound)
+            yield gap, compound
 
 
 def span_gap(template_gaps: Union[GAP, Iterable[GAP]], bbch: Optional[Sequence[int]],

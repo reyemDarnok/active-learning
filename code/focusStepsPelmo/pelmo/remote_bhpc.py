@@ -170,7 +170,7 @@ def zip_directory(directory: Path, zip_name: str):
     :param zip_name: The name of the resulting zip
     """
     logger = logging.getLogger()
-    with ZipFile(file=directory.parent / zip_name, mode='a', compression=zipfile.ZIP_DEFLATED) as zip:
+    with ZipFile(file=directory.parent / zip_name, mode='a', compression=zipfile.ZIP_DEFLATED) as zip_file:
         for root, _, files in os.walk(directory):
             for file in files:
                 root = Path(root)
@@ -182,7 +182,7 @@ def zip_directory(directory: Path, zip_name: str):
                 name_in_archive = Path(*pl) / combined.name
                 logger.debug('adding %s to zip as %s', combined.absolute(), name_in_archive)
 
-                zip.write(root / file, name_in_archive)
+                zip_file.write(root / file, name_in_archive)
 
 
 def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
@@ -234,8 +234,8 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
             file.rename(batch_folder / file.name)
         logger.info('Created batch %s', i)
         for psm_file in psm_file_data:
-            with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip:
-                zip.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
+            with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                zip_file.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
         yield batch_name
 
 
