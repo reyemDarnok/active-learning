@@ -1,26 +1,25 @@
-from collections import UserDict, UserList
-from contextlib import suppress
 import csv
-from argparse import ArgumentParser, Namespace
-from dataclasses import replace
 import itertools
 import json
 import logging
 import math
-from os import cpu_count
-import os
-from pathlib import Path
 import random
+from argparse import ArgumentParser, Namespace
+from collections import UserDict, UserList
+from contextlib import suppress
+from dataclasses import replace
+from os import cpu_count
+from pathlib import Path
 from shutil import rmtree
 from typing import Any, Dict, Generator, Iterable, List, Optional, Set, Tuple, Union, Sequence
-import sys
+
 from ..ioTypes.combination import Combination
-from ..pelmo.remote_bhpc import run_bhpc
-from ..pelmo.local import run_local
-from ..util import conversions, jsonLogger
-from ..util.conversions import EnhancedJSONEncoder
 from ..ioTypes.compound import Compound
 from ..ioTypes.gap import GAP, FOCUSCrop, Scenario
+from ..pelmo.local import run_local
+from ..pelmo.remote_bhpc import run_bhpc
+from ..util import conversions, jsonLogger
+from ..util.conversions import EnhancedJSONEncoder
 
 
 def main():

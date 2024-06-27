@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-from argparse import ArgumentParser, Namespace
-from dataclasses import asdict
+import json
 import logging
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Generator, Iterable, Type, TypeVar, Union
+
 from jinja2 import Environment, FileSystemLoader, select_autoescape, StrictUndefined
-import json
-import sys
-from ..ioTypes.combination import Combination
+
 from psm_file import PsmFile
-from ..util import jsonLogger as jsonLogger
+from ..ioTypes.combination import Combination
 from ..ioTypes.compound import Compound
 from ..ioTypes.gap import GAP
+from ..util import jsonLogger as jsonLogger
 
 jinja_env = Environment(loader=FileSystemLoader(
     [Path(__file__).parent / "templates", Path(__file__).parent / "templates" / "psm-fragments"]),
@@ -82,8 +82,9 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
 
 def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
     """For a given compound and gap file, generate the matching psm files 
-    :param gap_file: The gap file to use when generating psm file
-    :param compound_file: The compound file to use when generating psm file
+    :param gap: The gap file to use when generating psm file
+    :param compound: The compound file to use when generating psm file
+    :param comment: The comment in the resulting psm file
     :return: The contents of the psm file"""
 
     psm_file = PsmFile.from_input(compound=compound, gap=gap)

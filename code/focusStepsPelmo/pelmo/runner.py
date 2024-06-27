@@ -1,32 +1,26 @@
 #!/usr/bin/env python3
 import csv
-from dataclasses import dataclass
 import json
 import logging
-from argparse import Namespace, ArgumentParser
-from multiprocessing import cpu_count
-from os import PathLike
-from pathlib import Path
-import sys
-
 import subprocess
+from argparse import Namespace, ArgumentParser
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import suppress
+from multiprocessing import cpu_count
+from pathlib import Path
+from shutil import copytree, rmtree
+from threading import current_thread
 from typing import Generator, Iterable, List, Optional, Tuple, TypeVar, Union, Sequence
 from zipfile import ZipFile
-from shutil import copytree, rmtree
-from concurrent.futures import ThreadPoolExecutor
-from threading import current_thread
-import json
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
-from ..util import conversions
-from ..ioTypes.gap import FOCUSCrop, Scenario
+
 from ..ioTypes import gap
+from ..ioTypes.gap import FOCUSCrop, Scenario
 from ..ioTypes.pelmo import ChemPLM, PelmoResult, WaterPLM
-from ..util import jsonLogger
-
 from ..pelmo.summarize import rebuild_output_to_file
-
-from contextlib import suppress
+from ..util import conversions
+from ..util import jsonLogger
 
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(),
                         undefined=StrictUndefined)

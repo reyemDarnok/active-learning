@@ -4,7 +4,7 @@ import math
 from typing import Dict, List, Optional, Tuple
 
 from ..util.conversions import map_to_class, str_to_enum
-from ..ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption
+from ..ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption, Volatility
 from ..ioTypes.gap import GAP, Application, FOCUSCrop
 
 PELMO_UNSET = -99
@@ -114,7 +114,7 @@ class DegradationData:
 @dataclass
 class PsmDegradation:
     to_disregard: DegradationData
-    metabolites: Optional[Tuple['PsmDegradation']] = field(default_factory=tuple)  # None if it is degradation to BR/CO2
+    metabolites: Optional[Tuple['PsmDegradation'], ...] = field(default_factory=tuple)  # None if it is degradation to BR/CO2
 
     def __post_init__(self):
         object.__setattr__(self, 'to_disregard', map_to_class(self.to_disregard, DegradationData))
@@ -233,9 +233,9 @@ class PsmFile:
             for index, metabolite in enumerate(compound.metabolites):
                 metabolites[chr(ord('A') + index) + "1"] = metabolite.metabolite
                 if metabolite.metabolite.metabolites:
-                    metabolites[chr(ord('A') + index) + "2"] = metabolite.metabolite.metabolites[0]
+                    metabolites[chr(ord('A') + index) + "2"] = metabolite.metabolite.metabolites[0].metabolite
 
-        def find_formation(parent: Compound, metabolite_position: str) -> MetaboliteDescription:
+        def find_formation(parent: Compound, metabolite_position: str) -> Optional[MetaboliteDescription]:
             if metabolite_position in metabolites.keys():
                 return parent.metabolite_description_by_name(metabolites[metabolite_position].name)
             else:
@@ -245,7 +245,7 @@ class PsmFile:
             if position in metabolites.keys():
                 follow_position = chr(ord(position[0]) + 1) + position[1]
                 follow_formation = find_formation(metabolites[position], follow_position)
-                metabolites[position] = replace(metabolites[position], metabolites=[follow_formation],
+                metabolites[position] = replace(metabolites[position], metabolites=(follow_formation,),
                                                 model_specific_data={'pelmo': {'position': position}})
         for position in ('D1', 'C1', 'B1', 'A1'):
             if position in metabolites.keys():
@@ -256,7 +256,7 @@ class PsmFile:
                 diagonal_position = chr(ord(position[0]) + 1) + chr(ord(position[1]) + 1)
                 diagonal_formation = find_formation(metabolites[position], diagonal_position)
                 metabolites[position] = replace(metabolites[position],
-                                                metabolites=[follow_formation, down_formation, diagonal_formation],
+                                                metabolites=(follow_formation, down_formation, diagonal_formation),
                                                 model_specific_data={'pelmo': {'position': position}})
         a1_formation = find_formation(compound, 'A1')
         b1_formation = find_formation(compound, 'B1')
@@ -280,14 +280,22 @@ class PsmFile:
     def to_input(self) -> Tuple[Compound, GAP]:
         """Convert this psmFile to ioTypes input data.
         WARNING: This is lossy, as psmFiles do not use all data from the input files"""
-        compound = Compound(molarMass=self.molar_mass,
-                            waterSolubility=self.volatizations[0].solubility,
-                            sorption=Sorption(koc=self.adsorptions[0].koc, freundlich=self.adsorptions[0].freundlich),
-                            degradation=Degradation(system=math.log(2) / self.degradations[0].rate,
-                                                    soil=math.log(2) / self.degradations[0].rate,
-                                                    surfaceWater=math.log(2) / self.degradations[0].rate,
-                                                    sediment=math.log(2) / self.degradations[0].rate),
-                            plant_uptake=self.plant_uptake
+        volatility = Volatility(water_solubility=self.compound.volatizations[0].solubility,
+                                vaporization_pressure=self.compound.volatizations[0].vaporization_pressure,
+                                reference_temperature=(self.compound.volatizations[0].temperature +
+                                                      self.compound.volatizations[1].temperature) / 2)
+        compound = Compound(molarMass=self.compound.molar_mass,
+                            volatility=Volatility(water_solubility=self.compound.volatizations[0].solubility,
+                                                  vaporization_pressure=
+                                                  self.compound.volatizations[0].vaporization_pressure,
+                                                  reference_temperature=),
+                            sorption=Sorption(koc=self.compound.adsorptions[0].koc,
+                                              freundlich=self.compound.adsorptions[0].freundlich),
+                            degradation=Degradation(system=math.log(2) / self.compound.degradations[0].rate,
+                                                    soil=math.log(2) / self.compound.degradations[0].rate,
+                                                    surfaceWater=math.log(2) / self.compound.degradations[0].rate,
+                                                    sediment=math.log(2) / self.compound.degradations[0].rate),
+                            plant_uptake=self.compound.plant_uptake
                             )
         gap = GAP(modelCrop=self.crop, application=self.application)
         return compound, gap

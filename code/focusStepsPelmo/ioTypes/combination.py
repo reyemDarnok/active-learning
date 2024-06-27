@@ -3,8 +3,7 @@ import json
 from pathlib import Path
 from typing import Generator
 
-from util.datastructures import TypeCorrecting
-from util.conversions import map_to_class
+from ..util.datastructures import TypeCorrecting
 
 from .compound import Compound
 from .gap import GAP

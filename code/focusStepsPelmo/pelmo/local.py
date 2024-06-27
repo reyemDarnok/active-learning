@@ -3,7 +3,6 @@ import logging
 from argparse import ArgumentParser, Namespace
 from contextlib import suppress
 from pathlib import Path
-import sys
 from typing import Sequence
 from ..ioTypes.combination import Combination
 from ..ioTypes.compound import Compound

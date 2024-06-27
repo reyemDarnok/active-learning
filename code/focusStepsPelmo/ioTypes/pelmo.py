@@ -1,12 +1,11 @@
+import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
-import re
-import sys
 from typing import List
 
 from ..ioTypes.compound import Compound
 from ..ioTypes.gap import GAP, FOCUSCrop, Scenario
-from ..util.conversions import map_to_class, str_to_enum
+from ..util.conversions import str_to_enum
 
 
 @dataclass()
