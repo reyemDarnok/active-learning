@@ -108,7 +108,7 @@ class DegradationData:
 @dataclass
 class PsmDegradation:
     to_disregard: DegradationData
-    metabolites: Tuple['PsmDegradation'] = field(default_factory=tuple)
+    metabolites: Optional[Tuple['PsmDegradation']] = field(default_factory=tuple) # None if it is degradation to BR/CO2
 
     def __post_init__(self):
         object.__setattr__(self, 'to_disregard', map_to_class(self.to_disregard, DegradationData))
@@ -145,9 +145,9 @@ class PsmAdsorption:
 @dataclass
 class PsmCompound:
     molar_mass: float
-    adsorptions: Tuple[PsmAdsorption]
+    adsorptions: Tuple[PsmAdsorption, PsmAdsorption]
     degradations: List[DegradationData]
-    volatizations: Tuple[Volatization]
+    volatizations: Tuple[Volatization, Volatization]
     plant_uptake: float = 0.5
     degradation_type: DegradationType = DegradationType.FACTORS
     name: str = "Unknown name"

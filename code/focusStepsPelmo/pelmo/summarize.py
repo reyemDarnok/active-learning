@@ -1,5 +1,3 @@
-
-
 from collections import UserDict, UserList
 import csv
 from dataclasses import asdict, is_dataclass
@@ -9,6 +7,7 @@ import logging
 from pathlib import Path
 import sys
 from typing import Any, Dict, Generator, Iterable, List, Sequence, Tuple, Type, Union
+
 sys.path += [str(Path(__file__).parent.parent)]
 
 from ioTypes.combination import Combination
@@ -17,11 +16,16 @@ from util.conversions import EnhancedJSONEncoder
 from ioTypes.compound import Compound
 from ioTypes.gap import GAP
 
-def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Sequence[Path], glob_pattern: str = "output.json", psm_root = Path.cwd()):
+
+def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Sequence[Path],
+                              glob_pattern: str = "output.json", psm_root=Path.cwd()):
     write_results_to_file(rebuild_scattered_output(parent, input_directories, glob_pattern, psm_root), file)
 
-def rebuild_output_to_file(file: Path, results: Union[Path, List[PelmoResult]], input_directories: Sequence[Path], psm_root = Path.cwd()):
+
+def rebuild_output_to_file(file: Path, results: Union[Path, List[PelmoResult]], input_directories: Sequence[Path],
+                           psm_root=Path.cwd()):
     write_results_to_file(rebuild_output(results, input_directories, psm_root), file)
+
 
 def write_results_to_file(results: Iterable[PECResult], file: Path):
     format = file.suffix[1:]
@@ -31,8 +35,8 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
             json.dump(results, fp, cls=EnhancedJSONEncoder)
     elif format == 'csv':
         with file.with_suffix('.csv').open('w', newline='') as fp:
-            writer = csv.writer(fp,)
-            # noinspection PyProtectedMember
+            writer = csv.writer(fp, )
+            # noinspection PyProtectedMember,PyTypeChecker
             doubles = list(flatten_to_tuples(next(results)._asdict()))
             header = [x[0] for x in doubles]
             row = [x[1] for x in doubles]
@@ -42,6 +46,7 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
             writer.writerows((x[1] for x in flatten_to_tuples(r._asdict())) for r in results)
     else:
         raise ValueError("Could not infer format, please specify explicitly")
+
 
 def flatten_to_tuples(o: Any, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
     if isinstance(o, (dict, UserDict)):
@@ -54,31 +59,37 @@ def flatten_to_tuples(o: Any, prefix: List[str] = []) -> Generator[Tuple[str, st
     else:
         yield ".".join(prefix), str(o)
 
+
 def flatten_dict_to_tuples(d: Dict, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
     sys.stdout.flush()
     for key, value in d.items():
         for k, v in flatten_to_tuples(value, prefix=prefix + [str(key)]):
             yield k, v
-        
+
+
 def flatten_list_to_tuples(l: List, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
     for index, value in enumerate(l):
         for k, v in flatten_to_tuples(value, prefix=prefix + [str(index)]):
             yield k, v
 
-def rebuild_scattered_output(parent: Path, input_directories: Sequence[Path], glob_pattern: str = "output.json", psm_root = Path.cwd()) -> Generator[PECResult, None, None]:
+
+def rebuild_scattered_output(parent: Path, input_directories: Sequence[Path], glob_pattern: str = "output.json",
+                             psm_root=Path.cwd()) -> Generator[PECResult, None, None]:
     logger = logging.getLogger()
     logger.debug("Iterating over output files %s", list(parent.rglob(glob_pattern)))
     for file in parent.rglob(glob_pattern):
         yield from rebuild_output(file, input_directories, psm_root)
 
-def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories: Sequence[Path], psm_root = Path.cwd()) -> Generator[PECResult, None, None]:
+
+def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories: Sequence[Path],
+                   psm_root=Path.cwd()) -> Generator[PECResult, None, None]:
     logger = logging.getLogger()
     if isinstance(source, Path):
         with source.open() as fp:
             outputs = json.load(fp)
         outputs = [PelmoResult(**item) for item in outputs]
     else:
-        outputs = source 
+        outputs = source
     for output in outputs:
         psm_file = psm_root / output.psm
         with psm_file.open() as psm:
@@ -91,13 +102,15 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
             compound = get_obj_by_hash(h=compound_hash, file_roots=input_directories)
             gap = get_obj_by_hash(h=gap_hash, file_roots=input_directories)
         elif 'combination' in input_data_hashes.keys():
-            combination_hash = Path(input_data_hashes['combination'])
-            combination = get_obj_by_hash(h=combination_hash, file_roots= input_directories)
+            combination_hash = input_data_hashes['combination']
+            combination = get_obj_by_hash(h=combination_hash, file_roots=input_directories)
             compound = combination.compound
             gap = combination.gap
         else:
-            raise ValueError('Could not find origin input data for psm file. Is the comment set to the metadata generated by creator.py?')
+            raise ValueError \
+                ('Could not find origin input data for psm file. Is the comment set to the metadata generated by creator.py?')
         yield PECResult(compound=compound, gap=gap, crop=output.crop, scenario=output.scenario, pec=output.pec)
+
 
 @functools.lru_cache(maxsize=None)
 def get_obj_by_hash(h: int, file_roots: Sequence[Path]) -> Union[Compound, GAP, Combination]:
@@ -105,6 +118,7 @@ def get_obj_by_hash(h: int, file_roots: Sequence[Path]) -> Union[Compound, GAP, 
     for file_root in file_roots:
         hashes.update(get_hash_obj_relation(file_root, (Compound, GAP, Combination)))
     return hashes[h]
+
 
 @functools.lru_cache(maxsize=None)
 def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) -> Dict[int, Any]:
@@ -119,7 +133,6 @@ def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) 
                 with file.open() as fp:
                     obj = candidate(**json.load(fp))
                     hashes[hash(obj)] = obj
-            except:
+            except TypeError:
                 pass
-
-
+    return hashes

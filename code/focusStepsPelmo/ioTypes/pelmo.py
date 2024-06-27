@@ -47,7 +47,7 @@ class WaterHorizon():
             self.current_storage = float(segments[3])
             self.current_storage_soil_water_content = float(segments[4].replace('(', '').replace(')', ''))
             segments = segments[5:]
-        self.temperature = segments[0]
+        self.temperature = float(segments[0])
 
 @dataclass()
 class WaterPLM():

@@ -36,8 +36,8 @@ def split_into_batches(iterable: Iterable[T], batch_size=1) -> Generator[Generat
 
     def batch():
         for _ in range(batch_size):
+            # noinspection PyTypeChecker
             yield next(iterable)
-
     while True:
         yield batch()
 
@@ -47,21 +47,17 @@ def main():
     logger = logging.getLogger()
     logger.debug(args)
     run_bhpc(work_dir=args.work_dir, compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit,
-             output=args.output, output_format=args.output_format,
+             output=args.output,
              crops=args.crops, scenarios=args.scenarios,
              notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
 
 
 def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None,
-             combination_dir: Path = None, output_format: str = 'json',
+             combination_dir: Path = None,
              crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
              notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True):
     logger = logging.getLogger()
-
-    if output_format is None and output:
-        output_format = output.suffix[1:]
     logger.info('Starting to generate psm files')
-    psm_dir: Path = work_dir / 'psm'
     psm_file_data = generate_psm_files(compounds=compound_file, gaps=gap_file, combinations=combination_dir)
     crops = list(crops)
     scenarios = list(scenarios)
@@ -125,7 +121,7 @@ def find_core_bhpc_configuration(crops: Sequence[FOCUSCrop], scenarios: Sequence
         cores = 16
     else:
         cores = 96
-        machines = max(1, desired_core_count // 95)
+        machines = max(1, int(desired_core_count) // 95)
     batch_number = machines
     logger.info(f'Determined to run with {cores} cores on {machines} machines')
     return machines, cores, batch_number
@@ -165,13 +161,13 @@ def copy_common_files(output: Path):
     shutil.copytree(script_dir / '..' / 'util', output / 'util')
 
 
-def zip_directory(directory: Path, zip_name: str, mode: str = 'a'):
+def zip_directory(directory: Path, zip_name: str):
     """Zips all directory into zipName, such that if zipName is unzipped to the directory it is in directory will be restored
     :param directory: The directory to zip
     :param zip_name: The name of the resulting zip
-    :param mode: The mode to use when opening the zip file. Reasonable values are "w" (overwrite old file) and "a" (append to old file)"""
+    """
     logger = logging.getLogger()
-    with ZipFile(directory.parent / zip_name, mode, zipfile.ZIP_DEFLATED) as zip:
+    with ZipFile(file=directory.parent / zip_name, mode='a', compression=zipfile.ZIP_DEFLATED) as zip:
         for root, _, files in os.walk(directory):
             for file in files:
                 root = Path(root)
@@ -263,8 +259,6 @@ def parse_args() -> Namespace:
     parser.add_argument('--notification-email', type=str, default=None,
                         help="The email address which will be notified if the bhpc run finishes")
     parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")
-    parser.add_argument('--output-format', type=str.lower, choices=("json", "csv"), default=None,
-                        help="The output format. Defaults to guessing from the file name")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()
