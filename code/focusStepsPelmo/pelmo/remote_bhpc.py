@@ -188,12 +188,12 @@ def zip_directory(directory: Path, zip_name: str):
 def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
                   crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
                   batch_number: int = 1):
-    '''Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
+    """Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_file_data: The contents of the psm files to be included in the submit file
     :param target_dir: The directory to write the sub file to
     :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
     :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
-    :param batch_number: How many batches of psm files to make, each can be run in parallel'''
+    :param batch_number: How many batches of psm files to make, each can be run in parallel"""
     logger = logging.getLogger()
 
     logger.info('Setting up file system for the sub file')

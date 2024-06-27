@@ -4,7 +4,7 @@ from typing import Dict
 
 
 class Coverage(int, Enum):
-    '''Coverage categories for Steps12'''
+    """Coverage categories for Steps12"""
     No = 0
     Minimal = auto()
     Average = auto()
@@ -12,14 +12,14 @@ class Coverage(int, Enum):
 
 
 class Region(int, Enum):
-    '''The Steps12 Regions'''
+    """The Steps12 Regions"""
     NoRunoff = 0
     North = 1
     South = 2
 
 
 class Season(int, Enum):
-    '''The Step12 Seasons'''
+    """The Step12 Seasons"""
     Spring = auto()
     Summer = auto()
     Autumn = auto()
@@ -27,7 +27,7 @@ class Season(int, Enum):
 
 @dataclass(frozen=True)
 class Scenario:
-    '''General Scenario information, the defaults do not typically need to be overridden'''
+    """General Scenario information, the defaults do not typically need to be overridden"""
     waterDepth: float = 30
     runOffEventDay: int = 0
     density: float = 0.8
@@ -47,9 +47,9 @@ class Scenario:
 # Compound starts here 
 @dataclass(frozen=True)
 class Occurrence:
-    '''Used for Step12 calculations
-    Describes the Occurrence behaviour of a substance.'''
+    """Used for Step12 calculations
+    Describes the Occurrence behaviour of a substance."""
     sediment: float
-    '''The Occurrence in sediment. Is always 100 for parents and less for metabolites'''
+    """The Occurrence in sediment. Is always 100 for parents and less for metabolites"""
     soil: float
-    '''The Occurrence in soil. Is always 100 for parents and less for metabolites'''
+    """The Occurrence in soil. Is always 100 for parents and less for metabolites"""

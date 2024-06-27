@@ -13,20 +13,20 @@ sys.path += [str(Path(__file__).parent.parent)]
 
 @dataclass(frozen=True)
 class Degradation(TypeCorrecting):
-    '''General Degradation information'''
+    """General Degradation information"""
     system: float
-    '''Total System DT50'''
+    """Total System DT50"""
     soil: float
-    '''DT50 in soil'''
+    """DT50 in soil"""
     surfaceWater: float
-    '''DT50 in water'''
+    """DT50 in water"""
     sediment: float
-    '''DT50 in sediment'''
+    """DT50 in sediment"""
 
 
 @dataclass(frozen=True)
 class Sorption(TypeCorrecting):
-    '''Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values'''
+    """Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values"""
     koc: float
     freundlich: float
 
@@ -46,20 +46,20 @@ class MetaboliteDescription(TypeCorrecting):
 
 @dataclass(frozen=True)
 class Compound(TypeCorrecting):
-    '''A Compound definition'''
+    """A Compound definition"""
     molarMass: float
-    '''molar mass in g/mol'''
+    """molar mass in g/mol"""
     volatility: Volatility
     sorption: Sorption
-    '''A sorption behaviour'''
+    """A sorption behaviour"""
     degradation: Degradation
-    '''Degradation behaviours'''
+    """Degradation behaviours"""
     plant_uptake: float = 0
-    '''Fraction of plant uptake'''
+    """Fraction of plant uptake"""
     name: str = field(hash=False, default="Unknown Name")  # str hash is not stable
     model_specific_data: Dict = field(hash=False, default_factory=HashableDict)
     metabolites: Optional[Tuple[MetaboliteDescription]] = field(default_factory=tuple)
-    '''The compounds metabolites'''
+    """The compounds metabolites"""
 
     def metabolite_description_by_name(self, name: str) -> Optional[MetaboliteDescription]:
         for met_des in self.metabolites:

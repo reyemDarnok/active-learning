@@ -42,20 +42,20 @@ class PrincipalStage(int, Enum):
 
 
 class FOCUSCropMixin(NamedTuple):
-    '''Crop information for Pelmo'''
+    """Crop information for Pelmo"""
     display_name: str
-    '''The name to use for display'''
+    """The name to use for display"""
     defined_scenarios: Tuple[Scenario, ...]
-    '''The scenarios that are defined for this Crop in Pelmo'''
+    """The scenarios that are defined for this Crop in Pelmo"""
     interception: HashableRSDict[PrincipalStage, float]
-    '''Mapping bbch states to interception values'''
+    """Mapping bbch states to interception values"""
 
 
 s = PrincipalStage
 
 
 class FOCUSCrop(FOCUSCropMixin, Enum):
-    '''The crops defined for Pelmo. Each defined as a PelmoCropMixin'''
+    """The crops defined for Pelmo. Each defined as a PelmoCropMixin"""
     AP = FOCUSCropMixin(display_name="Apples",
                         defined_scenarios=tuple(
                             [Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O,
@@ -212,9 +212,9 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
 
 @dataclass(frozen=True)
 class Timing(TypeCorrecting):
-    '''During which bbch stadium will the application happen'''
+    """During which bbch stadium will the application happen"""
     bbch_state: int
-    '''Relative to which development state'''
+    """Relative to which development state"""
 
     @property
     def principal_stage(self):
@@ -228,25 +228,25 @@ class Timing(TypeCorrecting):
 
 @dataclass(frozen=True)
 class Application(TypeCorrecting):
-    '''Application information'''
+    """Application information"""
     rate: float
-    '''How much compound will be applied in g/ha'''
+    """How much compound will be applied in g/ha"""
     timing: Timing
-    '''What is the timing of application'''
+    """What is the timing of application"""
     number: int = 1
-    '''How often will be applied'''
+    """How often will be applied"""
     interval: int = 1
-    '''What is the minimum interval between applications'''
+    """What is the minimum interval between applications"""
     factor: float = 1
 
 
 @dataclass(frozen=True)
 class GAP(TypeCorrecting):
-    '''Defines a GAP'''
+    """Defines a GAP"""
     modelCrop: FOCUSCrop
-    '''The crop that the field is modelled after'''
+    """The crop that the field is modelled after"""
     application: Application
-    '''The values of the actual application'''
+    """The values of the actual application"""
 
     def __hash__(self) -> int:  # make GAP hash stable
         return hash((self.application, tuple(ord(c) for c in self.modelCrop.name)))

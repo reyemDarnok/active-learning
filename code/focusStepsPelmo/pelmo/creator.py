@@ -81,10 +81,10 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
 
 
 def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
-    '''For a given compound and gap file, generate the matching psm files 
+    """For a given compound and gap file, generate the matching psm files 
     :param gap_file: The gap file to use when generating psm file
     :param compound_file: The compound file to use when generating psm file
-    :return: The contents of the psm file'''
+    :return: The contents of the psm file"""
 
     psm_file = PsmFile.from_input(compound=compound, gap=gap)
     psm_template = jinja_env.get_template('general.psm.j2')

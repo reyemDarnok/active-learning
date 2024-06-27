@@ -3,15 +3,15 @@ from enum import Enum, auto
 import math
 from typing import Dict, List, Optional, Tuple
 
-from util.conversions import map_to_class, str_to_enum
-from ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption
-from ioTypes.gap import GAP, Application, FOCUSCrop
+from ..util.conversions import map_to_class, str_to_enum
+from ..ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption
+from ..ioTypes.gap import GAP, Application, FOCUSCrop
 
 PELMO_UNSET = -99
 
 
 class Emergence(int, Enum):
-    '''The possible application crop development timings for Pelmo'''
+    """The possible application crop development timings for Pelmo"""
     first_emergence = 0
     first_maturation = 1
     first_harvest = 2
@@ -67,7 +67,7 @@ class PsmApplication(Application):
 
 
 class DegradationType(int, Enum):
-    '''Used by Pelmo to describe the type of degradation'''
+    """Used by Pelmo to describe the type of degradation"""
     FACTORS = 0
     CONSTANT_WITH_DEPTH = auto()
     INDIVIDUAL = auto()
@@ -78,7 +78,7 @@ class DegradationType(int, Enum):
 
 @dataclass
 class Volatization:
-    '''Used by Pelmo'''
+    """Used by Pelmo"""
     henry: float = 3.33E-04
     solubility: float = 90
     vaporization_pressure: float = 1.00E-04
@@ -133,7 +133,7 @@ class PsmDegradation:
 
 @dataclass
 class PsmAdsorption:
-    '''Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values'''
+    """Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values"""
     koc: float
     freundlich: float
     pH: float = PELMO_UNSET

@@ -7,7 +7,7 @@ import typing
 
 
 class RSDict(UserDict):
-    '''Dict ordered by reverse order of keys'''
+    """Dict ordered by reverse order of keys"""
 
     def __init__(self, source: Optional[Dict] = None):
         if source is None:

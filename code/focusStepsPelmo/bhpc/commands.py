@@ -16,11 +16,11 @@ bhpc_exe = bhpc_dir / 'bhpc.exe'
 
 @contextlib.contextmanager
 def pushd(new_dir):
-    '''Emulates the behavior of pushd/popd. 
-    During the context the current working directory will be new_dir, 
-    and after closing the working directory will be restored to its old value. 
+    """Emulates the behavior of pushd/popd.
+    During the context the current working directory will be new_dir,
+    and after closing the working directory will be restored to its old value.
     This contextmanager can be nested and overwrites working directory changes made inside it when exiting
-    :param new_dir: The directory to move to during the context'''
+    :param new_dir: The directory to move to during the context"""
     previous_dir = os.getcwd()
     os.chdir(new_dir)
     try:

@@ -62,10 +62,10 @@ class JsonFormatter(logging.Formatter):
 
 
 def get_json_handler(file: str, logging_format=None):
-    '''Returns a logging handler that logs json in the given format to the given file
+    """Returns a logging handler that logs json in the given format to the given file
     :param file: The file to log to
     :param logging_format: A dictionary mapping keys in the log file to logging format specifiers
-    :return: The new FileHandler for json logging'''
+    :return: The new FileHandler for json logging"""
     if logging_format is None:
         logging_format = {"module": "module", "time": "asctime", "level": "levelname",
                           "thread": "threadName", "function": "funcName", "message": "message"}
@@ -76,8 +76,8 @@ def get_json_handler(file: str, logging_format=None):
 
 
 def add_log_args(parser: ArgumentParser):
-    '''Adds logging related arguments loglevel and logfile to the given parser
-    :param parser: The parser to modify'''
+    """Adds logging related arguments loglevel and logfile to the given parser
+    :param parser: The parser to modify"""
     parser.add_argument('--loglevel', default=logging.INFO,
                         choices=[logging.DEBUG, logging.INFO, logging.WARN, logging.ERROR, logging.CRITICAL],
                         type=_str_to_level, help="The log level")
@@ -86,19 +86,19 @@ def add_log_args(parser: ArgumentParser):
 
 
 def configure_logger_from_argparse(logger: logging.Logger, args: Namespace):
-    '''Uses the arguments loglevel and logfile in args to configure logger
+    """Uses the arguments loglevel and logfile in args to configure logger
     :param logger: The logger to modify
     :param args: The namespace returned by parse_args.
-    Should contain loglevel and logfile properties, as added by add_log_args'''
+    Should contain loglevel and logfile properties, as added by add_log_args"""
     logger.handlers = [get_json_handler(args.logfile)]
     logger.setLevel(args.loglevel)
 
 
 def _str_to_level(level: str) -> int:
-    '''translates a string to a loglevel
+    """translates a string to a loglevel
     :param level: The string representation.
     May be numerical value or the names of the logging level constants, case-insensitive
-    :return: The logging level'''
+    :return: The logging level"""
     try:
         return int(level)
     except ValueError:

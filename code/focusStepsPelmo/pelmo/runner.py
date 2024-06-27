@@ -33,9 +33,9 @@ jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templat
 
 
 def _init_thread(working_dir: Path):
-    '''Initialise a working directory for the current thread in the overarching working directory.
+    """Initialise a working directory for the current thread in the overarching working directory.
     This mostly consists of copying reference files
-    :param working_dir: Where to create the subdirectory for the thread'''
+    :param working_dir: Where to create the subdirectory for the thread"""
     # PELMO can't run multiple times in the same directory at the same time
     logger = logging.getLogger()
 
@@ -95,7 +95,7 @@ def repeat_infinite(value: T) -> Generator[T, None, None]:
 def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path,
              crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
              max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
-    '''Run all given psm_files using working_dir as scratch space. 
+    """Run all given psm_files using working_dir as scratch space. 
     When given scenarios that are not defined for some given crops, they are silently ignored for those crops only
     :param psm_files: The files to run
     :param working_dir: Where to run them
@@ -104,7 +104,7 @@ def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path,
     :param max_workers: How many worker threads to use at most
     :return: A Generator of the results of the calculations. Makes new results available as their calculations finish.
                 No particular ordering is guaranteed but the calculations are started in order of
-                psm_file, then crop, then scenario'''
+                psm_file, then crop, then scenario"""
     with suppress(FileNotFoundError):
         rmtree(working_dir)
     extract_zip(working_dir / 'sample', Path(__file__).parent / 'data' / 'FOCUS.zip')
@@ -115,11 +115,11 @@ def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path,
 
 
 def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], working_dir: Path) -> PelmoResult:
-    '''Runs a single psm/crop/scenario combination.
+    """Runs a single psm/crop/scenario combination.
     Assumes that it is in a multithreading context after _init_thread as run
     :param working_dir: Where to find the scenario data
     :param run_data: The input to Pelmo
-    :return: The result of the Pelmo run'''
+    :return: The result of the Pelmo run"""
     logger = logging.getLogger()
     psm_file, crop, scenario = run_data
     inp_file_template = jinja_env.get_template('pelmo.inp.j2')
@@ -166,11 +166,11 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
 
 
 def parse_pelmo_result(run_dir: Path, target_compartment=21) -> List[float]:
-    '''Parses the Pelmo output files to determine the PEC that pelmo calculated
+    """Parses the Pelmo output files to determine the PEC that pelmo calculated
     :param run_dir: Where Pelmo was executed and placed its result files
     :param target_compartment: Which compartment to take as result
     :return: A list of concentrations, element 0 is the parent
-    and the others are the Metabolites in the order defined by Pelmo'''
+    and the others are the Metabolites in the order defined by Pelmo"""
     water_file = run_dir / "WASSER.PLM"
     chem_files = run_dir.glob("CHEM*.PLM")
 
