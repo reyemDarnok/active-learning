@@ -29,55 +29,55 @@ from pelmo.summarize import rebuild_scattered_to_file
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(), undefined=StrictUndefined)
 
 T = TypeVar('T')
-def split_into_batches(sequence: Sequence[T], batchsize=1) -> Generator[Sequence[T], None, None]:
+def split_into_batches(sequence: Sequence[T], batch_size=1) -> Generator[Sequence[T], None, None]:
     """Lazily split a Sequence into a Generator of equally sized slices of the sequence. The last slice may be smaller if the sequence does not evenly divide into the batch size
-    :param sequence: The sequnce to split. Will be lazily evaluated
-    :param batchsize: The size of a given slice. The final slice will be shorter if the lenght of the sequence is not divisible by batchsize
-    :yield: A slize of sequence of length batchsize or, if it is the final slice and the length of the sequence is not divisible by batchsize, smaller"""
+    :param sequence: The sequence to split. Will be lazily evaluated
+    :param batch_size: The size of a given slice. The final slice will be shorter if the length of the sequence is not divisible by batch size
+    :yield: A slize of sequence of length batch size or, if it is the final slice and the length of the sequence is not divisible by batch size, smaller"""
     length = len(sequence)
-    for index in range(0, length, batchsize):
-        yield sequence[index:min(index + batchsize, length)]
+    for index in range(0, length, batch_size):
+        yield sequence[index:min(index + batch_size, length)]
 
-def split_into_n_batches(sequence: Sequence[T], batchnumber=1) -> Generator[Sequence[T], None, None]:
+def split_into_n_batches(sequence: Sequence[T], batch_number=1) -> Generator[Sequence[T], None, None]:
     length = len(sequence)
-    batchsize = length // batchnumber
-    if length % batchnumber != 0:
-        batchsize += 1
-    yield from split_into_batches(sequence, batchsize)
+    batch_size = length // batch_number
+    if length % batch_number != 0:
+        batch_size += 1
+    yield from split_into_batches(sequence, batch_size)
 
 def main():
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
-    run_bhpc(work_dir=args.work_dir, compound_file=args.compound_file,gap_file=args.gap_file, submit=args.submit, output=args.output, output_format=args.output_format,
-             crops=args.crops, scenarios=args.scenarios, 
-             notificationemail=args.notification_email, session_timeout=args.session_timeout, run=args.run)
+    run_bhpc(work_dir=args.work_dir, compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit, output=args.output, output_format=args.output_format,
+             crops=args.crops, scenarios=args.scenarios,
+             notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
 
 def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None, combination_dir: Path = None, output_format: str = 'json',
-             crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
-             notificationemail: Optional[str] = None, session_timeout: int = 6, run: bool = True):
+             crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
+             notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True):
     logger = logging.getLogger()
     
     if output_format is None and output:
             output_format = output.suffix[1:]
-    logger.info('Starting to genearte psm files')
+    logger.info('Starting to generate psm files')
     psm_dir: Path = work_dir / 'psm'
     psm_file_data = generate_psm_files(compounds=compound_file, gaps=gap_file, combinations=combination_dir)
     crops = list(crops)
     scenarios = list(scenarios)
-    machines, cores, batchnumber = find_core_bhpc_configuration(crops, scenarios, compound_file, gap_file, compound_file)
+    machines, cores, batch_number = find_core_bhpc_configuration(crops, scenarios, compound_file, gap_file, compound_file)
 
     with suppress(FileNotFoundError): rmtree(submit)
     logger.info('Generating sub files for bhpc')
-    make_sub_file(psm_file_data=psm_file_data, target_dir=submit, 
-                  crops=crops, scenarios=scenarios, 
-                  batchnumber=batchnumber, output_format=output_format)
+    make_sub_file(psm_file_data=psm_file_data, target_dir=submit,
+                  crops=crops, scenarios=scenarios,
+                  batch_number=batch_number, output_format=output_format)
 
     if run:
         logger.info('Starting Pelmo run')
         session = commands.start_submit_file(submit_folder=submit, session_name_prefix='Pelmo', submit_file_regex='pelmo\\.sub',
-                               machines=machines, cores=cores, multithreading=True,
-                               notificationemail=notificationemail, session_timeout=session_timeout)
+                                             machines=machines, cores=cores, multithreading=True,
+                                             notification_email=notification_email, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         commands.download(session)
         rebuild_scattered_to_file(output, submit, [x for x in (gap_file, compound_file, combination_dir) if x], "psm*.d-output.json", submit)
@@ -119,9 +119,9 @@ def find_core_bhpc_configuration(crops: Sequence[FOCUSCrop], scenarios: Sequence
     else:
         cores = 96
         machines = max(1, desired_core_count // 95)
-    batchnumber = machines
+    batch_number = machines
     logger.info(f'Determined to run with {cores} cores on {machines} machines')
-    return machines,cores,batchnumber
+    return machines,cores,batch_number
 
 
 def zip_common_directories(target: Path):
@@ -169,21 +169,20 @@ def zip_directory(directory: Path, zip_name:str, mode: str='a'):
                 pl = [x.name for x in combined.parents if x != directory.parent and x not in directory.parent.parents]
                 pl.reverse()
                 logger.debug("%s has %s as registered parents", combined, pl)
-                arcname = Path(*pl) / combined.name
-                logger.debug('adding %s to zip as %s', combined.absolute(), arcname)
+                name_in_archive = Path(*pl) / combined.name
+                logger.debug('adding %s to zip as %s', combined.absolute(), name_in_archive)
 
-                zip.write(root / file, arcname)
+                zip.write(root / file, name_in_archive)
 
 
-def make_sub_file(psm_file_data: Iterable[str], target_dir: Path, 
-                  crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
-                  batchnumber: int = 1, output_format: str = 'csv'):
+def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
+                  crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
+                  batch_number: int = 1, output_format: str = 'csv'):
     '''Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_files: The files to run in Pelmo. WARNING: Will be moved to target_dir
     :param target_dir: The directory to write the sub file to
     :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
-    :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
-    :param batchsize: How many psm files per bhpc job'''
+    :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped'''
     logger = logging.getLogger()
 
     logger.info('Setting up file system for the sub file')
@@ -191,31 +190,30 @@ def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
     zip_common_directories(target=target_dir)
 
     logger.info('Making batches')
-    batchdirs = make_batches(psm_file_data, target_dir, batchnumber)
+    batch_directory_names = make_batches(psm_file_data, target_dir, batch_number)
     
     logger.info('Writing sub file')
     sub_template = jinja_env.get_template('commit.sub.j2')
-    subfile = target_dir / "pelmo.sub"
-    subfile.write_text(sub_template.render(
-        batches=batchdirs,
+    submit_file = target_dir / "pelmo.sub"
+    submit_file.write_text(sub_template.render(
+        batches=batch_directory_names,
         crops= crops,
         scenarios=scenarios,
         output_format=output_format
     ))
     logger.info('Finished creating files')
 
-def make_batches(psm_file_data: Iterable[str], target_dir: Path, batchnumber: int) -> Generator[str, None, None]:
+def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_number: int) -> Generator[str, None, None]:
     """Create the directories for the batches and fill them
     :param psm_files: The psm files to batch. WARNING: They will be moved, not copied to target_dir
-    :param target_dir: The parent directory for the batch directories
-    :param batchsize: How many psm files to a batch"""
+    :param target_dir: The parent directory for the batch directories"""
     logger = logging.getLogger()
     logger.info('Splitting psm_files into batches')
-    batches = split_into_n_batches(psm_file_data, batchnumber)
+    batches = split_into_n_batches(psm_file_data, batch_number)
     logger.info('Split psm_files into batches')
     for i, batch in enumerate(batches):
-        batchname = f"psm{i}.d"
-        batch_folder = target_dir / batchname
+        batch_name = f"psm{i}.d"
+        batch_folder = target_dir / batch_name
         batch_folder.mkdir(exist_ok=True, parents=True)
         logger.info('Adding psm files for batch %s', i)
         for file in batch:
@@ -223,9 +221,9 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batchnumber: in
             file.rename(batch_folder / file.name)
         logger.info('Created batch %s', i)
         for psm_file in psm_file_data:
-            with ZipFile(target_dir / f"{batchname}.zip", 'w', zipfile.ZIP_DEFLATED) as zip:
-                zip.writestr(Path(batchname, f"{hash(psm_file)}.psm"), psm_file)
-        yield batchname
+            with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip:
+                zip.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
+        yield batch_name
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()

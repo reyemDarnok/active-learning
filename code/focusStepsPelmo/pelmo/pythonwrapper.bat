@@ -4,16 +4,16 @@ echo Expand-Archive %1.zip -DestinationPath . -Force | powershell.exe
 
 @REM Don't show variable manipulation in console
 @echo off
-@REM Write all arguments without the first one into RESTVAR
-set RESTVAR=
+@REM Write all arguments without the first one into REMAINING_VARIABLES
+set REMAINING_VARIABLES=
 shift
 :loop1
 if "%1"=="" goto after_loop
-set RESTVAR=%RESTVAR% %1
+set REMAINING_VARIABLES=%REMAINING_VARIABLES% %1
 shift
 goto loop1
 
 :after_loop
 @echo on
 
-python.exe %RESTVAR%
+python.exe %REMAINING_VARIABLES%

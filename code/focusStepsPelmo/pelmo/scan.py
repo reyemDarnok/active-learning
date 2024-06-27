@@ -36,7 +36,7 @@ def main():
     with args.input_file.open() as input_file:
         if args.input_format == 'json':
             create_samples_in_dirs(definition=json.load(input_file), output_dir=combination_dir, 
-                                   sample_size = args.sample_size, make_test_set = args.make_testset, test_set_path = args.use_testset, test_set_buffer = args.testset_buffer)
+                                   sample_size = args.sample_size, make_test_set = args.make_test_set, test_set_path = args.use_test_set, test_set_buffer = args.test_set_buffer)
         elif args.input_format == 'csv':
             with args.template_gap.open() as gap_file:
                 template_gap = GAP(**json.load(gap_file))
@@ -47,7 +47,7 @@ def main():
             span_to_dir(template_gap=template_gap, template_compound=template_compound, compound_dir=compound_dir, gap_dir=gap_dir,
                 **file_span_params)
         else:
-            raise ValueError("Cannot infer input format, please specify explictly")
+            raise ValueError("Cannot infer input format, please specify explicitly")
     if not crops:
         crops = file_span_params.pop('crop', FOCUSCrop)
     if not scenarios:
@@ -85,10 +85,10 @@ def load_test_set(location: Path) -> Generator[Combination, None, None]:
         with combination_path.open() as combination_file:
             yield Combination(**json.load(combination_file))
 
-def distance_to_set(element: Combination, testset: Set[Combination], definition: Dict) -> float:
+def distance_to_set(element: Combination, test_set: Set[Combination], definition: Dict) -> float:
     logger = logging.getLogger()
     current_max = 0
-    testlist = [json.dumps(c, cls=EnhancedJSONEncoder) for c in testset]
+    testlist = [json.dumps(c, cls=EnhancedJSONEncoder) for c in test_set]
     element = json.dumps(element, cls=EnhancedJSONEncoder)
     for test_combination in testlist:
         current_max = max(distance_of_elements(element, test_combination, definition), current_max)
@@ -220,9 +220,9 @@ def steps_template(start: int, stop: int, step: int = 1, scale_factor: float = 1
 def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Path, gap_dir: Optional[Path] = None,
          bbch: Iterable[int] = None, rate: Iterable[float] = None,
          dt50: Iterable[float] = None, koc: Iterable[float] = None, freundlich: Iterable[float] = None, plant_uptake: Iterable[float] = None) -> None:
-    """Creates compund and gap jsons for a parameter matrix
+    """Creates compound and gap jsons for a parameter matrix
     :param template_gap: The gap to use as a template for parameters that are not in the matrix
-    :param template_compound: The compund to use as a template for parameters that are not in the matrix
+    :param template_compound: The compound to use as a template for parameters that are not in the matrix
     :param compound_dir: The directory to write the resulting compound files to
     :param gap_dir: The directory to write the resulting gap files to. Defaults to compound_dir if not set
     :param bbch: The BBCH values in the matrix
@@ -249,14 +249,14 @@ def span(template_gap: GAP, template_compound: Compound,
          dt50: Iterable[float] = None, koc: Iterable[float] = None, freundlich: Iterable[float] = None, plant_uptake: Iterable[float] = None) -> Generator[Tuple[GAP, Compound], None, None]:
     """Creates compound and gap combinations from a matrix
     :param template_gap: The gap to use as a template for parameters that are not in the matrix
-    :param template_compound: The compund to use as a template for parameters that are not in the matrix
+    :param template_compound: The compound to use as a template for parameters that are not in the matrix
     :param bbch: The BBCH values in the matrix
     :param rate: The application rate values in the matrix
     :param dt50: The DT50 values in the matrix
     :param koc: The koc values in the matrix
     :param freundlich: The freundlich values in the matrix
     :param plant_uptake: The plant uptake values in the matrix
-    :return: A generator that layily creates compound/gap combinations"""
+    :return: A generator that lazily creates compound/gap combinations"""
     for gap in span_gap(template_gap, bbch, rate):
         for compound in span_compounds(template_compound, dt50, koc, freundlich, plant_uptake):
             yield (gap, compound)
@@ -267,7 +267,7 @@ def span_gap(template_gaps: Union[GAP, Iterable[GAP]], bbch: Optional[Iterable[i
     :param bbch: The BBCH values in the matrix
     :param rate: The application rate values in the matrix
     :return: A Generator that lazily creates gaps from the matrix"""
-    # Do nothing if template_gaps is iterable, make it a single item list if its a single gap
+    # Do nothing if template_gaps is iterable, make it a single item list if it's a single gap
     try:
         _ = iter(template_gaps)
     except TypeError:
@@ -303,7 +303,7 @@ def span_rate(gaps: Iterable[GAP], rates: Iterable[float]) -> Generator[GAP, Non
             yield replace(gap, application=new_application)
 
 def span_compounds(template_compounds: Union[Compound, Iterable[Compound]], dt50: Optional[Iterable[float]] = None, koc: Optional[Iterable[float]] = None, freundlich: Optional[Iterable[float]] = None, plant_uptake: Optional[Iterable[float]] = None) -> Generator[Compound, None, None]:
-    # Do nothing if template_compounds is iterable, make it a single item list if its a single compound
+    # Do nothing if template_compounds is iterable, make it a single item list if it's a single compound
     logger = logging.getLogger()
     try:
         _ = iter(template_compounds)
@@ -360,12 +360,12 @@ def parse_args() -> Namespace:
     parser.add_argument('-s', '--sample-size', type=int, default=1000, help="If given an json input, how many random samples to take")
     parser.add_argument(      '--crop', nargs='*', type=FOCUSCrop.from_acronym, default=list(FOCUSCrop), help="The crops to simulate. Can be specified multiple times. Should be listed as a two letter acronym. The selected crops have to be present in the FOCUS zip, the bundled zip includes all crops. Defaults to all crops.")
     parser.add_argument(      '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario), default=list(Scenario), help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
-    parser.add_argument('--testset-size', type=int, default=1000, help="How big a testset to generate if --make-testset is set")
-    parser.add_argument('--testset-buffer', type=float, default=0.1, help="How far a point has to be from the test set to be allowed in the sample")
+    parser.add_argument('--test-set-size', type=int, default=1000, help="How big a test set to generate if --make-test set is set")
+    parser.add_argument('--test-set-buffer', type=float, default=0.1, help="How far a point has to be from the test set to be allowed in the sample")
     test_set_group = parser.add_argument_group('Test Set')
     test_set = test_set_group.add_mutually_exclusive_group()
-    test_set.add_argument('--make-testset', action="store_true", default=False, help="Generate a Testset of a given size")
-    test_set.add_argument('--use-testset', type=Path, default=None, help="Use a preexisting testset (should be a directory)")
+    test_set.add_argument('--make-test-set', action="store_true", default=False, help="Generate a test set of a given size")
+    test_set.add_argument('--use-test-set', type=Path, default=None, help="Use a preexisting test set (should be a directory)")
     
     run_subparsers = parser.add_subparsers(dest="run", help="Where to run Pelmo. The script will only generate files but not run anything if this is not specified")
     local_parser = run_subparsers.add_parser("local", help="Run Pelmo locally")

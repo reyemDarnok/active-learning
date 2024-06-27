@@ -5,7 +5,6 @@ from pathlib import Path
 import platform
 
 
-
 class JsonFormatter(logging.Formatter):
     """
     Formatter that outputs JSON strings after parsing the LogRecord.
@@ -14,11 +13,12 @@ class JsonFormatter(logging.Formatter):
     @param str time_format: time.strftime() format string. Default: "%Y-%m-%dT%H:%M:%S"
     @param str msec_format: Microsecond formatting. Appended at the end. Default: "%s.%03dZ"
     """
+
     def __init__(self, fmt_dict: dict = None, time_format: str = "%Y-%m-%dT%H:%M:%S", msec_format: str = "%s.%03dZ"):
         self.fmt_dict = fmt_dict if fmt_dict is not None else {"message": "message"}
         self.default_time_format = time_format
         self.default_msec_format = msec_format
-        self.datefmt = None
+        self.date_format = None
 
     def usesTime(self) -> bool:
         """
@@ -39,9 +39,9 @@ class JsonFormatter(logging.Formatter):
         instead of a string.
         """
         record.message = record.getMessage()
-        
+
         if self.usesTime():
-            record.asctime = self.formatTime(record, self.datefmt)
+            record.asctime = self.formatTime(record, self.date_format)
 
         message_dict = self.formatMessage(record)
 
@@ -58,23 +58,31 @@ class JsonFormatter(logging.Formatter):
             message_dict["stack_info"] = self.formatStack(record.stack_info)
 
         return json.dumps(message_dict, default=str)
-    
-def get_json_handler(file: str, format: dict = {"module": "module", "time": "asctime", "level": "levelname", "thread": "threadName", "function": "funcName", "message": "message"}):
+
+
+def get_json_handler(file: str, logging_format=None):
     '''Returns a logging handler that logs json in the given format to the given file
     :param file: The file to log to
-    :param format: A dictionary mapping keys in the log file to logging format specifiers
+    :param logging_format: A dictionary mapping keys in the log file to logging format specifiers
     :return: The new FileHandler for json logging'''
-    file_handler = logging.FileHandler(file, mode = 'a')
-    json_formatter = JsonFormatter(format)
+    if logging_format is None:
+        logging_format = {"module": "module", "time": "asctime", "level": "levelname",
+                  "thread": "threadName", "function": "funcName", "message": "message"}
+    file_handler = logging.FileHandler(file, mode='a')
+    json_formatter = JsonFormatter(logging_format)
     file_handler.setFormatter(json_formatter)
     return file_handler
+
 
 def add_log_args(parser: ArgumentParser):
     '''Adds logging related arguments loglevel and logfile to the given parser
     :param parser: The parser to modify'''
-    parser.add_argument('--loglevel', default=logging.INFO, choices=[logging.DEBUG, logging.INFO, logging.WARN, logging.ERROR, logging.CRITICAL], type=_str_to_level, help="The log level")
+    parser.add_argument('--loglevel', default=logging.INFO,
+                        choices=[logging.DEBUG, logging.INFO, logging.WARN, logging.ERROR, logging.CRITICAL],
+                        type=_str_to_level, help="The log level")
     stdout_file = 'log.json' if platform.system() == 'Windows' else '/dev/stdout'
-    parser.add_argument('--logfile', default=Path(stdout_file), type=Path, help="The logfile. Deaults to stdout")
+    parser.add_argument('--logfile', default=Path(stdout_file), type=Path, help="The logfile. Defaults to stdout")
+
 
 def configure_logger_from_argparse(logger: logging.Logger, args: Namespace):
     '''Uses the arguments loglevel and logfile in args to configure logger
@@ -83,9 +91,10 @@ def configure_logger_from_argparse(logger: logging.Logger, args: Namespace):
     logger.handlers = [get_json_handler(args.logfile)]
     logger.setLevel(args.loglevel)
 
+
 def _str_to_level(level: str) -> int:
     '''translates a string to a loglevel
-    :param level: The string representation. May be numerical value or the names of the logging level constants, case insensitive
+    :param level: The string representation. May be numerical value or the names of the logging level constants, case-insensitive
     :return: The logging level'''
     try:
         return int(level)
@@ -93,8 +102,8 @@ def _str_to_level(level: str) -> int:
         if isinstance(level, int):
             return level
         d = {"debug": logging.DEBUG,
-            "info": logging.INFO,
-            "warning": logging.WARNING,
-            "error": logging.ERROR,
-            "critical": logging.CRITICAL}
+             "info": logging.INFO,
+             "warning": logging.WARNING,
+             "error": logging.ERROR,
+             "critical": logging.CRITICAL}
         return d[level.lower()]

@@ -34,7 +34,7 @@ class Scenario:
     sedimentDepth: float = 1
     effectiveSedimentDepth: float = 1
     step1RunoffPercentage: float = 10
-    fieldToWaterRateio: float = 10
+    fieldToWaterRatio: float = 10
     equilibrationFactor: float = 1.5
     runoffMap: Dict[Region, Dict[Season, float]] = field(default_factory=lambda : {
         Region.NoRunoff: {Season.Spring: 2, Season.Summer: 2, Season.Autumn: 5},

@@ -54,7 +54,7 @@ def main():
     logging.info('Running for the following psm files: %s', files)
     write_psm_results(args.output, files, None, working_dir=args.working_dir, crops=args.crop, scenarios=args.scenario, max_workers=args.threads)
 
-def write_psm_results(output_file: Path, psm_files: Iterable[Path, str], input_directories: Optional[Path] = None, working_dir: Path = Path.cwd() / 'pelmo', 
+def write_psm_results(output_file: Path, psm_files: Iterable[Union[Path, str]], input_directories: Optional[Path] = None, working_dir: Path = Path.cwd() / 'pelmo', 
                       crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
                       max_workers: int = cpu_count() - 1):
     results = run_psms(psm_files=psm_files, working_dir=working_dir,
@@ -69,7 +69,7 @@ def write_psm_results(output_file: Path, psm_files: Iterable[Path, str], input_d
                 writer = csv.writer(output)
                 writer.writerows((result.psm, result.crop, result.scenario, result.pec) for result in results)
     
-def _make_runs(psm_files: Iterable[Path, str], crops: Iterable[FOCUSCrop], scenarios: Iterable[Scenario]) -> Generator[Tuple[Union[Union[Path, str], FOCUSCrop, Scenario]], None, None]:
+def _make_runs(psm_files: Iterable[Union[Path, str]], crops: Iterable[FOCUSCrop], scenarios: Iterable[Scenario]) -> Generator[Tuple[Union[Union[Path, str], FOCUSCrop, Scenario]], None, None]:
     crops = list(crops)
     scenarios = list(scenarios)
     for psm_file in psm_files:
@@ -82,7 +82,7 @@ def repeat_infinite(value: T) -> Generator[T, None, None]:
     while True:
         yield value
 
-def run_psms(psm_files: Iterable[Path, str], working_dir: Path, 
+def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path, 
              crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
              max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
     '''Run all given psm_files using working_dir as scratch space. 
@@ -93,14 +93,14 @@ def run_psms(psm_files: Iterable[Path, str], working_dir: Path,
     :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
     :param max_workers: How many worker threads to use at most
     :return: A Generator of the results of the calculations. Makes new results available as their calculations finish.
-                No particular ordering is guaranteed but the calulations are started in order of psm_file, then crop, then scenario'''
+                No particular ordering is guaranteed but the calculations are started in order of psm_file, then crop, then scenario'''
     with suppress(FileNotFoundError): rmtree(working_dir)
     extract_zip(working_dir / 'sample', Path(__file__).parent / 'data' / 'FOCUS.zip')
     pool = ThreadPoolExecutor(max_workers=max_workers, initializer=_init_thread, initargs=(working_dir,))
     yield from pool.map(single_pelmo_run, _make_runs(psm_files=psm_files, crops=crops, scenarios=scenarios), repeat_infinite(working_dir))
     pool.shutdown()
 
-def single_pelmo_run(run_data: Tuple[Union[Union[Path, str], FOCUSCrop, Scenario]], working_dir: Path) -> PelmoResult:
+def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], working_dir: Path) -> PelmoResult:
     '''Runs a single psm/crop/scenario combination.
     Assumes that it is in a multithreading context after _init_thread as run
     :param pelmo_exe: The pelmo exe to use for running the psm file
@@ -152,7 +152,7 @@ def single_pelmo_run(run_data: Tuple[Union[Union[Path, str], FOCUSCrop, Scenario
 
 
 def parse_pelmo_result(run_dir: Path, target_compartment = 21) -> List[float]:
-    '''Parses the Pelmo outputfiles to determine the PEC that pelmo calculated
+    '''Parses the Pelmo output files to determine the PEC that pelmo calculated
     :param run_dir: Where Pelmo was executed and placed its result files
     :param target_compartment: Which compartment to take as result
     :return: A list of concentrations, element 0 is the parent and the others are the Metabolites in the order defined by Pelmo'''

@@ -12,9 +12,8 @@ from typing import Any, Dict, Generator, Iterable, List, Sequence, Tuple, Type, 
 sys.path += [str(Path(__file__).parent.parent)]
 
 from ioTypes.combination import Combination
-from ioTypes.pelmo import PECResult
+from ioTypes.pelmo import PECResult, PelmoResult
 from util.conversions import EnhancedJSONEncoder
-from pelmo.runner import PelmoResult
 from ioTypes.compound import Compound
 from ioTypes.gap import GAP
 
@@ -87,11 +86,11 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
             compound_hash = input_data_hashes['compound']
             gap_hash = input_data_hashes['gap']
             logger.debug({"compound_file": compound_hash, "gap_file": gap_hash})
-            compound = get_obj_by_hash(h=compound_hash, fileroots=input_directories)
-            gap = get_obj_by_hash(h=gap_hash, fileroots=input_directories)
+            compound = get_obj_by_hash(h=compound_hash, file_roots=input_directories)
+            gap = get_obj_by_hash(h=gap_hash, file_roots=input_directories)
         elif 'combination' in input_data_hashes.keys():
             combination_hash = Path(input_data_hashes['combination'])
-            combination = get_obj_by_hash(h=combination_hash, fileroots= input_directories)
+            combination = get_obj_by_hash(h=combination_hash, file_roots= input_directories)
             compound = combination.compound
             gap = combination.gap
         else:
@@ -99,10 +98,10 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
         yield PECResult(compound=compound, gap=gap, crop=output.crop, scenario=output.scenario, pec=output.pec)
 
 @functools.lru_cache(maxsize=None)
-def get_obj_by_hash(h: int, fileroots: Sequence[Path]) -> Union[Compound, GAP, Combination]:
+def get_obj_by_hash(h: int, file_roots: Sequence[Path]) -> Union[Compound, GAP, Combination]:
     hashes = {}
-    for fileroot in fileroots:
-        hashes.update(get_hash_obj_relation(fileroot, (Compound, GAP, Combination)))
+    for file_root in file_roots:
+        hashes.update(get_hash_obj_relation(file_root, (Compound, GAP, Combination)))
     return hashes[h]
 
 @functools.lru_cache(maxsize=None)

@@ -29,7 +29,7 @@ def str_to_enum(obj: Union[E, str], cls: Type[E]) -> E:
             return cls[obj]
         
 class EnhancedJSONEncoder(JSONEncoder):
-        """Adds several previously unserializable classes to the JSON encoder
+        """Adds several previously not serializable classes to the JSON encoder
         Cannot be trivially extended to change the representation of serializable objects
         Currently adds support for:
 

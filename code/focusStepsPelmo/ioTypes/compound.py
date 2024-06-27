@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
-from typing import List, Optional, Set, Tuple, Union, Dict
+import json
+from typing import Generator, List, Optional, Set, Tuple, Union, Dict
 from pathlib import Path
 import numpy
 import pandas
@@ -84,4 +85,24 @@ class Compound(TypeCorrecting):
             met_des = MetaboliteDescription(formation_fraction=row['Formation Fraction'], metabolite=metabolite)
             object.__setattr__(parent, 'metabolites', parent.metabolites + (met_des,))
         return parents
+    
+    @staticmethod
+    def from_path(path: Path) -> Generator['Compound', None, None]:
+        if path.is_dir():
+            for file in path.iterdir():
+                yield from Compound.from_file(file)
+        else:
+            yield from Compound.from_file(path)
+
+    @staticmethod
+    def from_file(file: Path) -> Generator['Compound', None, None]:
+        if file.suffix == '.json':
+            with file.open() as f:
+                json_content = json.load(f)
+                try:
+                    yield from (Compound(**element) for element in json_content)
+                except TypeError:
+                    yield Compound(**json_content)
+        if file.suffix == '.xlsx':
+            yield from Compound.from_excel(file)
 Compound.sentinel = Compound(0, Volatility(0,0,0), Sorption(0,0), Degradation(0,0,0,0))

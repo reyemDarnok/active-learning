@@ -64,8 +64,7 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
             comment = json.dumps({"combination": hash(Combination)})
             yield _generate_psm_contents(compound=combination.compound, gap=combination.gap, comment=comment)
     if compounds and gaps:
-        compounds = [compound for compound_group in compounds for compound in load_class(compound_group, Compound)]
-        gaps = [gap for gap_group in gaps for gap in load_class(gap_group, GAP)]
+        gaps = list(gaps)
         for compound in compounds:
             for gap in gaps:
                 comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})

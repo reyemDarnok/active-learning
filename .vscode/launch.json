@@ -5,6 +5,14 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Local Single Run",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "code/focusStepsPelmo/pelmo/local.py",
+            "console": "integratedTerminal",
+            "args": "-c examples/compound.json -c examples/compound.json -g examples/gap.json -w test/localtest -o test/localout.json --crop AP -s C --loglevel DEBUG"
+        },
+        {
             "name": "Single Scan",
             "type": "debugpy",
             "request": "launch",

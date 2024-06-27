@@ -6,9 +6,11 @@ from pathlib import Path
 import sys
 from typing import Sequence
 sys.path += [str(Path(__file__).parent.parent)]
+from ioTypes.combination import Combination
+from ioTypes.compound import Compound
 from pelmo.summarize import rebuild_output_to_file
 from util import conversions
-from ioTypes.gap import FOCUSCrop, Scenario
+from ioTypes.gap import GAP, FOCUSCrop, Scenario
 from pelmo.creator import generate_psm_files
 from pelmo.runner import run_psms
 from shutil import rmtree
@@ -35,13 +37,15 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
     focus_dir.mkdir(exist_ok=True, parents=True)
 
     logger.info('Starting to generate psm files')
-    psm_files = generate_psm_files(compound_file=compound_files, gap_file=gap_files, combination_dir=combination_dir)
-
+    compounds = Compound.from_path(compound_files) if compound_files else None
+    gaps = GAP.from_path(gap_files) if gap_files else None
+    combinations = Combination.from_path(combination_dir) if combination_dir else None
+    psm_files = generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations)
     logger.info('Starting to run Pelmo')
     results = run_psms(psm_files=psm_files, working_dir=focus_dir,crops=crops, scenarios=scenarios, max_workers=threads)
     
     logger.info('Dumping results of Pelmo runs to %s', output_file)
-    rebuild_output_to_file(output_file, [x for x in (compound_files, gap_files, combination_dir) if x], results)
+    rebuild_output_to_file(file=output_file, results=results, input_directories=[x for x in (compound_files, gap_files, combination_dir) if x])
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()

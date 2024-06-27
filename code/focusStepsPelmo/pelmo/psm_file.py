@@ -1,12 +1,10 @@
-
-
 from dataclasses import asdict, dataclass, field, replace
 from enum import Enum, auto
 import math
 from typing import Dict, List, Optional, Tuple
 
 from util.conversions import map_to_class, str_to_enum
-from ioTypes.compound import Compound, Degradation, Sorption
+from ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption
 from ioTypes.gap import GAP, Application, FOCUSCrop
 
 PELMO_UNSET = -99
@@ -16,7 +14,7 @@ class Emergence(int, Enum):
     first_emergence = 0
     first_maturation = 1
     first_harvest = 2
-    second_emregence = 3
+    second_emergence = 3
     second_maturation = 4
     second_harvest = 5
 
@@ -65,7 +63,7 @@ class PsmApplication(Application):
 
 
 class DegradationType(int, Enum):
-    '''Used by Pelmo to describe the type of degdradation'''
+    '''Used by Pelmo to describe the type of degradation'''
     FACTORS = 0
     CONSTANT_WITH_DEPTH = auto()
     INDIVIDUAL = auto()
@@ -88,7 +86,7 @@ class Volatization:
     
 @dataclass
 class Moisture:
-    '''Used by Pelmo'''
+    """Used by Pelmo"""
     absolute: float = 0
     relative: float = 100
     exp: float = 0.7
@@ -201,93 +199,55 @@ class PsmFile:
             "degradation_type": self.degradation_type
             }
     
+
     @staticmethod
     def fromInput(compound: Compound, gap: GAP) -> 'PsmFile':
-        """Convert ioTypes input data to the pelmo specific PsmFile"""
         application = PsmApplication(**asdict(gap.application))
-    
-        a1 = None
-        b1 = None
-        c1 = None
-        d1 = None
-        a2 = None
-        b2 = None
-        c2 = None
-        d2 = None
+
+        metabolites: Dict[str, Compound] = {}
         if 'pelmo' in compound.model_specific_data.keys():
-            all_metabolites = [met for met in compound.metabolites] + \
-                            [met for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
+            all_metabolites =   [met for met in compound.metabolites] + \
+                                [met for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
             def compound_position(c: Compound) -> str:
-                return c.model_specific_data.get('pelmo', {}).get('position', 'Unknown Position').casefold()
-            compound_positions: Dict[str, Compound] = {}
+                return c.model_specific_data.get('pelmo', {}).get('position', 'Unknown Position').upper()
             for c in all_metabolites:
-                compound_positions[compound_position(c.metabolite)] = c.metabolite
-            a1 = compound_positions.get('a1', None)
-            b1 = compound_positions.get('b1', None)
-            c1 = compound_positions.get('c1', None)
-            d1 = compound_positions.get('d1', None)
-            a2 = compound_positions.get('a2', None)
-            b2 = compound_positions.get('b2', None)
-            c2 = compound_positions.get('c2', None)
-            d2 = compound_positions.get('d2', None)
-        elif compound.metabolites:
-            a1 = compound.metabolites[0].metabolite if 0 < len(compound.metabolites) else None
-            b1 = compound.metabolites[1].metabolite if 1 < len(compound.metabolites) else None
-            c1 = compound.metabolites[2].metabolite if 2 < len(compound.metabolites) else None
-            d1 = compound.metabolites[3].metabolite if 3 < len(compound.metabolites) else None
-            a2 = a1.metabolites[0].metabolite if a1 and a1.metabolites else None
-            b2 = b1.metabolites[0].metabolite if b1 and b1.metabolites else None
-            c2 = c1.metabolites[0].metabolite if c1 and c1.metabolites else None
-            d2 = d1.metabolites[0].metabolite if d1 and d1.metabolites else None
+                metabolites[compound_position(c.metabolite)] = c.metabolite
+        else:
+            for index, metabolite in enumerate(compound.metabolites):
+                metabolites[chr(ord('A') + index) + "1"] = metabolite.metabolite
+                if metabolite.metabolite.metabolites:
+                    metabolites[chr(ord('A') + index) + "2"] = metabolite.metabolite.metabolites[0]
 
-        if d2:
-            d2 = replace(d2,  metabolites=[None], model_specific_data = {'pelmo': {'position': 'D2'}})
-        if c2:
-            d2_formation = c2.metabolite_description_by_name(d2.name)
-            c2 = replace(c2,  metabolites=[d2_formation], model_specific_data = {'pelmo': {'position': 'C2'}})
-        if b2:
-            c2_formation = b2.metabolite_description_by_name(c2.name)
-            b2 = replace(b2,  metabolites=[c2_formation], model_specific_data = {'pelmo': {'position': 'B2'}})
-        if a2:
-            b2_formation = a2.metabolite_description_by_name(b2.name)
-            a2 = replace(a2,  metabolites=[b2_formation], model_specific_data = {'pelmo': {'position': 'A2'}})
-        if d1:
-            d2_formation = d1.metabolite_description_by_name(d2.name)
-            d1 = replace(d1,  metabolites=[None, d2_formation, None], model_specific_data = {'pelmo': {'position': 'D1'}})
-        if c1:
-            d1_formation = c1.metabolite_description_by_name(d1.name)
-            c2_formation = c1.metabolite_description_by_name(c2.name)
-            d2_formation = c1.metabolite_description_by_name(d2.name)
-            c1 = replace(c1,  metabolites=[d1_formation, c2_formation, d2_formation], model_specific_data = {'pelmo': {'position': 'C1'}})
-        if b1:
-            c1_formation = b1.metabolite_description_by_name(c1.name)
-            b2_formation = b1.metabolite_description_by_name(b2.name)
-            c2_formation = b1.metabolite_description_by_name(c2.name)
-            b1 = replace(b1,  metabolites=[c1_formation, b2_formation, c2_formation], model_specific_data = {'pelmo': {'position': 'B1'}})
-        if a1:
-            b1_formation = a1.metabolite_description_by_name(b1.name)
-            a2_formation = a1.metabolite_description_by_name(a2.name)
-            b2_formation = a1.metabolite_description_by_name(b2.name)
-            a1 = replace(a1, metabolites=[b1_formation, a2_formation, b2_formation], model_specific_data = {'pelmo': {'position': 'A1'}})
-        a1_formation = compound.metabolite_description_by_name(a1.name)
-        b1_formation = compound.metabolite_description_by_name(b1.name)
-        c1_formation = compound.metabolite_description_by_name(c1.name)
-        d1_formation = compound.metabolite_description_by_name(d1.name)
+        def find_formation(parent: Compound, metabolite_position: str) -> MetaboliteDescription:
+            if metabolite_position in metabolites.keys():
+                return parent.metabolite_description_by_name(metabolites[metabolite_position].name)
+            else:
+                return None
+
+        for position in ('D2', 'C2', 'B2', 'A2'):
+            if position in metabolites.keys():
+                follow_position = chr(ord(position[0]) + 1) + position[1]
+                follow_formation = find_formation(metabolites[position], follow_position)
+                metabolites[position] = replace(metabolites[position],  metabolites=[follow_formation], model_specific_data = {'pelmo': {'position': position}})
+        for position in ('D1', 'C1', 'B1', 'A1'):
+            if position in metabolites.keys():
+                follow_position = chr(ord(position[0]) + 1) + position[1]
+                follow_formation = find_formation(metabolites[position], follow_position)
+                down_position = position[0] + chr(ord(position[1]) + 1)
+                down_formation = find_formation(metabolites[position], down_position)
+                diagonal_position = chr(ord(position[0]) + 1) + chr(ord(position[1]) + 1)
+                diagonal_formation = find_formation(metabolites[position], diagonal_position)
+                metabolites[position] = replace(metabolites[position],  metabolites=[follow_formation, down_formation, diagonal_formation], model_specific_data = {'pelmo': {'position': position}})
+        a1_formation = find_formation(compound, 'A1')
+        b1_formation = find_formation(compound, 'B1')
+        c1_formation = find_formation(compound, 'C1')
+        d1_formation = find_formation(compound, 'D1')
         compound = replace(compound, metabolites=[a1_formation, b1_formation, c1_formation, d1_formation])
-        def maybe_from_compound(c: Compound) -> PsmCompound:
-            return PsmCompound.from_compound(c) if c else None
         psmCompound = PsmCompound.from_compound(compound)
-        a1 = maybe_from_compound(a1)
-        b1 = maybe_from_compound(b1)
-        c1 = maybe_from_compound(c1)
-        d1 = maybe_from_compound(d1)
-        a2 = maybe_from_compound(a2)
-        b2 = maybe_from_compound(b2)
-        c2 = maybe_from_compound(c2)
-        d2 = maybe_from_compound(d2)
-
-        metabolites = [a1, b1, c1, d1, a2, b2, c2, d2]
-        metabolites = list(filter(None, metabolites))
+        metabolite_list: List[PsmCompound] = []
+        for position in ('A1', 'B1', 'C1', 'D1', 'A2', 'B2', 'C2', 'D2'):
+            if position in metabolites.keys():
+                metabolite_list.append(PsmCompound.from_compound(metabolites[position]))
         return PsmFile(application=application,
                        compound=psmCompound,
                        metabolites=metabolites,
@@ -295,7 +255,7 @@ class PsmFile:
                        comment="No comment",
                        num_soil_horizons=0,
                        degradation_type=DegradationType.FACTORS,
-        )
+        ) 
 
     def toInput(self) -> Tuple[Compound, GAP]:
         """Convert this psmFile to ioTypes input data.
