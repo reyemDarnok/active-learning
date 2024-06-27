@@ -8,7 +8,7 @@ import json
 import logging
 from pathlib import Path
 import sys
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, List, Optional, Sequence, Tuple, Type, TypeVar, Union
 sys.path += [str(Path(__file__).parent.parent)]
 
 from ioTypes.combination import Combination
@@ -18,11 +18,11 @@ from pelmo.runner import PelmoResult
 from ioTypes.compound import Compound
 from ioTypes.gap import GAP
 
-def rebuild_scatterd_to_file(file: Path, parent: Path, glob_pattern: str = "output.json", psm_root = Path.cwd()):
-    write_results_to_file(rebuild_scattered_output(parent, glob_pattern, psm_root), file)
+def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Sequence[Path], glob_pattern: str = "output.json", psm_root = Path.cwd()):
+    write_results_to_file(rebuild_scattered_output(parent, input_directories, glob_pattern, psm_root), file)
 
-def rebuild_output_to_file(file: Path, source: Union[Path, List[PelmoResult]], psm_root = Path.cwd()):
-    write_results_to_file(rebuild_output(source, psm_root), file)
+def rebuild_output_to_file(file: Path, results: Union[Path, List[PelmoResult]], input_directories: Sequence[Path], psm_root = Path.cwd()):
+    write_results_to_file(rebuild_output(results, input_directories, psm_root), file)
 
 def write_results_to_file(results: Iterable[PECResult], file: Path):
     format = file.suffix[1:]
@@ -64,14 +64,13 @@ def flatten_list_to_tuples(l: List, prefix: List[str] = []) -> Generator[Tuple[s
         for k, v in flatten_to_tuples(value, prefix=prefix + [str(index)]):
             yield k, v
 
-def rebuild_scattered_output(parent: Path, glob_pattern: str = "output.json", psm_root = Path.cwd()) -> Generator[PECResult, None, None]:
+def rebuild_scattered_output(parent: Path, input_directories: Sequence[Path], glob_pattern: str = "output.json", psm_root = Path.cwd()) -> Generator[PECResult, None, None]:
     logger = logging.getLogger()
     logger.debug("Iterating over output files %s", list(parent.rglob(glob_pattern)))
     for file in parent.rglob(glob_pattern):
-        for output in rebuild_output(file, psm_root):
-            yield output
+        yield from rebuild_output(file, input_directories, psm_root)
 
-def rebuild_output(source: Union[Path, Iterable[PelmoResult]], psm_root = Path.cwd()) -> Generator[PECResult, None, None]:
+def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories: Sequence[Path], psm_root = Path.cwd()) -> Generator[PECResult, None, None]:
     logger = logging.getLogger()
     if isinstance(source, Path):
         with source.open() as fp:
@@ -83,17 +82,16 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], psm_root = Path.c
         psm_file = psm_root / output.psm
         with psm_file.open() as psm:
             psm.readline()
-            input_data_locations = json.loads(psm.readline())
-        if 'compound' in input_data_locations.keys() and 'gap' in input_data_locations.keys():
-            compound_file = Path(input_data_locations['compound'])
-            gap_file = Path(input_data_locations['gap'])
-            logger.debug({"compound_file": compound_file, "gap_file": gap_file})
-            compound = get_compound(compound_file)
-            gap = get_gap(gap_file)
-        elif 'combination' in input_data_locations.keys():
-            combination_file = Path(input_data_locations['combination'])
-            with combination_file.open() as fp:
-                combination = Combination(**json.load(fp))
+            input_data_hashes = json.loads(psm.readline())
+        if 'compound' in input_data_hashes.keys() and 'gap' in input_data_hashes.keys():
+            compound_hash = input_data_hashes['compound']
+            gap_hash = input_data_hashes['gap']
+            logger.debug({"compound_file": compound_hash, "gap_file": gap_hash})
+            compound = get_obj_by_hash(h=compound_hash, fileroots=input_directories)
+            gap = get_obj_by_hash(h=gap_hash, fileroots=input_directories)
+        elif 'combination' in input_data_hashes.keys():
+            combination_hash = Path(input_data_hashes['combination'])
+            combination = get_obj_by_hash(h=combination_hash, fileroots= input_directories)
             compound = combination.compound
             gap = combination.gap
         else:
@@ -101,13 +99,26 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], psm_root = Path.c
         yield PECResult(compound=compound, gap=gap, crop=output.crop, scenario=output.scenario, pec=output.pec)
 
 @functools.lru_cache(maxsize=None)
-def get_compound(file: Path) -> Compound:
-    with file.open() as fp:
-        content = json.load(fp)
-    return Compound(**content)
+def get_obj_by_hash(h: int, fileroots: Sequence[Path]) -> Union[Compound, GAP, Combination]:
+    hashes = {}
+    for fileroot in fileroots:
+        hashes.update(get_hash_obj_relation(fileroot, (Compound, GAP, Combination)))
+    return hashes[h]
 
 @functools.lru_cache(maxsize=None)
-def get_gap(file: Path) -> GAP:
-    with file.open() as fp:
-        content = json.load(fp)
-    return GAP(**content)
+def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) -> Dict[int, Any]:
+    hashes = {}
+    if directory.is_dir():
+        files = directory.glob('*.json')
+    else:
+        files = [directory]
+    for file in files:
+        for candidate in candidate_classes:
+            try:
+                with file.open() as fp:
+                    obj = candidate(**json.load(fp))
+                    hashes[hash(obj)] = obj
+            except:
+                pass
+
+

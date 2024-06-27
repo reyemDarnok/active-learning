@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import csv
 from dataclasses import dataclass
 import json
 import logging
@@ -10,7 +11,7 @@ import sys
 
 sys.path += [str(Path(__file__).parent.parent)]
 import subprocess
-from typing import Generator, Iterable, List, Tuple, TypeVar, Union
+from typing import Generator, Iterable, List, Optional, Tuple, TypeVar, Union
 from zipfile import ZipFile
 from shutil import copytree, rmtree
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -23,7 +24,7 @@ from ioTypes import gap
 from ioTypes.pelmo import ChemPLM, PelmoResult, WaterPLM
 import util.jsonLogger as jsonLogger
 
-from pelmo.summarize import rebuild_output, rebuild_output_to_file
+from pelmo.summarize import rebuild_output_to_file
 
 from contextlib import suppress
 
@@ -51,16 +52,22 @@ def main():
     logger.debug(args)
     files = list(args.psm_files.glob('*.psm') if args.psm_files.is_dir() else [args.psm_files])
     logging.info('Running for the following psm files: %s', files)
-    results = run_psms(psm_files=files, working_dir=args.working_dir, crops=args.crop, scenarios=args.scenario, max_workers=args.threads)
-    with args.output.open('w') as fp:
-        json.dump(list(results), fp, cls=conversions.EnhancedJSONEncoder)
+    write_psm_results(args.output, files, None, working_dir=args.working_dir, crops=args.crop, scenarios=args.scenario, max_workers=args.threads)
 
-def write_psm_results(output_file: Path, psm_files: Iterable[Path, str], working_dir: Path = Path.cwd() / 'pelmo', 
+def write_psm_results(output_file: Path, psm_files: Iterable[Path, str], input_directories: Optional[Path] = None, working_dir: Path = Path.cwd() / 'pelmo', 
                       crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario, 
-                      max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
+                      max_workers: int = cpu_count() - 1):
     results = run_psms(psm_files=psm_files, working_dir=working_dir,
                        crops=crops, scenarios=scenarios, max_workers=max_workers)
-    rebuild_output_to_file(file=output_file, source=results, psm_root=working_dir)
+    if input_directories:
+        rebuild_output_to_file(file=output_file, results=results, input_directories=input_directories, psm_root=working_dir)
+    else:
+        with output_file.open('w') as output:
+            if output_file.suffix == '.json':
+                json.dump(list(results), output, cls=conversions.EnhancedJSONEncoder)
+            else:
+                writer = csv.writer(output)
+                writer.writerows((result.psm, result.crop, result.scenario, result.pec) for result in results)
     
 def _make_runs(psm_files: Iterable[Path, str], crops: Iterable[FOCUSCrop], scenarios: Iterable[Scenario]) -> Generator[Tuple[Union[Union[Path, str], FOCUSCrop, Scenario]], None, None]:
     crops = list(crops)

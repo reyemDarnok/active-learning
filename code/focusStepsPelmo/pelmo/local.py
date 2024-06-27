@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 from typing import Sequence
 sys.path += [str(Path(__file__).parent.parent)]
-from pelmo.summarize import rebuild_output, rebuild_output_to_file
+from pelmo.summarize import rebuild_output_to_file
 from util import conversions
 from ioTypes.gap import FOCUSCrop, Scenario
 from pelmo.creator import generate_psm_files
@@ -42,7 +42,7 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
     results = run_psms(psm_files=psm_files, working_dir=focus_dir,crops=crops, scenarios=scenarios, max_workers=threads)
     
     logger.info('Dumping results of Pelmo runs to %s', output_file)
-    rebuild_output_to_file(output_file, results)
+    rebuild_output_to_file(output_file, [x for x in (compound_files, gap_files, combination_dir) if x], results)
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()

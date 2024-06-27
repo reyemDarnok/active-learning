@@ -58,7 +58,7 @@ def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
     elif source.suffix == 'xlsx':
         yield from t.from_excel(source)
 
-def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None, combinations: Iterable[Combination] = None) -> Iterable[str]:
+def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None, combinations: Iterable[Combination] = None) -> Generator[str, None, None]:
     assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
     if combinations:
         for combination in combinations:
