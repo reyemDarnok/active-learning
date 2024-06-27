@@ -14,6 +14,7 @@ class JsonFormatter(logging.Formatter):
     @param str msec_format: Microsecond formatting. Appended at the end. Default: "%s.%03dZ"
     """
 
+    # noinspection PyMissingConstructor
     def __init__(self, fmt_dict: dict = None, time_format: str = "%Y-%m-%dT%H:%M:%S", msec_format: str = "%s.%03dZ"):
         self.fmt_dict = fmt_dict if fmt_dict is not None else {"message": "message"}
         self.default_time_format = time_format
@@ -67,7 +68,7 @@ def get_json_handler(file: str, logging_format=None):
     :return: The new FileHandler for json logging'''
     if logging_format is None:
         logging_format = {"module": "module", "time": "asctime", "level": "levelname",
-                  "thread": "threadName", "function": "funcName", "message": "message"}
+                          "thread": "threadName", "function": "funcName", "message": "message"}
     file_handler = logging.FileHandler(file, mode='a')
     json_formatter = JsonFormatter(logging_format)
     file_handler.setFormatter(json_formatter)
@@ -87,14 +88,16 @@ def add_log_args(parser: ArgumentParser):
 def configure_logger_from_argparse(logger: logging.Logger, args: Namespace):
     '''Uses the arguments loglevel and logfile in args to configure logger
     :param logger: The logger to modify
-    :param args: The namespace returned by parse_args. Should contain loglevel and logfile properties, as added by add_log_args'''
+    :param args: The namespace returned by parse_args.
+    Should contain loglevel and logfile properties, as added by add_log_args'''
     logger.handlers = [get_json_handler(args.logfile)]
     logger.setLevel(args.loglevel)
 
 
 def _str_to_level(level: str) -> int:
     '''translates a string to a loglevel
-    :param level: The string representation. May be numerical value or the names of the logging level constants, case-insensitive
+    :param level: The string representation.
+    May be numerical value or the names of the logging level constants, case-insensitive
     :return: The logging level'''
     try:
         return int(level)

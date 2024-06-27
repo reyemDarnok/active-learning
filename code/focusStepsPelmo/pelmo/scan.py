@@ -14,15 +14,13 @@ import random
 from shutil import rmtree
 from typing import Any, Dict, Generator, Iterable, List, Optional, Set, Tuple, Union, Sequence
 import sys
-
-sys.path += [str(Path(__file__).parent.parent)]
-from ioTypes.combination import Combination
-from pelmo.remote_bhpc import run_bhpc
-from pelmo.local import run_local
-from util import conversions, jsonLogger
-from util.conversions import EnhancedJSONEncoder
-from ioTypes.compound import Compound
-from ioTypes.gap import GAP, FOCUSCrop, Scenario
+from ..ioTypes.combination import Combination
+from ..pelmo.remote_bhpc import run_bhpc
+from ..pelmo.local import run_local
+from ..util import conversions, jsonLogger
+from ..util.conversions import EnhancedJSONEncoder
+from ..ioTypes.compound import Compound
+from ..ioTypes.gap import GAP, FOCUSCrop, Scenario
 
 
 def main():
@@ -59,13 +57,13 @@ def main():
     if args.run == 'bhpc':
         run_bhpc(work_dir=args.work_dir / 'remote', compound_file=compound_dir, gap_file=gap_dir,
                  combination_dir=combination_dir,
-                 submit=args.work_dir / 'submit', output=args.output, output_format=args.output_format, crops=crops,
+                 submit=args.work_dir / 'submit', output=args.output, crops=crops,
                  scenarios=scenarios,
-                 notificationemail=args.notification_email, session_timeout=args.session_timeout, run=True)
+                 notification_email=args.notification_email, session_timeout=args.session_timeout, run=True)
     elif args.run == 'local':
         run_local(work_dir=args.work_dir / 'local', compound_files=compound_dir, gap_files=gap_dir,
                   combination_dir=combination_dir,
-                  output_file=args.output, output_format=args.output_format, crops=crops, scenarios=scenarios,
+                  output_file=args.output, crops=crops, scenarios=scenarios,
                   threads=args.threads)
 
 
@@ -401,20 +399,25 @@ def parse_args() -> Namespace:
                         help="The gap to use as a template for unchanging parameters when scanning")
     parser.add_argument('-w', '--work-dir', type=Path, default=Path('scan') / 'work',
                         help="A directory to use as scratch space")
-    parser.add_argument('-o', '--output', type=Path, default='output.csv', help="Where to write the results to")
-    parser.add_argument('--output-format', type=str, choices=('json', 'csv'), default=None,
-                        help="Which output format to use. Defaults to guessing from the filename")
+    parser.add_argument('-o', '--output', type=Path, default='output.csv',
+                        help="Where to write the results to")
     parser.add_argument('--input-format', type=str, choices=('csv', 'json'), default=None,
-                        help="The format of the input file. Defaults to guessing from the filename. CSV Files start every line with a parameter name and continue it with its possible values ")
+                        help="The format of the input file. Defaults to guessing from the filename. "
+                             "CSV Files start every line with a parameter name "
+                             "and continue it with its possible values")
     parser.add_argument('-i', '--input-file', type=Path, required=True,
                         help="The input file for the scanning parameters")
     parser.add_argument('-s', '--sample-size', type=int, default=1000,
                         help="If given an json input, how many random samples to take")
     parser.add_argument('--crop', nargs='*', type=FOCUSCrop.from_acronym, default=list(FOCUSCrop),
-                        help="The crops to simulate. Can be specified multiple times. Should be listed as a two letter acronym. The selected crops have to be present in the FOCUS zip, the bundled zip includes all crops. Defaults to all crops.")
+                        help="The crops to simulate. Can be specified multiple times. "
+                             "Should be listed as a two letter acronym. "
+                             "The selected crops have to be present in the FOCUS zip, "
+                             "the bundled zip includes all crops. Defaults to all crops.")
     parser.add_argument('--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario),
                         default=list(Scenario),
-                        help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. A scenario will be calculated if it is defined both here and for the crop")
+                        help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. "
+                             "A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('--test-set-size', type=int, default=1000,
                         help="How big a test set to generate if --make-test set is set")
     parser.add_argument('--test-set-buffer', type=float, default=0.1,
@@ -427,18 +430,20 @@ def parse_args() -> Namespace:
                           help="Use a preexisting test set (should be a directory)")
 
     run_subparsers = parser.add_subparsers(dest="run",
-                                           help="Where to run Pelmo. The script will only generate files but not run anything if this is not specified")
+                                           help="Where to run Pelmo. The script will only generate files "
+                                                "but not run anything if this is not specified")
     local_parser = run_subparsers.add_parser("local", help="Run Pelmo locally")
     local_parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1,
                               help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
     bhpc_parser = run_subparsers.add_parser("bhpc", help="Run Pelmo on the bhpc")
     bhpc_parser.add_argument('--notification-email', type=str, default=None,
                              help="The email address which will be notified if the bhpc run finishes")
-    bhpc_parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")
+    bhpc_parser.add_argument('--session-timeout', type=int, default=6,
+                             help="How long should the bhpc run at most")
 
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
-    if args.input_format == None:
+    if args.input_format is None:
         args.input_format = args.input_file.suffix[1:]
 
     assert args.input_format != 'csv' or (

@@ -9,6 +9,7 @@ from ioTypes.gap import GAP, Application, FOCUSCrop
 
 PELMO_UNSET = -99
 
+
 class Emergence(int, Enum):
     '''The possible application crop development timings for Pelmo'''
     first_emergence = 0
@@ -20,9 +21,13 @@ class Emergence(int, Enum):
 
     @staticmethod
     def fromStage(stage: int) -> 'Emergence':
-        if stage >= 9: return Emergence.first_harvest
-        if stage >= 8: return Emergence.first_maturation
-        else: return Emergence.first_emergence
+        if stage >= 9:
+            return Emergence.first_harvest
+        if stage >= 8:
+            return Emergence.first_maturation
+        else:
+            return Emergence.first_emergence
+
 
 class ApplicationType(int, Enum):
     """The different types of application Pelmo recognizes"""
@@ -30,6 +35,7 @@ class ApplicationType(int, Enum):
     linear = 2
     exp_foliar = 3
     manual = 4
+
 
 @dataclass(frozen=True)
 class PsmApplication(Application):
@@ -53,13 +59,13 @@ class PsmApplication(Application):
 
     def __post_init__(self):
         super().__post_init__()
-        if self.offset == None:
-            if self.timing.bbch_state > 90: object.__setattr__(self, 'offset', self.timing.bbch_state - 90)
-            elif self.timing.bbch_state > 80: object.__setattr__(self, 'offset', self.timing.bbch_state - 80)
-            else: object.__setattr__(self, 'offset', self.timing.bbch_state)
-
-        
-
+        if self.offset is None:
+            if self.timing.bbch_state > 90:
+                object.__setattr__(self, 'offset', self.timing.bbch_state - 90)
+            elif self.timing.bbch_state > 80:
+                object.__setattr__(self, 'offset', self.timing.bbch_state - 80)
+            else:
+                object.__setattr__(self, 'offset', self.timing.bbch_state)
 
 
 class DegradationType(int, Enum):
@@ -83,13 +89,14 @@ class Volatization:
     hv: float = 98400
     temperature: float = 20
 
-    
+
 @dataclass
 class Moisture:
     """Used by Pelmo"""
     absolute: float = 0
     relative: float = 100
     exp: float = 0.7
+
 
 @dataclass
 class DegradationData:
@@ -105,10 +112,11 @@ class DegradationData:
     def __post_init__(self):
         object.__setattr__(self, 'moisture', map_to_class(self.moisture, Moisture))
 
+
 @dataclass
 class PsmDegradation:
     to_disregard: DegradationData
-    metabolites: Optional[Tuple['PsmDegradation']] = field(default_factory=tuple) # None if it is degradation to BR/CO2
+    metabolites: Optional[Tuple['PsmDegradation']] = field(default_factory=tuple)  # None if it is degradation to BR/CO2
 
     def __post_init__(self):
         object.__setattr__(self, 'to_disregard', map_to_class(self.to_disregard, DegradationData))
@@ -117,13 +125,12 @@ class PsmDegradation:
                 object.__setattr__(self, 'metabolites', [map_to_class(x, PsmDegradation) for x in self.metabolites])
             elif len(self.metabolites) < 4:
                 metabolites = list(self.metabolites)
-                for _ in range(4-len(self.metabolites)):
+                for _ in range(4 - len(self.metabolites)):
                     next_filler = PsmDegradation(to_disregard=DegradationData(rate=0), metabolites=None)
                     metabolites += [next_filler]
                     object.__setattr__(self, 'metabolites', tuple(metabolites))
         else:
             object.__setattr__(self, 'metabolites', tuple())
-
 
 
 @dataclass
@@ -142,10 +149,11 @@ class PsmAdsorption:
     f_neq: float = 0
     kdes: float = 0
 
+
 @dataclass
 class PsmCompound:
     molar_mass: float
-    adsorptions: Tuple[PsmAdsorption, PsmAdsorption]
+    adsorptions: Tuple[PsmAdsorption, ...]
     degradations: List[DegradationData]
     volatizations: Tuple[Volatization, Volatization]
     plant_uptake: float = 0.5
@@ -156,7 +164,7 @@ class PsmCompound:
     @staticmethod
     def from_compound(compound: Compound) -> 'PsmCompound':
         if compound.degradation.soil > 0:
-            full_rate = math.log(2)/compound.degradation.soil
+            full_rate = math.log(2) / compound.degradation.soil
         else:
             full_rate = 0
         remaining_degradation_fraction = 1.0
@@ -165,18 +173,28 @@ class PsmCompound:
             for met_des in compound.metabolites:
                 if met_des:
                     remaining_degradation_fraction -= met_des.formation_fraction
-                    degradations += [DegradationData(rate=full_rate*met_des.formation_fraction)]
+                    degradations += [DegradationData(rate=full_rate * met_des.formation_fraction)]
                 else:
                     degradations += [DegradationData(rate=0)]
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
-        degradations += [DegradationData(rate=full_rate*remaining_degradation_fraction)]
-        volatizations = tuple([Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility, vaporization_pressure=compound.volatility.vaporization_pressure, temperature=compound.volatility.reference_temperature - 1),
-                              Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility, vaporization_pressure=compound.volatility.vaporization_pressure, temperature=compound.volatility.reference_temperature + 1)])
-        return PsmCompound(molar_mass=compound.molarMass, 
-                    adsorptions=tuple([PsmAdsorption(koc = compound.sorption.koc, freundlich=compound.sorption.freundlich)]),
-                    plant_uptake=compound.plant_uptake,degradations=degradations, name=compound.name, volatizations=volatizations,
-                    position=compound.model_specific_data['pelmo']['position'])
-PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(koc = 0, freundlich=1)]),degradations=[],volatizations=tuple())
+        degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction)]
+        volatizations = (Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility,
+                                      vaporization_pressure=compound.volatility.vaporization_pressure,
+                                      temperature=compound.volatility.reference_temperature - 1),
+                         Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility,
+                                      vaporization_pressure=compound.volatility.vaporization_pressure,
+                                      temperature=compound.volatility.reference_temperature + 1))
+        return PsmCompound(molar_mass=compound.molarMass,
+                           adsorptions=tuple(
+                               [PsmAdsorption(koc=compound.sorption.koc, freundlich=compound.sorption.freundlich)]),
+                           plant_uptake=compound.plant_uptake, degradations=degradations, name=compound.name,
+                           volatizations=volatizations,
+                           position=compound.model_specific_data['pelmo']['position'])
+
+
+PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(koc=0, freundlich=1)]), degradations=[],
+                                volatizations=(Volatization(), Volatization()))
+
 
 @dataclass
 class PsmFile:
@@ -197,8 +215,7 @@ class PsmFile:
             "num_soil_horizons": self.num_soil_horizons,
             "metabolites": self.metabolites,
             "degradation_type": self.degradation_type
-            }
-    
+        }
 
     @staticmethod
     def fromInput(compound: Compound, gap: GAP) -> 'PsmFile':
@@ -206,10 +223,12 @@ class PsmFile:
 
         metabolites: Dict[str, Compound] = {}
         if 'pelmo' in compound.model_specific_data.keys():
-            all_metabolites =   [met for met in compound.metabolites] + \
-                                [met for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
+            all_metabolites = [met for met in compound.metabolites] + \
+                              [met for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
+
             def compound_position(c: Compound) -> str:
                 return c.model_specific_data.get('pelmo', {}).get('position', 'Unknown Position').upper()
+
             for c in all_metabolites:
                 metabolites[compound_position(c.metabolite)] = c.metabolite
         else:
@@ -228,7 +247,8 @@ class PsmFile:
             if position in metabolites.keys():
                 follow_position = chr(ord(position[0]) + 1) + position[1]
                 follow_formation = find_formation(metabolites[position], follow_position)
-                metabolites[position] = replace(metabolites[position],  metabolites=[follow_formation], model_specific_data = {'pelmo': {'position': position}})
+                metabolites[position] = replace(metabolites[position], metabolites=[follow_formation],
+                                                model_specific_data={'pelmo': {'position': position}})
         for position in ('D1', 'C1', 'B1', 'A1'):
             if position in metabolites.keys():
                 follow_position = chr(ord(position[0]) + 1) + position[1]
@@ -237,7 +257,9 @@ class PsmFile:
                 down_formation = find_formation(metabolites[position], down_position)
                 diagonal_position = chr(ord(position[0]) + 1) + chr(ord(position[1]) + 1)
                 diagonal_formation = find_formation(metabolites[position], diagonal_position)
-                metabolites[position] = replace(metabolites[position],  metabolites=[follow_formation, down_formation, diagonal_formation], model_specific_data = {'pelmo': {'position': position}})
+                metabolites[position] = replace(metabolites[position],
+                                                metabolites=[follow_formation, down_formation, diagonal_formation],
+                                                model_specific_data={'pelmo': {'position': position}})
         a1_formation = find_formation(compound, 'A1')
         b1_formation = find_formation(compound, 'B1')
         c1_formation = find_formation(compound, 'C1')
@@ -250,12 +272,12 @@ class PsmFile:
                 metabolite_list.append(PsmCompound.from_compound(metabolites[position]))
         return PsmFile(application=application,
                        compound=psmCompound,
-                       metabolites=metabolites,
+                       metabolites=metabolite_list,
                        crop=gap.modelCrop,
                        comment="No comment",
                        num_soil_horizons=0,
                        degradation_type=DegradationType.FACTORS,
-        ) 
+                       )
 
     def toInput(self) -> Tuple[Compound, GAP]:
         """Convert this psmFile to ioTypes input data.
@@ -263,19 +285,20 @@ class PsmFile:
         compound = Compound(molarMass=self.molar_mass,
                             waterSolubility=self.volatizations[0].solubility,
                             sorption=Sorption(koc=self.adsorptions[0].koc, freundlich=self.adsorptions[0].freundlich),
-                            degradation=Degradation(system=math.log(2)/self.degradations[0].rate,
-                                                    soil=math.log(2)/self.degradations[0].rate,
-                                                    surfaceWater=math.log(2)/self.degradations[0].rate,
-                                                    sediment=math.log(2)/self.degradations[0].rate),
+                            degradation=Degradation(system=math.log(2) / self.degradations[0].rate,
+                                                    soil=math.log(2) / self.degradations[0].rate,
+                                                    surfaceWater=math.log(2) / self.degradations[0].rate,
+                                                    sediment=math.log(2) / self.degradations[0].rate),
                             plant_uptake=self.plant_uptake
                             )
         gap = GAP(modelCrop=self.crop, application=self.application)
         return (compound, gap)
-    
+
     def __post_init__(self):
         self.application = map_to_class(self.application, PsmApplication)
         self.compound = map_to_class(self.compound, PsmCompound)
-        self.metabolites = [map_to_class(metabolite, PsmCompound) if metabolite else PsmCompound.empty for metabolite in self.metabolites]
+        self.metabolites = [map_to_class(metabolite, PsmCompound) if metabolite else PsmCompound.empty for metabolite in
+                            self.metabolites]
         self.crop = str_to_enum(self.crop, FOCUSCrop)
         self.num_soil_horizons = int(self.num_soil_horizons)
         self.degradation_type = str_to_enum(self.degradation_type, DegradationType)

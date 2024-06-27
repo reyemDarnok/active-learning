@@ -1,5 +1,3 @@
-
-
 from collections import OrderedDict, UserDict
 from dataclasses import is_dataclass
 from enum import Enum
@@ -10,9 +8,9 @@ import typing
 
 class RSDict(UserDict):
     '''Dict ordered by reverse order of keys'''
-    
+
     def __init__(self, source: Optional[Dict] = None):
-        if source == None:
+        if source is None:
             source = {}
         key_order = reversed(sorted(source.keys()))
         data = OrderedDict()
@@ -20,14 +18,17 @@ class RSDict(UserDict):
             data[key] = source[key]
         super().__init__(data)
 
+
 class HashableDict(UserDict):
     def __hash__(self):
         return hash(frozenset(self.items()))
 
+
 class HashableRSDict(RSDict):
     def __hash__(self):
         return hash(frozenset(self.items()))
-    
+
+
 class TypeCorrecting:
     def __post_init__(self):
         module_name = self.__class__.__module__
@@ -40,13 +41,15 @@ class TypeCorrecting:
         type_hints = {key: value for d in type_hint_list for key, value in d.items()}
         for attr, t in type_hints.items():
             object.__setattr__(self, attr, correct_type(self.__getattribute__(attr), t))
-            
+
 
 T = TypeVar('T')
+
+
 def correct_type(input_value: Any, t: Type[T]) -> T:
     if type(input_value) == t:
         return input_value
-    if hasattr(t, '__origin__'): # Typing with Type Vars
+    if hasattr(t, '__origin__'):  # Typing with Type Vars
         origin = t.__origin__
         # noinspection PyProtectedMember
         if origin == Union and type(None) in t.__args__:
@@ -97,7 +100,7 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
                 return dict(input_value)
             else:
                 return dict()
-        elif t._name == None:
+        elif t._name is None:
             return None
         else:
             # noinspection PyProtectedMember
@@ -112,6 +115,3 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
     if input_value is None:
         return None
     return t(input_value)
-
-
-

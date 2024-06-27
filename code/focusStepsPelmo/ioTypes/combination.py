@@ -10,7 +10,7 @@ from .compound import Compound
 from .gap import GAP
 
 
-@dataclass(frozen = True)
+@dataclass(frozen=True)
 class Combination(TypeCorrecting):
     """A dataclass combining a gap and a compound definition"""
     gap: GAP
@@ -19,7 +19,7 @@ class Combination(TypeCorrecting):
     def _asdict(self):
         # noinspection PyProtectedMember
         return {'gap': self.gap._asdict(), 'compound': self.compound}
-    
+
     @staticmethod
     def from_path(path: Path) -> Generator['Combination', None, None]:
         if path.is_dir():

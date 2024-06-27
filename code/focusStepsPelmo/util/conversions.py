@@ -7,6 +7,7 @@ from enum import Enum
 
 T = TypeVar('T')
 
+
 def map_to_class(obj: Union[T, Dict], cls: Type[T]) -> T:
     '''Turns the input obj into an instance of class cls.
     Assumes obj is either a map of constructor arguments or already an instance of cls'''
@@ -15,7 +16,9 @@ def map_to_class(obj: Union[T, Dict], cls: Type[T]) -> T:
     else:
         return cls(**obj)
 
+
 E = TypeVar('E')
+
 
 def str_to_enum(obj: Union[E, str], cls: Type[E]) -> E:
     '''Turn the input obj into an instance of the enum cls.
@@ -27,38 +30,40 @@ def str_to_enum(obj: Union[E, str], cls: Type[E]) -> E:
             return cls(obj)
         except ValueError:
             return cls[obj]
-        
+
+
 class EnhancedJSONEncoder(JSONEncoder):
-        """Adds several previously not serializable classes to the JSON encoder
-        Cannot be trivially extended to change the representation of serializable objects
-        Currently adds support for:
+    """Adds several previously not serializable classes to the JSON encoder
+    Cannot be trivially extended to change the representation of serializable objects
+    Currently adds support for:
 
-        Objects implementing _asdict (primarily NamedTuples)
+    Objects implementing _asdict (primarily NamedTuples)
 
-        dataclasses
+    dataclasses
 
-        Enums
+    Enums
 
-        UserDict
-        """
+    UserDict
+    """
 
-        def default(self, o):
-            if Enum in type(o).__bases__:
-                print(f"Enum: {o}")
-                if {str, int, float, bool} & set(type(o).__bases__):
-                    return o.value
-                else:
-                    return o.name
-            if hasattr(o, '_asdict'):
-                # noinspection PyProtectedMember
-                return o._asdict()
-            if isinstance(o, frozenset):
-                return list(o)
-            if dataclasses.is_dataclass(o):
-                return dataclasses.asdict(o)
-            if isinstance(o, UserDict):
-                return o.data
-            return super().default(o)
+    def default(self, o):
+        if Enum in type(o).__bases__:
+            print(f"Enum: {o}")
+            if {str, int, float, bool} & set(type(o).__bases__):
+                return o.value
+            else:
+                return o.name
+        if hasattr(o, '_asdict'):
+            # noinspection PyProtectedMember
+            return o._asdict()
+        if isinstance(o, frozenset):
+            return list(o)
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        if isinstance(o, UserDict):
+            return o.data
+        return super().default(o)
+
 
 def flatten_to_csv(to_flatten: Iterable[Dict[str, Any]]) -> Generator[str, None, None]:
     """Takes an Iterable of dictionaries and flattens them to csv data. 
@@ -95,4 +100,3 @@ def flatten(to_flatten: Union[List, Dict, Any]) -> str:
     else:
         to_flatten = str(to_flatten)
         return re.sub(r'([\\,])', r"\\\1", to_flatten)
-

@@ -90,13 +90,15 @@ def start_submit_file(submit_folder: Path,
                       submit_file_regex=r".+\.sub",
                       machines: int = 1, cores: int = 2, multithreading: bool = True,
                       notification_email: Optional[str] = None, session_timeout: int = 6) -> str:
-    """Starts a session defined by submit files in the bhpc. This method assumes that the bhpc environment variables have already been set.
+    """Starts a session defined by submit files in the bhpc. This method assumes that the bhpc environment variables
+    have already been set.
     
     :param submit_folder: The folder to search for submit files. Will be searched recursively
     :param session_name_prefix: The prefix for bhpc session names. Defaults to "Unknown session"
     :param session_name_suffix: The suffix for bhpc session names. Defaults to a random int
-    :param submit_file_regex: The regex for submit file filenames. Defaults to ".+\.sub" which is also the bhpc default
-    :param machines: How many ec2 instances to use for running. Prefer increasing the cores count if you need more performance as that reduces overhead
+    :param submit_file_regex: The regex for submit file filenames. Defaults to ".+\\.sub" which is also the bhpc default
+    :param machines: How many ec2 instances to use for running.
+    Prefer increasing the cores count if you need more performance as that produces less overhead
     :param cores: How many cores each instance should have. Valid values are 2,4,8,16 and 96
     :param multithreading: Whether to use multithreading support in the bhpc
     :param notification_email: Who to notify when the bhpc session completes
@@ -121,7 +123,8 @@ def run(session: str, machines: int = 1, cores: int = 2, multithreading: bool = 
     :param cores: How many cores should each ec2 instance have (valid values are: 2,4,8,16,96)
     :param notification_email: Which email inbox should be notified upon completion of the BHPC Job
     :param session_timeout: When should the session time out
-    :param multithreading: True if one Machine should only host one job at a time instead of one core for one job. Use for jobs with native multithreading
+    :param multithreading: True if one Machine should only host one job at a time instead of one core for one job.
+    Use for jobs with native multithreading
     :param session: The session id to run"""
     assert cores in (2, 4, 8, 16, 96), f"Invalid core number {cores}. Only 2,4,8,16 or 96 are permitted"
     logger = logging.getLogger()
@@ -165,7 +168,8 @@ def upload(submit_folder, submit_file_regex, session):
 
 
 def download(session: str, wait_until_finished: bool = True, retry_interval: float = 60) -> bool:
-    """Download the results of a bhpc session The results will be in the directory where the submit file that started the session is.
+    """Download the results of a bhpc session.
+     The results will be in the directory where the submit file that started the session is.
     :param session: The sessionId of the session to download
     :param wait_until_finished: Whether to wait until the session is finished
     :param retry_interval: How long to wait between checks of the session status
@@ -240,7 +244,8 @@ class Status:
     done: int
     """How many jobs have already finished running"""
     submit_file: Path
-    """The path of the submit file defining the jobs. Any downloads from this job will be saved in the same directory as this file"""
+    """The path of the submit file defining the jobs. 
+    Any downloads from this job will be saved in the same directory as this file"""
 
     def is_finished(self):
         return self.initial == 0 and self.started == 0
@@ -280,5 +285,8 @@ def is_auth_message(response: str) -> bool:
     """Returns True if response is the BHPC error message for missing authorization
     :param response: The response from the BHPC executable
     :return: True if response is the error response, False for all other values"""
-    auth_message = "--> Authorization environment variables not set. Check if you have file with certificates in the same folder as the executable. You will be redirected to http://go/bhpc-prod. Please get variables and .crt File to use the bhpc cli <--\n"
+    auth_message = ("--> Authorization environment variables not set. "
+                    "Check if you have file with certificates in the same folder as the executable. "
+                    "You will be redirected to http://go/bhpc-prod. "
+                    "Please get variables and .crt File to use the bhpc cli <--\n")
     return auth_message == response

@@ -9,9 +9,8 @@ import sys
 
 import pandas
 
-sys.path += [str(Path(__file__).parent.parent)]
-from util.datastructures import HashableRSDict, TypeCorrecting
-from util.conversions import map_to_class, str_to_enum
+from ..util.datastructures import HashableRSDict, TypeCorrecting
+from ..util.conversions import map_to_class, str_to_enum
 
 
 class Scenario(str, Enum):
@@ -22,6 +21,7 @@ class Scenario(str, Enum):
     K = "Kremsmünster"
     N = "Okehampton"
     P = "Piacenza"
+    # noinspection PyPep8
     O = "Porto"
     S = "Sevilla"
     T = "Thiva"
@@ -47,7 +47,7 @@ class FOCUSCropMixin(NamedTuple):
     '''The name to use for display'''
     defined_scenarios: Tuple[Scenario, ...]
     '''The scenarios that are defined for this Crop in Pelmo'''
-    interception: OrderedDict[PrincipalStage, float]
+    interception: HashableRSDict[PrincipalStage, float]
     '''Mapping bbch states to interception values'''
 
 
@@ -251,6 +251,7 @@ class GAP(TypeCorrecting):
     def __hash__(self) -> int:  # make GAP hash stable
         return hash((self.application, tuple(ord(c) for c in self.modelCrop.name)))
 
+    # noinspection PyPep8
     def _asdict(self) -> Dict[str, Any]:
         # noinspection GrazieInspection
         """Fixes issues with serialization but relies on a custom JSON Encoder

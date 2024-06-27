@@ -8,19 +8,17 @@ import shutil
 import subprocess
 import sys
 
-sys.path += [str(Path(__file__).parent.parent)]
-
 from typing import Generator, Iterable, Optional, Sequence, Tuple, TypeVar
 from zipfile import ZipFile
 import zipfile
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
-from bhpc import commands
-import util.jsonLogger as jsonLogger
-from util import conversions
-from ioTypes.gap import FOCUSCrop, Scenario
-from pelmo.creator import generate_psm_files
-from pelmo.summarize import rebuild_scattered_to_file
+from ..bhpc import commands
+from ..util import jsonLogger
+from ..util import conversions
+from ..ioTypes.gap import FOCUSCrop, Scenario
+from ..pelmo.creator import generate_psm_files
+from ..pelmo.summarize import rebuild_scattered_to_file
 
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(),
                         undefined=StrictUndefined)
@@ -29,10 +27,13 @@ T = TypeVar('T')
 
 
 def split_into_batches(iterable: Iterable[T], batch_size=1) -> Generator[Generator[T], None, None]:
-    """Lazily split a Sequence into a Generator of equally sized slices of the sequence. The last slice may be smaller if the sequence does not evenly divide into the batch size
+    """Lazily split a Sequence into a Generator of equally sized slices of the sequence.
+    The last slice may be smaller if the sequence does not evenly divide into the batch size
     :param iterable: The iterable to split. Will be lazily evaluated
-    :param batch_size: The size of a given slice. The final slice will be shorter if the length of the sequence is not divisible by batch size
-    :yield: A slize of sequence of length batch size or, if it is the final slice and the length of the sequence is not divisible by batch size, smaller"""
+    :param batch_size: The size of a given slice.
+    The final slice will be shorter if the length of the sequence is not divisible by batch size
+    :yield: A slize of sequence of length batch size or,
+    if it is the final slice and the length of the sequence is not divisible by batch size, smaller"""
 
     def batch():
         for _ in range(batch_size):
@@ -128,7 +129,8 @@ def find_core_bhpc_configuration(crops: Sequence[FOCUSCrop], scenarios: Sequence
 
 
 def zip_common_directories(target: Path):
-    """Zip directories in output to common.zip so that when common.zip is unpacked the directories are where they started
+    """Zip directories in output to common.zip
+    so that when common.zip is unpacked the directories are where they started
     :param target: The directory to search for directories to zip"""
     logger = logging.getLogger()
     for directory in os.listdir(target):
@@ -162,7 +164,8 @@ def copy_common_files(output: Path):
 
 
 def zip_directory(directory: Path, zip_name: str):
-    """Zips all directory into zipName, such that if zipName is unzipped to the directory it is in directory will be restored
+    """Zips all directory into zipName,
+    such that if zipName is unzipped to the directory it is in directory will be restored
     :param directory: The directory to zip
     :param zip_name: The name of the resulting zip
     """
@@ -239,11 +242,16 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
 def parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument('-c', '--compound-file', required=True, type=Path,
-                        help='The compound to create a psm file for. If this is a directory, create psm files for every compound file in the directory, with .json files assumed to be compound files and no recursion')
+                        help='The compound to create a psm file for. '
+                             'If this is a directory, create psm files for every compound file in the directory, '
+                             'with .json files assumed to be compound files and no recursion')
     parser.add_argument('-g', '--gap-file', required=True, type=Path,
-                        help='The gap to create a psm file for. If this is a directory, create psm files for every gap file in the directory, with .json files assumed to be compound files and no recursion')
+                        help='The gap to create a psm file for. If this is a directory, '
+                             'create psm files for every gap file in the directory, '
+                             'with .json files assumed to be compound files and no recursion')
     parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path,
-                        help='The directory in which files for Pelmo will be created. Defaults to the current directory')
+                        help='The directory in which files for Pelmo will be created. '
+                             'Defaults to the current directory')
     parser.add_argument('-s', '--submit', default=Path('submit'), type=Path,
                         help='Where to output the submit file and its dependencies. Defaults to "submit"')
     parser.add_argument('-o', '--output', default=Path('output'), type=Path,
@@ -258,7 +266,8 @@ def parse_args() -> Namespace:
                         help="Run the created submit files on the bhpc")
     parser.add_argument('--notification-email', type=str, default=None,
                         help="The email address which will be notified if the bhpc run finishes")
-    parser.add_argument('--session-timeout', type=int, default=6, help="How long should the bhpc run at most")
+    parser.add_argument('--session-timeout', type=int, default=6,
+                        help="How long should the bhpc run at most")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()

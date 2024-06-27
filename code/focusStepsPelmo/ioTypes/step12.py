@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Dict
@@ -10,6 +9,7 @@ class Coverage(int, Enum):
     Minimal = auto()
     Average = auto()
     Full = auto()
+
 
 class Region(int, Enum):
     '''The Steps12 Regions'''
@@ -24,6 +24,7 @@ class Season(int, Enum):
     Summer = auto()
     Autumn = auto()
 
+
 @dataclass(frozen=True)
 class Scenario:
     '''General Scenario information, the defaults do not typically need to be overridden'''
@@ -36,7 +37,7 @@ class Scenario:
     step1RunoffPercentage: float = 10
     fieldToWaterRatio: float = 10
     equilibrationFactor: float = 1.5
-    runoffMap: Dict[Region, Dict[Season, float]] = field(default_factory=lambda : {
+    runoffMap: Dict[Region, Dict[Season, float]] = field(default_factory=lambda: {
         Region.NoRunoff: {Season.Spring: 2, Season.Summer: 2, Season.Autumn: 5},
         Region.North: {Season.Spring: 4, Season.Summer: 3, Season.Autumn: 4},
         Region.South: {Season.Spring: 0, Season.Summer: 0, Season.Autumn: 0}
