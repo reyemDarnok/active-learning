@@ -130,6 +130,7 @@ class PECResult:
     pec: List[float]
 
     def _asdict(self):
+        # noinspection PyProtectedMember
         return {"compound": asdict(self.compound),
                 "gap": self.gap._asdict(),
                 "scenario": self.scenario.name,

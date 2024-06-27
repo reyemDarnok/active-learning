@@ -103,11 +103,8 @@ def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path,
 def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], working_dir: Path) -> PelmoResult:
     '''Runs a single psm/crop/scenario combination.
     Assumes that it is in a multithreading context after _init_thread as run
-    :param pelmo_exe: The pelmo exe to use for running the psm file
-    :param psm_file: The psm file to run
     :param working_dir: Where to find the scenario data
-    :param crop: Which crop to calculate
-    :param scenario: Which scenario to calculate
+    :param run_data: The input to Pelmo
     :return: The result of the Pelmo run'''
     logger = logging.getLogger()
     psm_file, crop, scenario = run_data

@@ -121,6 +121,7 @@ def run(session: str, machines: int = 1, cores: int = 2, multithreading: bool = 
     :param cores: How many cores should each ec2 instance have (valid values are: 2,4,8,16,96)
     :param notification_email: Which email inbox should be notified upon completion of the BHPC Job
     :param session_timeout: When should the session time out
+    :param multithreading: True if one Machine should only host one job at a time instead of one core for one job. Use for jobs with native multithreading
     :param session: The session id to run"""
     assert cores in (2, 4, 8, 16, 96), f"Invalid core number {cores}. Only 2,4,8,16 or 96 are permitted"
     logger = logging.getLogger()
@@ -186,12 +187,12 @@ def download(session: str, wait_until_finished: bool = True, retry_interval: flo
             return True
     except KeyboardInterrupt as e:
         if wait_until_finished:
-            logger.warn(f"Download wait interrupted by interactive user")
+            logger.warning(f"Download wait interrupted by interactive user")
             answer = input(
                 f"Stopping monitoring session {session}. Should the session also be removed and killed? y/N:")
             if answer.strip().casefold() == "y".casefold():
                 print("Removing session")
-                logger.warn(f"Removing session {session} on request of interactive user")
+                logger.warning(f"Removing session {session} on request of interactive user")
                 remove(session, True)
             raise e
         else:
@@ -216,7 +217,7 @@ def remove(session: str, kill: bool = True):
 
         if is_auth_message(remove_stdout):
             request_auth_data()
-            remove_stdout(session, kill)
+            remove(session, kill)
 
 
 def bhpc_job_finished(session: str) -> bool:
@@ -257,7 +258,7 @@ def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
             str(bhpc_exe.absolute()), 'show', session], text=True, capture_output=True)
     if is_auth_message(p.stdout):
         request_auth_data()
-        return get_bhpc_job_status(session)
+        yield from get_bhpc_job_status(session)
     logger.debug("%s", p.stdout)
     lines = p.stdout.splitlines()
     lines = lines[3:]
@@ -268,8 +269,8 @@ def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
         initial = int(initial)
         started = int(started)
         done = int(done)
-        # attempt to repair path with spaces - only works if the only whitespace in path is single spaces, but that's the most common case
-        # and this will most likely be used for reporting, not accessing the submit file
+        # attempt to repair path with spaces - only works if the only whitespace in path is single spaces, but that's
+        # the most common case and this will most likely be used for reporting, not accessing the submit file
         path = Path(" ".join(path))
         logger.debug("%s %s %s %s", initial, started, done, path)
         yield Status(initial, started, done, path)

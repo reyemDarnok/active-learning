@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 import random
 from shutil import rmtree
-from typing import Any, Dict, Generator, Iterable, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, List, Optional, Set, Tuple, Union, Sequence
 import sys
 sys.path += [str(Path(__file__).parent.parent)]
 from ioTypes.combination import Combination
@@ -104,7 +104,7 @@ def distance_of_elements(a: Dict, b: Dict, definition: Dict) -> float:
 def add_to_diff_vector(a: Any, b: Any, definition: Any, diff_vector: List[float]):
     if isinstance(definition, (dict, UserDict)):
         if 'type' in definition.keys() and 'parameters' in definition.keys():
-            add_template_to_diff_vector(a, b, diff_vector)
+            add_template_to_diff_vector(a, b, definition, diff_vector)
         else:
             for key in definition.keys():
                 add_to_diff_vector(a[key], b[key], definition[key], diff_vector)
@@ -281,7 +281,7 @@ def span_gap(template_gaps: Union[GAP, Iterable[GAP]], bbch: Optional[Iterable[i
         template_gaps = span_rate(template_gaps, rate)
     return template_gaps
 
-def span_bbch(gaps: Iterable[GAP], bbchs: Iterable[int]) -> Generator[GAP, None, None]:
+def span_bbch(gaps: Iterable[GAP], bbchs: Sequence[int]) -> Generator[GAP, None, None]:
     """Creates gaps with different bbchs
     :param gaps: The gaps to change the bbchs in
     :param bbchs: The range of bbch to use
@@ -292,10 +292,10 @@ def span_bbch(gaps: Iterable[GAP], bbchs: Iterable[int]) -> Generator[GAP, None,
             new_application = replace(gap.application, timing=new_timing)
             yield replace(gap, application=new_application)
 
-def span_rate(gaps: Iterable[GAP], rates: Iterable[float]) -> Generator[GAP, None, None]:
+def span_rate(gaps: Iterable[GAP], rates: Sequence[float]) -> Generator[GAP, None, None]:
     """Creates gaps with different application rates
     :param gaps: The gaps to change the application rate in
-    :param bbchs: The range of application rates to use
+    :param rates: The rates over which to span
     :return: A generator for every gap/application rate combination"""
     for gap in gaps:
         for rate in rates:
@@ -323,26 +323,26 @@ def span_compounds(template_compounds: Union[Compound, Iterable[Compound]], dt50
         template_compounds = span_plant_uptake(template_compounds, plant_uptake)
     return template_compounds
 
-def span_dt50(compounds: Iterable[Compound], dt50s: Iterable[float]) -> Generator[Compound, None, None]:
+def span_dt50(compounds: Iterable[Compound], dt50s: Sequence[float]) -> Generator[Compound, None, None]:
     for compound in compounds:
         for dt50 in dt50s:
             new_degradation = replace(compound.degradation, system=dt50)
             yield replace(compound, degradation = new_degradation)
 
-def span_koc(compounds: Iterable[Compound], kocs: Iterable[float]) -> Generator[Compound, None, None]:
+def span_koc(compounds: Iterable[Compound], kocs: Sequence[float]) -> Generator[Compound, None, None]:
     for compound in compounds:
         for koc in kocs:
             new_sorption = replace(compound.sorption, koc=koc)
             yield replace(compound, sorption = new_sorption)
 
-def span_freundlich(compounds: Iterable[Compound], freundlichs: Iterable[float]) -> Generator[Compound, None, None]:
+def span_freundlich(compounds: Iterable[Compound], freundlichs: Sequence[float]) -> Generator[Compound, None, None]:
     for compound in compounds:
         for freundlich in freundlichs:
             new_sorption = replace(compound.sorption, freundlich=freundlich)
             yield replace(compound, sorption = new_sorption)
 
 
-def span_plant_uptake(compounds: Iterable[Compound], plant_uptakes: Iterable[float]) -> Generator[Compound, None, None]:
+def span_plant_uptake(compounds: Iterable[Compound], plant_uptakes: Sequence[float]) -> Generator[Compound, None, None]:
     for compound in compounds:
         for plant_uptake in plant_uptakes:
             yield replace(compound, plant_uptake=plant_uptake)

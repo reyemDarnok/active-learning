@@ -2,11 +2,10 @@ from dataclasses import asdict, dataclass, replace
 from enum import Enum
 import json
 import math
-from typing import Dict, Generator, List, OrderedDict, Tuple, Union, NamedTuple
+from typing import Dict, Generator, List, OrderedDict, Tuple, Union, NamedTuple, Any
 
 from pathlib import Path
 import sys
-import typing
 
 import pandas
 
@@ -46,7 +45,7 @@ class FOCUSCropMixin(NamedTuple):
     '''Crop information for Pelmo'''
     display_name: str
     '''The name to use for display'''
-    defined_scenarios: Tuple[Scenario]
+    defined_scenarios: Tuple[Scenario, ...]
     '''The scenarios that are defined for this Crop in Pelmo'''
     interception: OrderedDict[PrincipalStage, float]
     '''Mapping bbch states to interception values'''
@@ -252,7 +251,7 @@ class GAP(TypeCorrecting):
     def __hash__(self) -> int:  # make GAP hash stable
         return hash((self.application, tuple(ord(c) for c in self.modelCrop.name)))
 
-    def _asdict(self):
+    def _asdict(self) -> Dict[str, Any]:
         # noinspection GrazieInspection
         """Fixes issues with serialization but relies on a custom JSON Encoder
         >>> import json
@@ -263,6 +262,7 @@ class GAP(TypeCorrecting):
         """
         return {"modelCrop": self.modelCrop.name, "application": asdict(self.application)}
 
+    @staticmethod
     def from_excel(excel_file: Path) -> List['GAP']:
         gaps = pandas.read_excel(io=excel_file, sheet_name="GAP Properties")
         return [GAP(

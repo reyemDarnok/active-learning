@@ -17,6 +17,7 @@ class Combination(TypeCorrecting):
     compound: Compound
 
     def _asdict(self):
+        # noinspection PyProtectedMember
         return {'gap': self.gap._asdict(), 'compound': self.compound}
     
     @staticmethod

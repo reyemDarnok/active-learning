@@ -62,6 +62,7 @@ class Compound(TypeCorrecting):
                 return met_des
         return None
 
+    @staticmethod
     def from_excel(excel_file: Path) -> List['Compound']:
         compounds = pandas.read_excel(io=excel_file, sheet_name = "Compound Properties")
         compounds['Pelmo Position'].fillna('No Position', inplace=True)

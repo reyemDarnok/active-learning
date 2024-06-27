@@ -41,14 +41,16 @@ class EnhancedJSONEncoder(JSONEncoder):
 
         UserDict
         """
+
         def default(self, o):
             if Enum in type(o).__bases__:
                 print(f"Enum: {o}")
-                if set((str, int, float, bool)) & set(type(o).__bases__):
+                if {str, int, float, bool} & set(type(o).__bases__):
                     return o.value
                 else:
                     return o.name
             if hasattr(o, '_asdict'):
+                # noinspection PyProtectedMember
                 return o._asdict()
             if isinstance(o, frozenset):
                 return list(o)
@@ -65,6 +67,7 @@ def flatten_to_csv(to_flatten: Iterable[Dict[str, Any]]) -> Generator[str, None,
     :param to_flatten: The Iterable to flatten. Will be lazily iterated for each value of the generator"""
     for row in to_flatten:
         yield flatten(f"{row}\n")
+
 
 def flatten(to_flatten: Union[List, Dict, Any]) -> str:
     """Flatten a given structure to a csv row. 
@@ -85,6 +88,7 @@ def flatten(to_flatten: Union[List, Dict, Any]) -> str:
     elif isinstance(to_flatten, list):
         return ",".join(flatten(value) for value in to_flatten)
     elif hasattr(to_flatten, '_asdict'):
+        # noinspection PyProtectedMember
         return flatten(to_flatten._asdict())
     elif dataclasses.is_dataclass(to_flatten):
         return flatten(dataclasses.asdict(to_flatten))

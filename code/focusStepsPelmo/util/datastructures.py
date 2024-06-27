@@ -48,6 +48,7 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
         return input_value
     if hasattr(t, '__origin__'): # Typing with Type Vars
         origin = t.__origin__
+        # noinspection PyProtectedMember
         if origin == Union and type(None) in t.__args__:
             if input_value:
                 return correct_type(input_value, t.__args__[0])
@@ -99,6 +100,7 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
         elif t._name == None:
             return None
         else:
+            # noinspection PyProtectedMember
             raise NotImplementedError('Type Correction for %s' % t._name)
     if is_dataclass(t):
         return t(**input_value)

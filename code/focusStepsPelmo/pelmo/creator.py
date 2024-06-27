@@ -33,8 +33,11 @@ def write_psm_files(output_dir: Path,
         gaps = load_or_use(gaps, GAP)
     if combinations:
         combinations = load_or_use(combinations, Combination)
+    total = 0
     for psm_file in generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations):
+        total += 1
         (output_dir / f"{hash(psm_file)}.psm").write_text(psm_file)
+    return total
 
 T = TypeVar('T')
 def load_or_use(it: Iterable[Union[Path, T]], t: Type[T]) -> Generator[T, None, None]:
@@ -70,6 +73,7 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
                 comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
                 yield _generate_psm_contents(compound, gap, comment)
 
+
 def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
     '''For a given compound and gap file, generate the matching psm files 
     :param gap_file: The gap file to use when generating psm file
@@ -79,6 +83,7 @@ def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
     psm_file = PsmFile.fromInput(compound=compound, gap=gap)
     psm_template = jinja_env.get_template('general.psm.j2')
     psm_file.comment = comment
+    # noinspection PyProtectedMember
     return psm_template.render(**psm_file._asdict())
 
 def parse_args() -> Namespace:
