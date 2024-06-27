@@ -32,6 +32,7 @@ class HashableRSDict(RSDict):
 class TypeCorrecting:
     def __post_init__(self):
         module_name = self.__class__.__module__
+        class_globals = {}
         for m_name, m_type in sys.modules.items():
             if module_name == m_name:
                 class_globals = vars(m_type)

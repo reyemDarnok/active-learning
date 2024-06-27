@@ -46,7 +46,9 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
         raise ValueError("Could not infer format, please specify explicitly")
 
 
-def flatten_to_tuples(o: Any, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
+def flatten_to_tuples(o: Any, prefix=None) -> Generator[Tuple[str, str], None, None]:
+    if prefix is None:
+        prefix = []
     if isinstance(o, (dict, UserDict)):
         yield from flatten_dict_to_tuples(o, prefix)
     elif isinstance(o, (list, UserList, tuple)):
@@ -58,14 +60,18 @@ def flatten_to_tuples(o: Any, prefix: List[str] = []) -> Generator[Tuple[str, st
         yield ".".join(prefix), str(o)
 
 
-def flatten_dict_to_tuples(d: Dict, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
+def flatten_dict_to_tuples(d: Dict, prefix=None) -> Generator[Tuple[str, str], None, None]:
+    if prefix is None:
+        prefix = []
     sys.stdout.flush()
     for key, value in d.items():
         for k, v in flatten_to_tuples(value, prefix=prefix + [str(key)]):
             yield k, v
 
 
-def flatten_list_to_tuples(to_flatten: List, prefix: List[str] = []) -> Generator[Tuple[str, str], None, None]:
+def flatten_list_to_tuples(to_flatten: List, prefix=None) -> Generator[Tuple[str, str], None, None]:
+    if prefix is None:
+        prefix = []
     for index, value in enumerate(to_flatten):
         for k, v in flatten_to_tuples(value, prefix=prefix + [str(index)]):
             yield k, v
