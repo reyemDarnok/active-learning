@@ -1,5 +1,4 @@
 from argparse import ArgumentParser, Namespace
-import dataclasses
 import logging
 import json
 from pathlib import Path

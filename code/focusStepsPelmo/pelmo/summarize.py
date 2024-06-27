@@ -8,7 +8,7 @@ import json
 import logging
 from pathlib import Path
 import sys
-from typing import Any, Dict, Generator, Iterable, List, Optional, Sequence, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Generator, Iterable, List, Sequence, Tuple, Type, Union
 sys.path += [str(Path(__file__).parent.parent)]
 
 from ioTypes.combination import Combination

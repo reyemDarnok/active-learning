@@ -7,8 +7,8 @@ import random
 import subprocess
 from sys import stdin
 import time
-from subprocess import DEVNULL, PIPE, CalledProcessError
-from typing import Generator, List, Optional, Tuple
+from subprocess import PIPE
+from typing import Generator, Optional
 
 bhpc_dir = Path('C:\\_AWS', 'actualVersion')
 bhpc_exe = bhpc_dir / 'bhpc.exe'

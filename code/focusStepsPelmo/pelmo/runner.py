@@ -14,7 +14,7 @@ import subprocess
 from typing import Generator, Iterable, List, Optional, Tuple, TypeVar, Union
 from zipfile import ZipFile
 from shutil import copytree, rmtree
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from threading import current_thread
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape

@@ -13,17 +13,16 @@ import os
 from pathlib import Path
 import random
 from shutil import rmtree
-from typing import Any, Dict, Generator, Iterable, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Dict, Generator, Iterable, List, Optional, Set, Tuple, Union
 import sys
 sys.path += [str(Path(__file__).parent.parent)]
 from ioTypes.combination import Combination
-from util.datastructures import HashableDict
 from pelmo.remote_bhpc import run_bhpc
 from pelmo.local import run_local
 from util import conversions, jsonLogger
 from util.conversions import EnhancedJSONEncoder
 from ioTypes.compound import Compound
-from ioTypes.gap import GAP, FOCUSCrop, Scenario, Timing
+from ioTypes.gap import GAP, FOCUSCrop, Scenario
 
 def main():
     args = parse_args()

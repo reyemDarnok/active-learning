@@ -15,7 +15,6 @@ from shutil import rmtree
 from util import jsonLogger
 
 from multiprocessing import cpu_count
-import json
 
 
 def main():

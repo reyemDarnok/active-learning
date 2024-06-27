@@ -3,13 +3,12 @@ from argparse import ArgumentParser, Namespace
 from dataclasses import asdict
 import logging
 from pathlib import Path
-from typing import Generator, Iterable, List, Type, TypeVar, Union
+from typing import Generator, Iterable, Type, TypeVar, Union
 from jinja2 import Environment, FileSystemLoader, select_autoescape, StrictUndefined
 import json
 import sys 
 sys.path += [str(Path(__file__).parent.parent)]
 from ioTypes.combination import Combination
-from util.conversions import EnhancedJSONEncoder
 from psm_file import PsmFile
 import util.jsonLogger as jsonLogger
 from ioTypes.compound import Compound

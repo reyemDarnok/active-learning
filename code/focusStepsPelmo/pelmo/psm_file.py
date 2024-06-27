@@ -3,10 +3,10 @@
 from dataclasses import asdict, dataclass, field, replace
 from enum import Enum, auto
 import math
-from typing import Dict, Generator, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from util.conversions import map_to_class, str_to_enum
-from ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption, Volatility
+from ioTypes.compound import Compound, Degradation, Sorption
 from ioTypes.gap import GAP, Application, FOCUSCrop
 
 PELMO_UNSET = -99

@@ -1,5 +1,4 @@
 from argparse import ArgumentParser, Namespace
-import json
 import logging
 import os
 from pathlib import Path
@@ -9,7 +8,6 @@ import shutil
 import subprocess
 import sys
 
-from scan.submit.pelmo.summarize import rebuild_scattered_to_file
 
 sys.path += [str(Path(__file__).parent.parent)]
 
@@ -21,10 +19,10 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoes
 from bhpc import commands
 import util.jsonLogger as jsonLogger
 from util import conversions
-from util.conversions import EnhancedJSONEncoder
 from ioTypes.gap import FOCUSCrop, Scenario
-from pelmo.creator import generate_psm_files, write_psm_files
-from pelmo.summarize import rebuild_scattered_output
+from pelmo.creator import generate_psm_files
+from pelmo.summarize import rebuild_scattered_to_file
+
 
 
 
