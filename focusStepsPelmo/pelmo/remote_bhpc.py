@@ -213,6 +213,7 @@ def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
 
     logger.info('Making batches')
     batch_directory_names = make_batches(psm_file_data, target_dir, batch_number)
+    batch_directory_names = list(batch_directory_names)
     logger.info('Writing sub file')
     sub_template = jinja_env.get_template('commit.sub.j2')
     submit_file = target_dir / "pelmo.sub"
@@ -238,7 +239,7 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
         batch_name = f"psm{i}.d"
         logger.info('Adding psm files for batch %s', i)
         logger.info('Created batch %s', i)
-        for psm_file in psm_file_data:
+        for psm_file in batch:
             with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
                 zip_file.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
         yield batch_name
