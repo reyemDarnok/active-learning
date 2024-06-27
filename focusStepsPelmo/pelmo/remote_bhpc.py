@@ -13,12 +13,12 @@ from zipfile import ZipFile
 import zipfile
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
-from ..bhpc import commands
-from ..util import jsonLogger
-from ..util import conversions
-from ..ioTypes.gap import FOCUSCrop, Scenario
-from ..pelmo.creator import generate_psm_files
-from ..pelmo.summarize import rebuild_scattered_to_file
+from focusStepsPelmo.bhpc import commands
+from focusStepsPelmo.util import jsonLogger
+from focusStepsPelmo.util import conversions
+from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario
+from focusStepsPelmo.pelmo.creator import generate_psm_files
+from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
 
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(),
                         undefined=StrictUndefined)
@@ -47,13 +47,13 @@ def main():
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
-    run_bhpc(work_dir=args.work_dir, compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit,
+    run_bhpc(compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit,
              output=args.output,
              crops=args.crops, scenarios=args.scenarios,
              notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
 
 
-def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None,
+def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None,
              combination_dir: Path = None,
              crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
              notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True):
@@ -80,8 +80,9 @@ def run_bhpc(work_dir: Path, submit: Path, output: Path, compound_file: Path = N
                                              notification_email=notification_email, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         commands.download(session)
-        rebuild_scattered_to_file(output, submit, [x for x in (gap_file, compound_file, combination_dir) if x],
-                                  "psm*.d-output.json", submit)
+        rebuild_scattered_to_file(file=output, parent=submit,
+                                  input_directories=tuple(x for x in (gap_file, compound_file, combination_dir) if x),
+                                  glob_pattern="psm*.d-output.json")
         commands.remove(session)
 
 
@@ -249,9 +250,6 @@ def parse_args() -> Namespace:
                         help='The gap to create a psm file for. If this is a directory, '
                              'create psm files for every gap file in the directory, '
                              'with .json files assumed to be compound files and no recursion')
-    parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path,
-                        help='The directory in which files for Pelmo will be created. '
-                             'Defaults to the current directory')
     parser.add_argument('-s', '--submit', default=Path('submit'), type=Path,
                         help='Where to output the submit file and its dependencies. Defaults to "submit"')
     parser.add_argument('-o', '--output', default=Path('output'), type=Path,

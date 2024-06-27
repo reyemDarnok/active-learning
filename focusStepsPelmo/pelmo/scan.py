@@ -13,13 +13,13 @@ from pathlib import Path
 from shutil import rmtree
 from typing import Any, Dict, Generator, Iterable, List, Optional, Set, Tuple, Union, Sequence
 
-from ..ioTypes.combination import Combination
-from ..ioTypes.compound import Compound
-from ..ioTypes.gap import GAP, FOCUSCrop, Scenario
-from ..pelmo.local import run_local
-from ..pelmo.remote_bhpc import run_bhpc
-from ..util import conversions, jsonLogger
-from ..util.conversions import EnhancedJSONEncoder
+from focusStepsPelmo.ioTypes.combination import Combination
+from focusStepsPelmo.ioTypes.compound import Compound
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
+from focusStepsPelmo.pelmo.local import run_local
+from focusStepsPelmo.pelmo.remote_bhpc import run_bhpc
+from focusStepsPelmo.util import conversions, jsonLogger
+from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
 
 
 def main():
@@ -54,7 +54,7 @@ def main():
         scenarios = file_span_params.pop('scenario', Scenario)
 
     if args.run == 'bhpc':
-        run_bhpc(work_dir=args.work_dir / 'remote', compound_file=compound_dir, gap_file=gap_dir,
+        run_bhpc(compound_file=compound_dir, gap_file=gap_dir,
                  combination_dir=combination_dir,
                  submit=args.work_dir / 'submit', output=args.output, crops=crops,
                  scenarios=scenarios,

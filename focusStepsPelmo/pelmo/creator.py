@@ -8,10 +8,10 @@ from typing import Generator, Iterable, Type, TypeVar, Union
 from jinja2 import Environment, FileSystemLoader, select_autoescape, StrictUndefined
 
 from psm_file import PsmFile
-from ..ioTypes.combination import Combination
-from ..ioTypes.compound import Compound
-from ..ioTypes.gap import GAP
-from ..util import jsonLogger as jsonLogger
+from focusStepsPelmo.ioTypes.combination import Combination
+from focusStepsPelmo.ioTypes.compound import Compound
+from focusStepsPelmo.ioTypes.gap import GAP
+from focusStepsPelmo.util import jsonLogger as jsonLogger
 
 jinja_env = Environment(loader=FileSystemLoader(
     [Path(__file__).parent / "templates", Path(__file__).parent / "templates" / "psm-fragments"]),
@@ -70,7 +70,7 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
     assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
     if combinations:
         for combination in combinations:
-            comment = json.dumps({"combination": hash(Combination)})
+            comment = json.dumps({"combination": hash(combination)})
             yield _generate_psm_contents(compound=combination.compound, gap=combination.gap, comment=comment)
     if compounds and gaps:
         gaps = list(gaps)

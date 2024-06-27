@@ -8,25 +8,25 @@ from pathlib import Path
 import sys
 from typing import Any, Dict, Generator, Iterable, List, Sequence, Tuple, Type, Union
 
-from ..ioTypes.combination import Combination
-from ..ioTypes.pelmo import PECResult, PelmoResult
-from ..util.conversions import EnhancedJSONEncoder
-from ..ioTypes.compound import Compound
-from ..ioTypes.gap import GAP
+from focusStepsPelmo.ioTypes.combination import Combination
+from focusStepsPelmo.ioTypes.pelmo import PECResult, PelmoResult
+from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
+from focusStepsPelmo.ioTypes.compound import Compound
+from focusStepsPelmo.ioTypes.gap import GAP
 
 
-def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Sequence[Path],
-                              glob_pattern: str = "output.json", psm_root=Path.cwd()):
-    write_results_to_file(rebuild_scattered_output(parent, input_directories, glob_pattern, psm_root), file)
+def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Tuple[Path, ...],
+                              glob_pattern: str = "output.json"):
+    write_results_to_file(rebuild_scattered_output(parent, input_directories, glob_pattern), file)
 
 
-def rebuild_output_to_file(file: Path, results: Union[Path, Iterable[PelmoResult]], input_directories: Sequence[Path],
-                           psm_root=Path.cwd()):
-    write_results_to_file(rebuild_output(results, input_directories, psm_root), file)
+def rebuild_output_to_file(file: Path, results: Union[Path, Iterable[PelmoResult]], input_directories: Tuple[Path, ...]):
+    write_results_to_file(rebuild_output(results, input_directories), file)
 
 
 def write_results_to_file(results: Iterable[PECResult], file: Path):
     output_format = file.suffix[1:]
+    file.parent.mkdir(exist_ok=True, parents=True)
     if output_format == 'json':
         with file.with_suffix('.json').open('w') as fp:
             results = list(results)
@@ -77,16 +77,16 @@ def flatten_list_to_tuples(to_flatten: List, prefix=None) -> Generator[Tuple[str
             yield k, v
 
 
-def rebuild_scattered_output(parent: Path, input_directories: Sequence[Path], glob_pattern: str = "output.json",
-                             psm_root=Path.cwd()) -> Generator[PECResult, None, None]:
+def rebuild_scattered_output(parent: Path, input_directories: Tuple[Path, ...], glob_pattern: str = "output.json",
+                             ) -> Generator[PECResult, None, None]:
     logger = logging.getLogger()
     logger.debug("Iterating over output files %s", list(parent.rglob(glob_pattern)))
     for file in parent.rglob(glob_pattern):
-        yield from rebuild_output(file, input_directories, psm_root)
+        yield from rebuild_output(file, input_directories)
 
 
-def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories: Sequence[Path],
-                   psm_root=Path.cwd()) -> Generator[PECResult, None, None]:
+def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories: Tuple[Path, ...]
+                   ) -> Generator[PECResult, None, None]:
     logger = logging.getLogger()
     if isinstance(source, Path):
         with source.open() as fp:
@@ -95,10 +95,7 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
     else:
         outputs = source
     for output in outputs:
-        psm_file = psm_root / output.psm
-        with psm_file.open() as psm:
-            psm.readline()
-            input_data_hashes = json.loads(psm.readline())
+        input_data_hashes = json.loads(output.psm_comment)
         if 'compound' in input_data_hashes.keys() and 'gap' in input_data_hashes.keys():
             compound_hash = input_data_hashes['compound']
             gap_hash = input_data_hashes['gap']

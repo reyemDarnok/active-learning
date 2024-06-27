@@ -4,15 +4,15 @@ from argparse import ArgumentParser, Namespace
 from contextlib import suppress
 from pathlib import Path
 from typing import Sequence
-from ..ioTypes.combination import Combination
-from ..ioTypes.compound import Compound
-from ..pelmo.summarize import rebuild_output_to_file
-from ..util import conversions
-from ..ioTypes.gap import GAP, FOCUSCrop, Scenario
-from ..pelmo.creator import generate_psm_files
-from ..pelmo.runner import run_psms
+from focusStepsPelmo.ioTypes.combination import Combination
+from focusStepsPelmo.ioTypes.compound import Compound
+from focusStepsPelmo.pelmo.summarize import rebuild_output_to_file
+from focusStepsPelmo.util import conversions
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
+from focusStepsPelmo.pelmo.creator import generate_psm_files
+from focusStepsPelmo.pelmo.runner import run_psms
 from shutil import rmtree
-from ..util import jsonLogger
+from focusStepsPelmo.util import jsonLogger
 
 from multiprocessing import cpu_count
 
@@ -23,7 +23,7 @@ def main():
 
     logger.debug(args)
     run_local(work_dir=args.work_dir, compound_files=args.compound_file, gap_files=args.gap_file,
-              output_file=args.output_file,
+              output_file=args.output_file, combination_dir=args.combined,
               crops=args.crop, scenarios=args.scenario, threads=args.threads)
 
 
@@ -50,19 +50,22 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
 
     logger.info('Dumping results of Pelmo runs to %s', output_file)
     rebuild_output_to_file(file=output_file, results=results,
-                           input_directories=[x for x in (compound_files, gap_files, combination_dir) if x])
+                           input_directories=tuple(x for x in (compound_files, gap_files, combination_dir) if x))
 
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
-    parser.add_argument('-c', '--compound-file', required=True, type=Path,
+    parser.add_argument('-c', '--compound-file', default=None, type=Path,
                         help='The compound to create a psm file for. If this is a directory, create psm files for '
                              'every compound file in the directory, with .json files assumed to be compound files and '
                              'no recursion')
-    parser.add_argument('-g', '--gap-file', required=True, type=Path,
+    parser.add_argument('-g', '--gap-file', default=None, type=Path,
                         help='The gap to create a psm file for. If this is a directory, create psm files for every '
                              'gap file in the directory, with .json files assumed to be compound files and no '
                              'recursion')
+    parser.add_argument('--combined', default=None, type=Path,
+                        help="Combinations of gaps and compounds. If it is a directory, parse every .json file in"
+                             "that directory")
     parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path,
                         help='The directory in which files for Pelmo will be created. '
                              'Defaults to the current directory')

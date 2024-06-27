@@ -3,11 +3,11 @@ import math
 from dataclasses import asdict, dataclass, replace
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict
 
 import pandas
 
-from ..util.datastructures import HashableRSDict, TypeCorrecting
+from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting
 
 
 class Scenario(str, Enum):
@@ -44,13 +44,14 @@ class FOCUSCropMixin(NamedTuple):
     """The name to use for display"""
     defined_scenarios: Tuple[Scenario, ...]
     """The scenarios that are defined for this Crop in Pelmo"""
-    interception: HashableRSDict[PrincipalStage, float]
+    interception: OrderedDict[PrincipalStage, float]
     """Mapping bbch states to interception values"""
 
 
 s = PrincipalStage
 
 
+# noinspection PyTypeChecker
 class FOCUSCrop(FOCUSCropMixin, Enum):
     """The crops defined for Pelmo. Each defined as a PelmoCropMixin"""
     AP = FOCUSCropMixin(display_name="Apples",

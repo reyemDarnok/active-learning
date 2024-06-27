@@ -3,9 +3,9 @@ from enum import Enum, auto
 import math
 from typing import Dict, List, Optional, Tuple
 
-from ..util.conversions import map_to_class, str_to_enum
-from ..ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption, Volatility
-from ..ioTypes.gap import GAP, Application, FOCUSCrop
+from focusStepsPelmo.util.conversions import map_to_class, str_to_enum
+from focusStepsPelmo.ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption, Volatility
+from focusStepsPelmo.ioTypes.gap import GAP, Application, FOCUSCrop
 
 PELMO_UNSET = -99
 
@@ -114,7 +114,9 @@ class DegradationData:
 @dataclass
 class PsmDegradation:
     to_disregard: DegradationData
-    metabolites: Optional[Tuple['PsmDegradation'], ...] = field(default_factory=tuple)  # None if it is degradation to BR/CO2
+    metabolites: Optional[Tuple['PsmDegradation', ...]] = field(default_factory=tuple)
+
+    # None if it is degradation to BR/CO2
 
     def __post_init__(self):
         object.__setattr__(self, 'to_disregard', map_to_class(self.to_disregard, DegradationData))
@@ -182,12 +184,16 @@ class PsmCompound:
                          Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility,
                                       vaporization_pressure=compound.volatility.vaporization_pressure,
                                       temperature=compound.volatility.reference_temperature + 1))
+        if 'pelmo' in compound.model_specific_data.keys():
+            position = compound.model_specific_data['pelmo']['position']
+        else:
+            position = None
         return PsmCompound(molar_mass=compound.molarMass,
                            adsorptions=tuple(
                                [PsmAdsorption(koc=compound.sorption.koc, freundlich=compound.sorption.freundlich)]),
                            plant_uptake=compound.plant_uptake, degradations=degradations, name=compound.name,
                            volatizations=volatizations,
-                           position=compound.model_specific_data['pelmo']['position'])
+                           position=position)
 
 
 PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(koc=0, freundlich=1)]), degradations=[],
@@ -262,7 +268,7 @@ class PsmFile:
         b1_formation = find_formation(compound, 'B1')
         c1_formation = find_formation(compound, 'C1')
         d1_formation = find_formation(compound, 'D1')
-        compound = replace(compound, metabolites=[a1_formation, b1_formation, c1_formation, d1_formation])
+        compound = replace(compound, metabolites=(a1_formation, b1_formation, c1_formation, d1_formation))
         psm_compound = PsmCompound.from_compound(compound)
         metabolite_list: List[PsmCompound] = []
         for position in ('A1', 'B1', 'C1', 'D1', 'A2', 'B2', 'C2', 'D2'):
@@ -283,12 +289,9 @@ class PsmFile:
         volatility = Volatility(water_solubility=self.compound.volatizations[0].solubility,
                                 vaporization_pressure=self.compound.volatizations[0].vaporization_pressure,
                                 reference_temperature=(self.compound.volatizations[0].temperature +
-                                                      self.compound.volatizations[1].temperature) / 2)
+                                                       self.compound.volatizations[1].temperature) / 2)
         compound = Compound(molarMass=self.compound.molar_mass,
-                            volatility=Volatility(water_solubility=self.compound.volatizations[0].solubility,
-                                                  vaporization_pressure=
-                                                  self.compound.volatizations[0].vaporization_pressure,
-                                                  reference_temperature=),
+                            volatility=volatility,
                             sorption=Sorption(koc=self.compound.adsorptions[0].koc,
                                               freundlich=self.compound.adsorptions[0].freundlich),
                             degradation=Degradation(system=math.log(2) / self.compound.degradations[0].rate,

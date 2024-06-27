@@ -1,11 +1,12 @@
 import re
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
-from ..ioTypes.compound import Compound
-from ..ioTypes.gap import GAP, FOCUSCrop, Scenario
-from ..util.conversions import str_to_enum
+from focusStepsPelmo.ioTypes.compound import Compound
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
+from focusStepsPelmo.util.conversions import str_to_enum
+from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
 @dataclass()
@@ -109,19 +110,15 @@ class ChemPLM:
 
 
 @dataclass(frozen=True)
-class PelmoResult:
-    psm: Path
+class PelmoResult(TypeCorrecting):
+    psm_comment: str
     scenario: Scenario
     crop: FOCUSCrop
-    pec: List[float]
-
-    def __post_init__(self):
-        object.__setattr__(self, 'psm', Path(self.psm))
-        object.__setattr__(self, 'scenario', str_to_enum(self.scenario, Scenario))
-        object.__setattr__(self, 'crop', str_to_enum(self.crop, FOCUSCrop))
+    pec: Tuple[float, ...]
 
     def _asdict(self):
-        return {"psm": str(self.psm),
+        # noinspection PyProtectedMember
+        return {"psm_comment": self.psm_comment,
                 "scenario": self.scenario.name,
                 "crop": self.crop.name,
                 "pec": self.pec}
@@ -133,7 +130,7 @@ class PECResult:
     gap: GAP
     scenario: Scenario
     crop: FOCUSCrop
-    pec: List[float]
+    pec: Tuple[float, ...]
 
     def _asdict(self):
         # noinspection PyProtectedMember

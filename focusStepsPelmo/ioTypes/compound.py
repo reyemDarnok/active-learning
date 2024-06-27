@@ -1,14 +1,11 @@
 import json
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Generator, List, Optional, Tuple, Dict
 
 import pandas
 
-from ..util.datastructures import HashableDict, TypeCorrecting
-
-sys.path += [str(Path(__file__).parent.parent)]
+from focusStepsPelmo.util.datastructures import HashableDict, TypeCorrecting
 
 
 @dataclass(frozen=True)
@@ -58,7 +55,7 @@ class Compound(TypeCorrecting):
     """Fraction of plant uptake"""
     name: str = field(hash=False, default="Unknown Name")  # str hash is not stable
     model_specific_data: Dict = field(hash=False, default_factory=HashableDict)
-    metabolites: Optional[Tuple[MetaboliteDescription], ...] = field(default_factory=tuple)
+    metabolites: Optional[Tuple[MetaboliteDescription, ...]] = field(default_factory=tuple)
     """The compounds metabolites"""
 
     def metabolite_description_by_name(self, name: str) -> Optional[MetaboliteDescription]:

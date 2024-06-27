@@ -3,10 +3,10 @@ import json
 from pathlib import Path
 from typing import Generator
 
-from ..util.datastructures import TypeCorrecting
+from focusStepsPelmo.util.datastructures import TypeCorrecting
 
-from .compound import Compound
-from .gap import GAP
+from focusStepsPelmo.ioTypes.compound import Compound
+from focusStepsPelmo.ioTypes.gap import GAP
 
 
 @dataclass(frozen=True)

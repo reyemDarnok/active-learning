@@ -15,12 +15,12 @@ from zipfile import ZipFile
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
-from ..ioTypes import gap
-from ..ioTypes.gap import FOCUSCrop, Scenario
-from ..ioTypes.pelmo import ChemPLM, PelmoResult, WaterPLM
-from ..pelmo.summarize import rebuild_output_to_file
-from ..util import conversions
-from ..util import jsonLogger
+from focusStepsPelmo.ioTypes import gap
+from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario
+from focusStepsPelmo.ioTypes.pelmo import ChemPLM, PelmoResult, WaterPLM
+from focusStepsPelmo.pelmo.summarize import rebuild_output_to_file
+from focusStepsPelmo.util import conversions
+from focusStepsPelmo.util import jsonLogger
 
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(),
                         undefined=StrictUndefined)
@@ -51,21 +51,20 @@ def main():
 
 
 def write_psm_results(output_file: Path, psm_files: Iterable[Union[Path, str]],
-                      input_directories: Optional[Sequence[Path]] = None, working_dir: Path = Path.cwd() / 'pelmo',
+                      input_directories: Optional[Tuple[Path]] = None, working_dir: Path = Path.cwd() / 'pelmo',
                       crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
                       max_workers: int = cpu_count() - 1):
     results = run_psms(psm_files=psm_files, working_dir=working_dir,
                        crops=crops, scenarios=scenarios, max_workers=max_workers)
     if input_directories:
-        rebuild_output_to_file(file=output_file, results=results, input_directories=input_directories,
-                               psm_root=working_dir)
+        rebuild_output_to_file(file=output_file, results=results, input_directories=input_directories)
     else:
         with output_file.open('w') as output:
             if output_file.suffix == '.json':
                 json.dump(list(results), output, cls=conversions.EnhancedJSONEncoder)
             else:
                 writer = csv.writer(output)
-                writer.writerows((result.psm, result.crop, result.scenario, result.pec) for result in results)
+                writer.writerows((result.psm_comment, result.crop, result.scenario, result.pec) for result in results)
 
 
 def _make_runs(psm_files: Iterable[Union[Path, str]], crops: Iterable[FOCUSCrop], scenarios: Iterable[Scenario]) -> \
@@ -120,13 +119,18 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
     dat_file_template = jinja_env.get_template('input.dat')
     scenario_dirs = working_dir / current_thread().name
     scenario_dir = scenario_dirs / scenario.value
-    run_dir = scenario_dir / f'{psm_file.stem}.run'
+    if isinstance(psm_file, Path):
+        run_dir = scenario_dir / f'{psm_file.stem}.run'
+    else:
+        run_dir = scenario_dir / f'{hash(psm_file)}.run'
     crop_dir = run_dir / crop.display_name
 
     logger.debug('Creating run directory %s', crop_dir)
     crop_dir.mkdir(exist_ok=True, parents=True)
-
-    target_psm_file = crop_dir / psm_file.name
+    if isinstance(psm_file, Path):
+        target_psm_file = crop_dir / psm_file.name
+    else:
+        target_psm_file = crop_dir / f"{hash(psm_file)}.psm"
     target_inp_file = crop_dir / 'pelmo.inp'
     target_dat_file = crop_dir / 'input.dat'
 
@@ -135,6 +139,7 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
         target_psm_file.write_text(psm_file.read_text())
     else:
         target_psm_file.write_text(psm_file)
+        psm_file = target_psm_file
     target_inp_file.write_text(inp_file_template.render(psm_file=psm_file, crop=crop, scenario=scenario))
     target_dat_file.write_text(dat_file_template.render())
 
@@ -153,13 +158,17 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
             f"Pelmo completed with error while calculating {psm_file.name} {crop.display_name} {scenario.value}. "
             f"The Pelmo output was {process.stdout.decode(errors='backslashreplace')}")
 
-    result = PelmoResult(psm=psm_file, scenario=scenario, crop=crop, pec=parse_pelmo_result(crop_dir))
+    with psm_file.open() as psm:
+        psm.readline()
+        psm_comment = psm.readline()
+
+    result = PelmoResult(psm_comment=psm_comment, scenario=scenario, crop=crop, pec=parse_pelmo_result(crop_dir))
     if logger.level > logging.DEBUG:
         rmtree(crop_dir)
     return result
 
 
-def parse_pelmo_result(run_dir: Path, target_compartment=21) -> List[float]:
+def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Tuple[float, ...]:
     """Parses the Pelmo output files to determine the PEC that pelmo calculated
     :param run_dir: Where Pelmo was executed and placed its result files
     :param target_compartment: Which compartment to take as result
@@ -187,7 +196,7 @@ def parse_pelmo_result(run_dir: Path, target_compartment=21) -> List[float]:
         pec_groundwater = (pecs[lower] + pecs[lower + 1]) / 2
         results.append(pec_groundwater)
 
-    return results
+    return tuple(results)
 
 
 def extract_zip(working_dir: Path, focus_zip: Path):
