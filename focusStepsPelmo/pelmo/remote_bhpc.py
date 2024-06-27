@@ -14,9 +14,11 @@ import zipfile
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from focusStepsPelmo.bhpc import commands
+from focusStepsPelmo.ioTypes.combination import Combination
+from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util import conversions
-from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario
+from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario, GAP
 from focusStepsPelmo.pelmo.creator import generate_psm_files
 from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
 
@@ -26,7 +28,7 @@ jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templat
 T = TypeVar('T')
 
 
-def split_into_batches(iterable: Iterable[T], batch_size=1) -> Generator[Generator[T], None, None]:
+def split_into_batches(iterable: Iterable[T], batch_size=1) -> Generator[Generator[T, None, None], None, None]:
     """Lazily split a Sequence into a Generator of equally sized slices of the sequence.
     The last slice may be smaller if the sequence does not evenly divide into the batch size
     :param iterable: The iterable to split. Will be lazily evaluated
@@ -34,13 +36,22 @@ def split_into_batches(iterable: Iterable[T], batch_size=1) -> Generator[Generat
     The final slice will be shorter if the length of the sequence is not divisible by batch size
     :yield: A slize of sequence of length batch size or,
     if it is the final slice and the length of the sequence is not divisible by batch size, smaller"""
+    iterator = iterable.__iter__()
 
-    def batch():
-        for _ in range(batch_size):
-            # noinspection PyTypeChecker
-            yield next(iterable)
+    def batch(first_val):
+        yield first_val
+        for _ in range(batch_size - 1):
+            try:
+                yield next(iterator)
+            except StopIteration:
+                return
+
     while True:
-        yield batch()
+        try:
+            init_val = next(iterator)
+        except StopIteration:
+            return
+        yield batch(init_val)
 
 
 def main():
@@ -49,7 +60,7 @@ def main():
     logger.debug(args)
     run_bhpc(compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit,
              output=args.output,
-             crops=args.crops, scenarios=args.scenarios,
+             crops=args.crop, scenarios=args.scenario,
              notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
 
 
@@ -59,7 +70,9 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
              notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True):
     logger = logging.getLogger()
     logger.info('Starting to generate psm files')
-    psm_file_data = generate_psm_files(compounds=compound_file, gaps=gap_file, combinations=combination_dir)
+    psm_file_data = generate_psm_files(compounds=Compound.from_path(compound_file) if compound_file else None,
+                                       gaps=GAP.from_path(gap_file) if gap_file else None,
+                                       combinations=Combination.from_path(combination_dir) if combination_dir else None)
     crops = list(crops)
     scenarios = list(scenarios)
     machines, cores, batch_number = find_core_bhpc_configuration(crops, scenarios, compound_file, gap_file,
@@ -148,20 +161,17 @@ def copy_common_files(output: Path):
     """
     logger = logging.getLogger()
     output.mkdir(exist_ok=True, parents=True)
-    script_dir = Path(__file__).parent
+    script_dir = Path(__file__).parent.parent
     logger.debug('Copying script')
-    shutil.copytree(script_dir, output / 'pelmo')
+    shutil.copytree(script_dir, output / 'focusStepsPelmo')
     logger.debug('Copying pythonwrapper')
-    shutil.copy(script_dir / 'pythonwrapper.bat', output / 'pythonwrapper.bat')
+    shutil.copy(script_dir / 'pelmo' / 'pythonwrapper.bat', output / 'pythonwrapper.bat')
     logger.debug('Getting requirements')
     subprocess.run(
-        [sys.executable, '-m', 'pip', 'install', '-r', str((script_dir / 'requirements.txt').absolute()), '--platform',
+        [sys.executable, '-m', 'pip', 'install', '-r', str((script_dir / 'pelmo' / 'requirements.txt').absolute()),
+         '--platform',
          'win32', '--upgrade', '--only-binary', ':all:', '--target', str(output.absolute())], capture_output=True,
         check=True)
-    logger.debug('Getting datatypes')
-    shutil.copytree(script_dir / '..' / 'ioTypes', output / 'ioTypes')
-    logger.debug('Getting utils')
-    shutil.copytree(script_dir / '..' / 'util', output / 'util')
 
 
 def zip_directory(directory: Path, zip_name: str):
@@ -203,7 +213,6 @@ def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
 
     logger.info('Making batches')
     batch_directory_names = make_batches(psm_file_data, target_dir, batch_number)
-
     logger.info('Writing sub file')
     sub_template = jinja_env.get_template('commit.sub.j2')
     submit_file = target_dir / "pelmo.sub"
@@ -227,12 +236,7 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
     logger.info('Split psm_files into batches')
     for i, batch in enumerate(batches):
         batch_name = f"psm{i}.d"
-        batch_folder = target_dir / batch_name
-        batch_folder.mkdir(exist_ok=True, parents=True)
         logger.info('Adding psm files for batch %s', i)
-        for file in batch:
-            logger.debug('Adding %s to batch %s', file, i)
-            file.rename(batch_folder / file.name)
         logger.info('Created batch %s', i)
         for psm_file in psm_file_data:
             with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
@@ -242,14 +246,17 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
-    parser.add_argument('-c', '--compound-file', required=True, type=Path,
+    parser.add_argument('-c', '--compound-file', default=None, type=Path,
                         help='The compound to create a psm file for. '
                              'If this is a directory, create psm files for every compound file in the directory, '
                              'with .json files assumed to be compound files and no recursion')
-    parser.add_argument('-g', '--gap-file', required=True, type=Path,
+    parser.add_argument('-g', '--gap-file', default=None, type=Path,
                         help='The gap to create a psm file for. If this is a directory, '
                              'create psm files for every gap file in the directory, '
                              'with .json files assumed to be compound files and no recursion')
+    parser.add_argument('--combined', default=None, type=Path,
+                        help="Combinations of gaps and compounds. If it is a directory, parse every .json file in"
+                             "that directory")
     parser.add_argument('-s', '--submit', default=Path('submit'), type=Path,
                         help='Where to output the submit file and its dependencies. Defaults to "submit"')
     parser.add_argument('-o', '--output', default=Path('output'), type=Path,
