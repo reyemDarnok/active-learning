@@ -4,6 +4,7 @@ import json
 import logging
 import math
 import random
+import sys
 from argparse import ArgumentParser, Namespace
 from collections import UserDict, UserList
 from contextlib import suppress
@@ -66,6 +67,12 @@ def main():
                   threads=args.threads)
 
 
+def _shortest_distance_to_set(point: Tuple[float, ...], test_set: Set[Tuple[float, ...]]) -> float:
+    return max(math.sqrt(sum((p_c - t_c) ** 2
+                             for p_c, t_c in zip(point, test_point)))
+               for test_point in test_set)
+
+
 def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
                            test_set_size: int = 10000, make_test_set: bool = False, test_set_path: Path = None,
                            test_set_buffer: float = 0.1):
@@ -74,15 +81,15 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     output_dir.mkdir(parents=True)
     samples = create_samples(definition)
     if make_test_set:
-        test_set = set(itertools.islice(samples, test_set_size))
+        test_set = set(_make_vector(c, definition) for c in itertools.islice(samples, test_set_size))
     elif test_set_path:
-        test_set = set(load_test_set(test_set_path))
+        test_set = set(_make_vector(c, definition) for c in load_test_set(test_set_path))
     else:
         test_set = set()
     collected_samples = 0
     while collected_samples < sample_size:
         combination = next(samples)
-        if not test_set or distance_to_set(combination, test_set, definition) > test_set_buffer:
+        if not test_set or _shortest_distance_to_set(_make_vector(combination, definition), test_set) > test_set_buffer:
             with (output_dir / f"{hash(combination)}.json").open('w') as fp:
                 json.dump(combination, fp, cls=EnhancedJSONEncoder)
             collected_samples += 1
@@ -94,93 +101,70 @@ def load_test_set(location: Path) -> Generator[Combination, None, None]:
             yield Combination(**json.load(combination_file))
 
 
-def distance_to_set(element: Combination, test_set: Set[Combination], definition: Dict) -> float:
-    logger = logging.getLogger()
-    current_max = 0
-    dict_list = [json.loads(json.dumps(c, cls=EnhancedJSONEncoder)) for c in test_set]
-    element = json.loads(json.dumps(element, cls=EnhancedJSONEncoder))
-    for test_combination in dict_list:
-        current_max = max(distance_of_elements(element, test_combination, definition), current_max)
-    logger.debug('Found sample with distance %s', current_max)
-    return current_max
+def _make_vector(combination: Combination, definition: Dict) -> Tuple[float, ...]:
+    dict_conversion = json.loads(json.dumps(combination, cls=EnhancedJSONEncoder))
+    return _make_vector_recursive(dict_conversion, definition)
 
 
-def distance_of_elements(a: Dict, b: Dict, definition: Dict) -> float:
-    diff_vector = []
-    add_to_diff_vector(a, b, definition, diff_vector)
-    distance = math.sqrt(sum(x * x for x in diff_vector)) if diff_vector else 0
-    return distance
-
-
-def add_to_diff_vector(a: Any, b: Any, definition: Any, diff_vector: List[float]):
+def _make_vector_recursive(source: Any, definition: Dict) -> Tuple[float, ...]:
     if isinstance(definition, (dict, UserDict)):
         if 'type' in definition.keys() and 'parameters' in definition.keys():
-            add_template_to_diff_vector(a, b, definition, diff_vector)
+            return _make_vector_template(source, definition)
         else:
-            for key in definition.keys():
-                add_to_diff_vector(a[key], b[key], definition[key], diff_vector)
+            return tuple(val for key in definition.keys()
+                         for val in _make_vector_recursive(source[key], definition[key]))
     elif isinstance(definition, (list, UserList)):
-        for index in range(len(definition)):
-            add_to_diff_vector(a[index], b[index], definition[index], diff_vector)
+        return tuple(val for combination_element, definition_element in zip(source, definition)
+                     for val in _make_vector_recursive(combination_element, definition_element))
+    return tuple()
 
 
-def add_template_to_diff_vector(a: Any, b: Any, definition: Dict, diff_vector: List):
+def _make_vector_template(source: Any, definition: Dict) -> Tuple[float, ...]:
     types = {
-        'choices': add_choices_to_diff_vector,
-        'steps': add_steps_to_diff_vector,
-        'random': add_random_to_diff_vector,
-        'copies': add_copies_to_diff_vector,
-        'dict_copies': add_dict_copies_to_diff_vector,
+        'choices': _make_vector_choices,
+        'steps': _make_vector_steps,
+        'random': _make_vector_random,
+        'copies': _make_vector_copies,
+        'dict_copies': _make_vector_dict_copies
     }
-    types[definition['type']](a, b, definition['parameters'], diff_vector)
+    return types[definition['type']](source, definition['parameters'])
 
 
-def add_dict_copies_to_diff_vector(a, b, definition, diff_vector):
-    if len(a.keys()) - len(b.keys()) == 0:
-        diff_vector += [0]
+def _make_vector_dict_copies(source: Dict, definition: Dict) -> Tuple[float, float, float]:
+    number = (len(source.keys()) - definition['minimum']) / (definition['maximum'] - definition['minimum'])
+    values = hash(_make_vector_recursive(val, definition['value']) for val in source.values()) / (
+            2 ** sys.hash_info.width)
+    keys = hash(_make_vector_recursive(key, definition['key']) for key in source.keys()) / (2 ** sys.hash_info.width)
+    return keys, values, number
+
+
+def _make_vector_copies(source: List, definition: Dict) -> Tuple[float, float]:
+    number = (len(source) - definition['minimum']) / (definition['maximum'] - definition['minimum'])
+    values = hash(_make_vector_recursive(val, definition['value']) for val in source) / (2 ** sys.hash_info.width)
+    return values, number
+
+
+def _make_vector_choices(source: Any, definition: Dict) -> Tuple[float]:
+    if source in definition['options']:
+        index: int = definition['options'].index(source)
+        return (index / len(definition['options']),)
     else:
-        diff_vector += [abs((definition['maximum'] - definition['minimum']) / (len(a.keys()) - len(b.keys())))]
-    for a_key, b_key in zip(a.keys(), b.keys()):
-        add_to_diff_vector(a_key, b_key, definition['key'], diff_vector)
-        add_to_diff_vector(a[a_key], b[b_key], definition['value'], diff_vector)
+        return (0,)
 
 
-def add_copies_to_diff_vector(a, b, definition, diff_vector):
-    if len(a) - len(b) == 0:
-        diff_vector += [0]
-    else:
-        diff_vector += [abs((definition['maximum'] - definition['minimum']) / (len(a) - len(b)))]
-    for index in range(min(len(a), len(b))):
-        add_to_diff_vector(a[index], b[index], definition['value'], diff_vector)
+def _make_vector_steps(source: int, definition: Dict) -> Tuple[float]:
+    return ((source - definition['start']) / (definition['stop'] - definition['start']),)
 
 
-def add_choices_to_diff_vector(a, b, definition, diff_vector):
-    if a != b:
-        diff_vector += [1 / len(definition['options'])]
-    else:
-        diff_vector += [0]
-
-
-def add_steps_to_diff_vector(a, b, definition, diff_vector):
-    if a - b == 0:
-        diff_vector += [0]
-    else:
-        diff_vector += [abs((definition['stop'] - definition['start']) / (a - b))]
-
-
-def add_random_to_diff_vector(a, b, definition, diff_vector):
+def _make_vector_random(source: float, definition: Dict) -> Tuple[float]:
     if definition.get('log_random', False):
         lower_bound = math.log(definition['lower_bound'])
         upper_bound = math.log(definition['upper_bound'])
-        a = math.log(a)
-        b = math.log(b)
+        source = math.log(source)
     else:
         lower_bound = definition['lower_bound']
         upper_bound = definition['upper_bound']
-    if a - b == 0:
-        diff_vector += [0]
-    else:
-        diff_vector += [abs((upper_bound - lower_bound) / (a - b))]
+    return ((source - lower_bound) / (upper_bound - lower_bound),)
 
 
 def create_samples(definition: Dict) -> Generator[Combination, None, None]:
@@ -447,7 +431,7 @@ def parse_args() -> Namespace:
         args.input_format = args.input_file.suffix[1:]
 
     assert args.input_format != 'csv' or (
-                args.template_compound and args.template_gap), "CSV input requires gap and compound templates"
+            args.template_compound and args.template_gap), "CSV input requires gap and compound templates"
     logger = logging.getLogger()
     jsonLogger.configure_logger_from_argparse(logger, args)
     return args
