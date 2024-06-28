@@ -1,9 +1,9 @@
+import sys
+import typing
 from collections import OrderedDict, UserDict
 from dataclasses import is_dataclass
 from enum import Enum
-import sys
 from typing import Any, Dict, List, Optional, Tuple, Type, TypeVar, Union
-import typing
 
 
 class RSDict(UserDict):
@@ -109,10 +109,10 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
     if is_dataclass(t):
         return t(**input_value)
     if issubclass(t, Enum):
-        if issubclass(t, (str, int, float, bool)):
-            return t(input_value)
-        else:
+        try:
             return t[input_value]
+        except KeyError:
+            return t(input_value)
     if input_value is None:
         return None
     return t(input_value)
