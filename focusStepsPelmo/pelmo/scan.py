@@ -73,11 +73,12 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
         rmtree(output_dir)
     output_dir.mkdir(parents=True)
     samples = create_samples(definition)
-    test_set = set()
     if make_test_set:
         test_set = set(itertools.islice(samples, test_set_size))
     elif test_set_path:
         test_set = set(load_test_set(test_set_path))
+    else:
+        test_set = set()
     collected_samples = 0
     while collected_samples < sample_size:
         combination = next(samples)
@@ -96,9 +97,9 @@ def load_test_set(location: Path) -> Generator[Combination, None, None]:
 def distance_to_set(element: Combination, test_set: Set[Combination], definition: Dict) -> float:
     logger = logging.getLogger()
     current_max = 0
-    testlist = [json.loads(json.dumps(c, cls=EnhancedJSONEncoder)) for c in test_set]
+    dict_list = [json.loads(json.dumps(c, cls=EnhancedJSONEncoder)) for c in test_set]
     element = json.loads(json.dumps(element, cls=EnhancedJSONEncoder))
-    for test_combination in testlist:
+    for test_combination in dict_list:
         current_max = max(distance_of_elements(element, test_combination, definition), current_max)
     logger.debug('Found sample with distance %s', current_max)
     return current_max
@@ -168,7 +169,7 @@ def add_steps_to_diff_vector(a, b, definition, diff_vector):
 
 
 def add_random_to_diff_vector(a, b, definition, diff_vector):
-    if definition['log_random']:
+    if definition.get('log_random', False):
         lower_bound = math.log(definition['lower_bound'])
         upper_bound = math.log(definition['upper_bound'])
         a = math.log(a)
