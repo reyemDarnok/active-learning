@@ -16,4 +16,7 @@ goto loop1
 :after_loop
 @echo on
 
-python.exe %REMAINING_VARIABLES%
+python -m venv venv
+call .\venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
+python.exe -m %REMAINING_VARIABLES%

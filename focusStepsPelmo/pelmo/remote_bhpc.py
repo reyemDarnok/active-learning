@@ -1,26 +1,24 @@
-from argparse import ArgumentParser, Namespace
 import logging
 import os
+import shutil
+import zipfile
+from argparse import ArgumentParser, Namespace
+from contextlib import suppress
 from pathlib import Path
 from shutil import rmtree
-from contextlib import suppress
-import shutil
-import subprocess
-import sys
-
 from typing import Generator, Iterable, Optional, Sequence, Tuple, TypeVar
 from zipfile import ZipFile
-import zipfile
+
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
 from focusStepsPelmo.bhpc import commands
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
-from focusStepsPelmo.util import jsonLogger
-from focusStepsPelmo.util import conversions
 from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario, GAP
 from focusStepsPelmo.pelmo.creator import generate_psm_files
 from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
+from focusStepsPelmo.util import conversions
+from focusStepsPelmo.util import jsonLogger
 
 jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(),
                         undefined=StrictUndefined)
@@ -166,12 +164,8 @@ def copy_common_files(output: Path):
     shutil.copytree(script_dir, output / 'focusStepsPelmo')
     logger.debug('Copying pythonwrapper')
     shutil.copy(script_dir / 'pelmo' / 'pythonwrapper.bat', output / 'pythonwrapper.bat')
-    logger.debug('Getting requirements')
-    subprocess.run(
-        [sys.executable, '-m', 'pip', 'install', '-r', str((script_dir / 'pelmo' / 'requirements.txt').absolute()),
-         '--platform',
-         'win32', '--upgrade', '--only-binary', ':all:', '--target', str(output.absolute())], capture_output=True,
-        check=True)
+    logger.debug('Copying requirements.txt')
+    shutil.copy(script_dir / 'pelmo' / 'requirements.txt', output / 'requirements.txt')
 
 
 def zip_directory(directory: Path, zip_name: str):
@@ -221,6 +215,7 @@ def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
         batches=batch_directory_names,
         crops=crops,
         scenarios=scenarios,
+        loglevel=logger.getEffectiveLevel()
     ))
     logger.info('Finished creating files')
 

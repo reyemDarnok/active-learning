@@ -7,11 +7,11 @@ from typing import Generator, Iterable, Type, TypeVar, Union
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape, StrictUndefined
 
-from psm_file import PsmFile
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP
 from focusStepsPelmo.util import jsonLogger as jsonLogger
+from psm_file import PsmFile
 
 jinja_env = Environment(loader=FileSystemLoader(
     [Path(__file__).parent / "templates", Path(__file__).parent / "templates" / "psm-fragments"]),
@@ -63,7 +63,6 @@ def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
             yield t(**json_content)
     elif source.suffix == 'xlsx':
         yield from t.from_excel(source)
-
 
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
                        combinations: Iterable[Combination] = None) -> Generator[str, None, None]:
