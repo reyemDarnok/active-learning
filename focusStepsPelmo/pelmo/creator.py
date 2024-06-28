@@ -15,7 +15,7 @@ from psm_file import PsmFile
 
 jinja_env = Environment(loader=FileSystemLoader(
     [Path(__file__).parent / "templates", Path(__file__).parent / "templates" / "psm-fragments"]),
-                        autoescape=select_autoescape(), undefined=StrictUndefined)
+    autoescape=select_autoescape(), undefined=StrictUndefined)
 
 
 def main():
@@ -63,6 +63,7 @@ def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
             yield t(**json_content)
     elif source.suffix == 'xlsx':
         yield from t.from_excel(source)
+
 
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
                        combinations: Iterable[Combination] = None) -> Generator[str, None, None]:
