@@ -1,11 +1,11 @@
+import math
 from dataclasses import asdict, dataclass, field, replace
 from enum import Enum, auto
-import math
 from typing import Dict, List, Optional, Tuple
 
-from focusStepsPelmo.util.conversions import map_to_class, str_to_enum
 from focusStepsPelmo.ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption, Volatility
 from focusStepsPelmo.ioTypes.gap import GAP, Application, FOCUSCrop
+from focusStepsPelmo.util.conversions import map_to_class, str_to_enum
 
 PELMO_UNSET = -99
 
@@ -169,13 +169,14 @@ class PsmCompound:
             full_rate = 0
         remaining_degradation_fraction = 1.0
         degradations = []
-        if compound.metabolites:
+        if compound.metabolites is not None:
             for met_des in compound.metabolites:
                 if met_des:
                     remaining_degradation_fraction -= met_des.formation_fraction
                     degradations += [DegradationData(rate=full_rate * met_des.formation_fraction)]
                 else:
                     degradations += [DegradationData(rate=0)]
+
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
         degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction)]
         volatizations = (Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility,
@@ -241,11 +242,13 @@ class PsmFile:
                 if metabolite.metabolite.metabolites:
                     metabolites[chr(ord('A') + index) + "2"] = metabolite.metabolite.metabolites[0].metabolite
 
-        def find_formation(parent: Compound, metabolite_position: str) -> Optional[MetaboliteDescription]:
+        def find_formation(parent: Compound, metabolite_position: str,
+                           default: Optional[MetaboliteDescription] = None
+                           ) -> Optional[MetaboliteDescription]:
             if metabolite_position in metabolites.keys():
                 return parent.metabolite_description_by_name(metabolites[metabolite_position].name)
             else:
-                return None
+                return default
 
         for position in ('D2', 'C2', 'B2', 'A2'):
             if position in metabolites.keys():
