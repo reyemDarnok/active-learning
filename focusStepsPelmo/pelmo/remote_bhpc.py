@@ -34,22 +34,7 @@ def split_into_batches(iterable: Iterable[T], batch_size=1) -> Generator[Generat
     The final slice will be shorter if the length of the sequence is not divisible by batch size
     :yield: A slize of sequence of length batch size or,
     if it is the final slice and the length of the sequence is not divisible by batch size, smaller"""
-    iterator = iterable.__iter__()
-
-    def batch(first_val):
-        yield first_val
-        for _ in range(batch_size - 1):
-            try:
-                yield next(iterator)
-            except StopIteration:
-                return
-
-    while True:
-        try:
-            init_val = next(iterator)
-        except StopIteration:
-            return
-        yield batch(init_val)
+    return zip(*[iterable] * batch_size)
 
 
 def main():
