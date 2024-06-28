@@ -1,18 +1,18 @@
-from collections import UserDict, UserList
 import csv
-from dataclasses import asdict, is_dataclass
 import functools
 import json
 import logging
-from pathlib import Path
 import sys
+from collections import UserDict, UserList
+from dataclasses import asdict, is_dataclass
+from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Sequence, Tuple, Type, Union
 
 from focusStepsPelmo.ioTypes.combination import Combination
-from focusStepsPelmo.ioTypes.pelmo import PECResult, PelmoResult
-from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP
+from focusStepsPelmo.ioTypes.pelmo import PECResult, PelmoResult
+from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
 
 
 def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Tuple[Path, ...],
@@ -126,8 +126,10 @@ def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) 
     hashes = {}
     if directory.is_dir():
         files = directory.glob('*.json')
-    else:
+    elif directory.exists():
         files = [directory]
+    else:
+        files = []
     for file in files:
         for candidate in candidate_classes:
             try:
