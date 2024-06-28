@@ -5,7 +5,7 @@ from typing import Generator, List, Optional, Tuple, Dict
 
 import pandas
 
-from focusStepsPelmo.util.datastructures import HashableDict, TypeCorrecting
+from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
 @dataclass(frozen=True)
@@ -40,7 +40,6 @@ class MetaboliteDescription(TypeCorrecting):
     formation_fraction: float
     metabolite: 'Compound'
 
-
 @dataclass(frozen=True)
 class Compound(TypeCorrecting):
     """A Compound definition"""
@@ -54,14 +53,15 @@ class Compound(TypeCorrecting):
     plant_uptake: float = 0
     """Fraction of plant uptake"""
     name: str = field(hash=False, default="Unknown Name")  # str hash is not stable
-    model_specific_data: Dict = field(hash=False, default_factory=HashableDict)
+    model_specific_data: Dict = field(compare=False, hash=False, default_factory=dict)
     metabolites: Optional[Tuple[MetaboliteDescription, ...]] = field(default_factory=tuple)
     """The compounds metabolites"""
 
     def metabolite_description_by_name(self, name: str) -> Optional[MetaboliteDescription]:
-        for met_des in self.metabolites:
-            if met_des.metabolite.name == name:
-                return met_des
+        if self.metabolites is not None:
+            for met_des in self.metabolites:
+                if met_des.metabolite.name == name:
+                    return met_des
         return None
 
     @staticmethod
@@ -113,6 +113,3 @@ class Compound(TypeCorrecting):
                     yield Compound(**json_content)
         if file.suffix == '.xlsx':
             yield from Compound.from_excel(file)
-
-
-Compound.sentinel = Compound(0, Volatility(0, 0, 0), Sorption(0, 0), Degradation(0, 0, 0, 0))
