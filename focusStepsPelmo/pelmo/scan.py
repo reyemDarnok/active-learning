@@ -54,13 +54,16 @@ def main():
     if not scenarios:
         scenarios = file_span_params.pop('scenario', Scenario)
 
+    logger.info("Finished generating compounds")
     if args.run == 'bhpc':
+        logger.info("Starting deployment to BHPC")
         run_bhpc(compound_file=compound_dir, gap_file=gap_dir,
                  combination_dir=combination_dir,
                  submit=args.work_dir / 'submit', output=args.output, crops=crops,
                  scenarios=scenarios,
                  notification_email=args.notification_email, session_timeout=args.session_timeout, run=True)
     elif args.run == 'local':
+        logger.info("Starting local calculation")
         run_local(work_dir=args.work_dir / 'local', compound_files=compound_dir, gap_files=gap_dir,
                   combination_dir=combination_dir,
                   output_file=args.output, crops=crops, scenarios=scenarios,
@@ -68,14 +71,37 @@ def main():
 
 
 def _shortest_distance_to_set(point: Tuple[float, ...], test_set: Set[Tuple[float, ...]]) -> float:
-    return max(math.sqrt(sum((p_c - t_c) ** 2
+    """
+    Finds the shortest distance from point to any point in test_set.
+    Assumes that all points have the same dimensionality
+    :param point: The single point to compare to the set
+    :param test_set: The points to find the distance to
+    :return: The shortest Euclidean distance from point to any point of test_set
+    >>> _shortest_distance_to_set((0,0,0), {(1,0,0), (0,0.5,0)})
+    0.5
+    >>> _shortest_distance_to_set((1,0,0), {(0,1,0), (10,5,3), (0,0,1)})
+    1.4142135623730951
+    """
+    return min(math.sqrt(sum((p_c - t_c) ** 2
                              for p_c, t_c in zip(point, test_point)))
                for test_point in test_set)
 
 
 def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
-                           test_set_size: int = 10000, make_test_set: bool = False, test_set_path: Path = None,
+                           test_set_size: int = 10000, make_test_set: bool = False,
+                           test_set_path: Optional[Path] = None,
                            test_set_buffer: float = 0.1):
+    """
+    Create sample Combinations in output_dir
+    :param definition: defines the structure of the samples
+    :param output_dir: The path to write the samples to
+    :param sample_size: How many samples to generate
+    :param test_set_size: How large a test set to generate
+    :param make_test_set: Whether to make a test set
+    :param test_set_path: Where to load an existing test set from. Don't load a test set if this is null
+    :param test_set_buffer: How far any point in the sample has to be from the test set
+    (Euclidean distance between features normalised to [-1,1] range)
+    """
     with suppress(FileNotFoundError):
         rmtree(output_dir)
     output_dir.mkdir(parents=True)
@@ -96,17 +122,35 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
 
 
 def load_test_set(location: Path) -> Generator[Combination, None, None]:
+    """Loads Combinations from the given Path
+    :param location: The directory containing the Combinations as jsons
+    :return: A generator yielding combinations in location.
+    There will be no repeats but also no guarantee to any order"""
     for combination_path in location.glob('*.json'):
         with combination_path.open() as combination_file:
             yield Combination(**json.load(combination_file))
 
 
 def _make_vector(combination: Combination, definition: Dict) -> Tuple[float, ...]:
+    """
+    Given a combination and the sample definition that generates it,
+    create a vector with normalised coordinates describing it.
+    :param combination: The combination to investigate
+    :param definition: The definition that created or could create the combination
+    :return: A tuple of coordinates describing the Combination in the context of the definition.
+    All values will be between -1 and 1
+    """
     dict_conversion = json.loads(json.dumps(combination, cls=EnhancedJSONEncoder))
     return _make_vector_recursive(dict_conversion, definition)
 
 
 def _make_vector_recursive(source: Any, definition: Dict) -> Tuple[float, ...]:
+    """
+    Anchor for recursive generation of the tuple for a combination vector
+    :param source: Any fragment of the combination dict
+    :param definition: The fragment of the definition describing the source fragment
+    :return: The part of the Combination vector describing source
+    """
     if isinstance(definition, (dict, UserDict)):
         if 'type' in definition.keys() and 'parameters' in definition.keys():
             return _make_vector_template(source, definition)
@@ -120,6 +164,14 @@ def _make_vector_recursive(source: Any, definition: Dict) -> Tuple[float, ...]:
 
 
 def _make_vector_template(source: Any, definition: Dict) -> Tuple[float, ...]:
+    """
+    Creates the vector fragments for the templates in the definition
+    :param source: The part of the Combination generated by a template
+    :param definition: The part of the definition describing the template that generated source
+    :return: The vector fragment for the template
+    >>> _make_vector_template(3, {"type": "choices", "parameters": {"options": [2,3,4,5]}})
+    (0.25,)
+    """
     types = {
         'choices': _make_vector_choices,
         'steps': _make_vector_steps,
@@ -131,20 +183,39 @@ def _make_vector_template(source: Any, definition: Dict) -> Tuple[float, ...]:
 
 
 def _make_vector_dict_copies(source: Dict, definition: Dict) -> Tuple[float, float, float]:
+    """Make a vector fragment for the dictionary copies template
+    :param source: The generated dict
+    :param definition: The template that generated it
+    :return: A tuple of coordinates representing, in order the keys, values and number of copies in the source
+    """
     number = (len(source.keys()) - definition['minimum']) / (definition['maximum'] - definition['minimum'])
-    values = hash(_make_vector_recursive(val, definition['value']) for val in source.values()) / (
+    values = hash(tuple(_make_vector_recursive(val, definition['value']) for val in source.values())) / (
             2 ** sys.hash_info.width)
-    keys = hash(_make_vector_recursive(key, definition['key']) for key in source.keys()) / (2 ** sys.hash_info.width)
+    keys = hash(tuple(_make_vector_recursive(key, definition['key']) for key in source.keys())) / (
+                2 ** sys.hash_info.width)
     return keys, values, number
 
 
 def _make_vector_copies(source: List, definition: Dict) -> Tuple[float, float]:
+    """Make a vector fragment for the vector copies template
+    :param source: The generate list
+    :param definition: The template that generated it
+    :return: A tuple with two values which, in order, describe The values of the vector and how many were generated
+    >>> _make_vector_copies([3,3,3], {"minimum": 1, "maximum": 5, "value": 3})
+    (0.34174874711717196, 0.5)"""
     number = (len(source) - definition['minimum']) / (definition['maximum'] - definition['minimum'])
-    values = hash(_make_vector_recursive(val, definition['value']) for val in source) / (2 ** sys.hash_info.width)
+    values_vector = tuple(_make_vector_recursive(val, definition['value']) for val in source)
+    values = hash(values_vector) / (2 ** sys.hash_info.width)
     return values, number
 
 
 def _make_vector_choices(source: Any, definition: Dict) -> Tuple[float]:
+    """Make a vector fragment for the choices template
+    :param source: The choice that was made
+    :param definition: The definition of the choices template
+    :return: A single value tuple describing which choice was taken
+    >>> _make_vector_choices(5, {"options": [1,5,10,100]})
+    (0.25,)"""
     if source in definition['options']:
         index: int = definition['options'].index(source)
         return (index / len(definition['options']),)
@@ -153,10 +224,24 @@ def _make_vector_choices(source: Any, definition: Dict) -> Tuple[float]:
 
 
 def _make_vector_steps(source: int, definition: Dict) -> Tuple[float]:
+    """Make a vector fragment for the steps template
+    :param source: The int step that was chosen
+    :param definition: The definition of the steps template
+    :return: A single value tuple describing how far along the range the value is
+    >>> _make_vector_steps(10, {"start": 4, "stop": 16, "step": 2})
+    (0.5,)"""
     return ((source - definition['start']) / (definition['stop'] - definition['start']),)
 
 
 def _make_vector_random(source: float, definition: Dict) -> Tuple[float]:
+    """Make a vector fragment for the random template
+    :param source: The generated float
+    :param definition: The definition of the random template
+    :return: A single value tuple describing how far along the range the value is
+    >>> _make_vector_random(2, {"lower_bound": 0, "upper_bound": 10})
+    (0.2,)
+    >>> _make_vector_random(10, {"lower_bound": 1, "upper_bound": 10000, "log_random": True})
+    (0.25,)"""
     if definition.get('log_random', False):
         lower_bound = math.log(definition['lower_bound'])
         upper_bound = math.log(definition['upper_bound'])
@@ -168,12 +253,18 @@ def _make_vector_random(source: float, definition: Dict) -> Tuple[float]:
 
 
 def create_samples(definition: Dict) -> Generator[Combination, None, None]:
+    """Create Combinations according to a definition
+    :param definition: Defines the space of possibilities for the Combination
+    :return: A Generator that will infinitely generate more Combinations according to the definition"""
     while True:
         d = create_dict_sample(definition)
         yield Combination(**d)
 
 
 def create_any_sample(definition: Any) -> Any:
+    """Anchor for recursive generation
+    :param definition: The current fragment of the definition
+    :return: Whatever the definition defines"""
     if isinstance(definition, (dict, UserDict)):
         if 'type' in definition.keys() and 'parameters' in definition.keys():
             return evaluate_template(definition)
@@ -185,6 +276,9 @@ def create_any_sample(definition: Any) -> Any:
 
 
 def create_dict_sample(definition: Dict) -> Dict:
+    """Recurse over a dict
+    :param definition: A definition that takes the form of a dict
+    :return: The definition dict with all templates replaced by values"""
     return {key: create_any_sample(value) for key, value in definition.items()}
 
 
@@ -404,7 +498,7 @@ def parse_args() -> Namespace:
                              "A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('--test-set-size', type=int, default=1000,
                         help="How big a test set to generate if --make-test set is set")
-    parser.add_argument('--test-set-buffer', type=float, default=0.1,
+    parser.add_argument('--test-set-buffer', type=float, default=0.001,
                         help="How far a point has to be from the test set to be allowed in the sample")
     test_set_group = parser.add_argument_group('Test Set')
     test_set = test_set_group.add_mutually_exclusive_group()
