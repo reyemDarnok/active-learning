@@ -123,6 +123,7 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
             collected_samples += 1
     logger.info("Created %s samples after %s attempts", sample_size, total_attempts)
 
+
 def load_test_set(location: Path) -> Generator[Combination, None, None]:
     """Loads Combinations from the given Path
     :param location: The directory containing the Combinations as jsons
@@ -149,6 +150,7 @@ def create_samples(definition: Definition) -> Generator[Combination, None, None]
     while True:
         d = definition.make_sample()
         yield Combination(**d)
+
 
 def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Path, gap_dir: Optional[Path] = None,
                 bbch: Iterable[int] = None, rate: Iterable[float] = None,
@@ -206,7 +208,8 @@ def span_gap(template_gaps: Union[GAP, Iterable[GAP]], bbch: Optional[Sequence[i
     :param template_gaps: The gaps to use as templates. If an iterable, the matrix will be applied to each element
     :param bbch: The BBCH values in the matrix
     :param rate: The application rate values in the matrix
-    :return: A Generator that lazily creates gaps from the matrix"""
+    :return: A Generator that lazily creates gaps from the matrix
+    """
     # Do nothing if template_gaps is iterable, make it a single item list if it's a single gap
     try:
         _ = iter(template_gaps)
