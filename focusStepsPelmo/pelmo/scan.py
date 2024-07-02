@@ -98,7 +98,7 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     :param sample_size: How many samples to generate
     :param test_set_size: How large a test set to generate
     :param make_test_set: Whether to make a test set
-    :param test_set_path: Where to load an existing test set from. Don't load a test set if this is null
+    :param test_set_path: Where to load an existing test set from. Don't load a test set if this is None
     :param test_set_buffer: How far any point in the sample has to be from the test set
     (Euclidean distance between features normalised to [-1,1] range)
     """
@@ -277,7 +277,16 @@ def _make_vector_random(source: float, definition: Dict) -> Tuple[float]:
 def create_samples(definition: Dict) -> Generator[Combination, None, None]:
     """Create Combinations according to a definition
     :param definition: Defines the space of possibilities for the Combination
-    :return: A Generator that will infinitely generate more Combinations according to the definition"""
+    :return: A Generator that will infinitely generate more Combinations according to the definition
+    >>> test_definition = {"gap":{"modelCrop":{"type":"choices","parameters":{"options":["MZ","AP"]}},"application":{"number":{"type":"steps","parameters":{"start":1,"stop":4,"step":1,"scale_factor":1}},"interval":14,"rate":{"type":"random","parameters":{"lower_bound":1,"upper_bound":10000}},"timing":{"bbch_state":{"type":"choices","parameters":{"options":[-1,10,40,80,90]}}}}},"compound":{"metabolites":{"type":"copies","parameters":{"minimum":0,"maximum":4,"value":{"formation_fraction":0.2,"metabolite":{"metabolites":None,"molarMass":300,"volatility":{"water_solubility":90.0,"vaporization_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"degradation":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}}},"molarMass":300,"volatility":{"water_solubility":90.0,"vaporization_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"degradation":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}
+    >>> import random
+    >>> random.seed(42)
+    >>> sample_generator = create_samples(test_definition)
+    >>> next(sample_generator)
+    Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(display_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=7415.7634470985695, timing=Timing(bbch_state=10), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=296.4339328696138, freundlich=0.9952462562245198), degradation=Degradation(system=6.0, soil=1.1987525689363516, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=(MetaboliteDescription(formation_fraction=0.2, metabolite=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=23.80173872410029, freundlich=0.7512475880857536), degradation=Degradation(system=6.0, soil=68.3476855994171, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=None)),)))
+    >>> next(sample_generator)
+    Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(display_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=2327.376273014005, timing=Timing(bbch_state=90), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=327.1776208099365, freundlich=1.0580098064612016), degradation=Degradation(system=6.0, soil=54.60934890188404, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=()))
+"""
     while True:
         d = create_dict_sample(definition)
         yield Combination(**d)
@@ -286,7 +295,11 @@ def create_samples(definition: Dict) -> Generator[Combination, None, None]:
 def create_any_sample(definition: Any) -> Any:
     """Anchor for recursive generation
     :param definition: The current fragment of the definition
-    :return: Whatever the definition defines"""
+    :return: Whatever the definition defines
+    >>> import random
+    >>> random.seed(42)
+    >>> test_definition = {'type': "random", 'parameters': {'lower_bound': 0, 'upper_bound': 1}}
+    >>> create_any_sample(test_definition)"""
     if isinstance(definition, (dict, UserDict)):
         if 'type' in definition.keys() and 'parameters' in definition.keys():
             return evaluate_template(definition)
@@ -300,26 +313,45 @@ def create_any_sample(definition: Any) -> Any:
 def create_dict_sample(definition: Dict) -> Dict:
     """Recurse over a dict
     :param definition: A definition that takes the form of a dict
-    :return: The definition dict with all templates replaced by values"""
+    :return: The definition dict with all templates replaced by values
+    >>> import random
+    >>> random.seed(42)
+    >>> test_definition = {'key': {'type': "random", 'parameters': {'lower_bound': 0, 'upper_bound': 1}}}
+    >>> create_dict_sample(test_definition)"""
     return {key: create_any_sample(value) for key, value in definition.items()}
 
 
 def create_list_sample(definition: List) -> List:
+    """Recurse over a list
+    :param definition: The list fragment of the definition to evaluate
+    :return: definition with all templates replaced by values
+    >>> import random
+    >>> random.seed(42)
+    >>> test_definition = [{'type': "random", 'parameters': {'lower_bound': 0, 'upper_bound': 1}}]
+    >>> create_list_sample(test_definition)"""
     return [create_any_sample(value) for value in definition]
 
 
 def evaluate_template(definition: Dict) -> Any:
+    """Evaluate a template
+    :param definition: The template definition. Should contain the keys 'type' and 'parameters', all other keys will be
+    discarded
+    :return: The evaluated value of the template
+    >>> import random
+    >>> random.seed(42)
+    >>> test_definition = {'type': "random", 'parameters': {'lower_bound': 0, 'upper_bound': 1}}
+    >>> evaluate_template(test_definition)"""
     types = {
         'choices': choices_template,
         'steps': steps_template,
         'random': random_template,
         'copies': copies_template,
-        'dict_copies': dict_copies_template,
     }
     return types[definition['type']](**definition['parameters'])
 
 
 def random_template(lower_bound: float, upper_bound: float, log_random: bool = False) -> float:
+    """Evaluates the template for a random value"""
     if log_random:
         lower_bound = math.log(lower_bound)
         upper_bound = math.log(upper_bound)
@@ -520,7 +552,7 @@ def parse_args() -> Namespace:
                         help="How far a point has to be from the test set to be allowed in the sample")
     test_set_group = parser.add_argument_group('Test Set')
     test_set = test_set_group.add_mutually_exclusive_group()
-    test_set.add_argument('--make-test-set', action="store_true", default=False,
+    test_set.add_argument('--make-test-set', action="store_True", default=False,
                           help="Generate a test set of a given size")
     test_set.add_argument('--use-test-set', type=Path, default=None,
                           help="Use a preexisting test set (should be a directory)")
