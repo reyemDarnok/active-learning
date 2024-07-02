@@ -10,8 +10,8 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape, StrictUndef
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP
+from focusStepsPelmo.pelmo.psm_file import PsmFile
 from focusStepsPelmo.util import jsonLogger as jsonLogger
-from psm_file import PsmFile
 
 jinja_env = Environment(loader=FileSystemLoader(
     [Path(__file__).parent / "templates", Path(__file__).parent / "templates" / "psm-fragments"]),
