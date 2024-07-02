@@ -1,3 +1,4 @@
+import itertools
 import logging
 import os
 import shutil
@@ -6,7 +7,7 @@ from argparse import ArgumentParser, Namespace
 from contextlib import suppress
 from pathlib import Path
 from shutil import rmtree
-from typing import Generator, Iterable, Optional, Sequence, Tuple, TypeVar
+from typing import Generator, Iterable, Optional, Sequence, Tuple, TypeVar, List
 from zipfile import ZipFile
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
@@ -26,15 +27,25 @@ jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templat
 T = TypeVar('T')
 
 
-def split_into_batches(iterable: Iterable[T], batch_size=1) -> Generator[Generator[T, None, None], None, None]:
+def split_into_batches(iterable: Iterable[T], batch_size=1, fillvalue: T = None) -> Generator[List[T], None, None]:
     """Lazily split a Sequence into a Generator of equally sized slices of the sequence.
     The last slice may be smaller if the sequence does not evenly divide into the batch size
     :param iterable: The iterable to split. Will be lazily evaluated
     :param batch_size: The size of a given slice.
-    The final slice will be shorter if the length of the sequence is not divisible by batch size
-    :yield: A slize of sequence of length batch size or,
-    if it is the final slice and the length of the sequence is not divisible by batch size, smaller"""
-    return zip(*[iterable] * batch_size)
+    :param fillvalue: fill the final batch to size with this item
+    :return: A generator for lists of size batch_size from iterable
+    >>> def count_up(limit: int) -> Generator[int, None, None]:
+    ...     current = 0
+    ...     while current < limit:
+    ...         yield current
+    ...         current += 1
+    >>> list(split_into_batches(count_up(10), 2))
+    [(0, 1), (2, 3), (4, 5), (6, 7), (8, 9)]
+    >>> list(split_into_batches(count_up(10), 4))
+    [(0, 1, 2, 3), (4, 5, 6, 7), (8, 9, None, None)]
+    """
+    iterator = iterable.__iter__()
+    return itertools.zip_longest(*[iterator] * batch_size, fillvalue=fillvalue)
 
 
 def main():
@@ -58,15 +69,14 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
                                        combinations=Combination.from_path(combination_dir) if combination_dir else None)
     crops = list(crops)
     scenarios = list(scenarios)
-    machines, cores, batch_number = find_core_bhpc_configuration(crops, scenarios, compound_file, gap_file,
-                                                                 compound_file)
+    machines, cores, _ = find_core_bhpc_configuration(crops, scenarios, compound_file, gap_file, compound_file)
 
     with suppress(FileNotFoundError):
         rmtree(submit)
     logger.info('Generating sub files for bhpc')
     make_sub_file(psm_file_data=psm_file_data, target_dir=submit,
                   crops=crops, scenarios=scenarios,
-                  batch_number=batch_number)
+                  batch_size=1000)
 
     if run:
         logger.info('Starting Pelmo run')
@@ -177,13 +187,13 @@ def zip_directory(directory: Path, zip_name: str):
 
 def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
                   crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
-                  batch_number: int = 1):
+                  batch_size: int = 1000):
     """Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_file_data: The contents of the psm files to be included in the submit file
     :param target_dir: The directory to write the sub file to
     :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
     :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
-    :param batch_number: How many batches of psm files to make, each can be run in parallel"""
+    :param batch_size: How large a batch of psm files should be, each can be run in parallel"""
     logger = logging.getLogger()
 
     logger.info('Setting up file system for the sub file')
@@ -191,7 +201,7 @@ def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
     zip_common_directories(target=target_dir)
 
     logger.info('Making batches')
-    batch_directory_names = make_batches(psm_file_data, target_dir, batch_number)
+    batch_directory_names = make_batches(psm_file_data, target_dir, batch_size)
     batch_directory_names = list(batch_directory_names)
     logger.info('Writing sub file')
     sub_template = jinja_env.get_template('commit.sub.j2')
@@ -205,7 +215,7 @@ def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
     logger.info('Finished creating files')
 
 
-def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int = 10000) -> Generator[str, None, None]:
+def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int = 1000) -> Generator[str, None, None]:
     """Create the directories for the batches and fill them
     :param psm_file_data: The psm files to batch.
     :param target_dir: The parent directory for the batch directories
@@ -220,8 +230,9 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
         logger.info('Adding psm files for batch %s', i)
         logger.info('Created batch %s', i)
         for psm_file in batch:
-            with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
-                zip_file.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
+            if psm_file is not None:
+                with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
+                    zip_file.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
         yield batch_name
 
 
