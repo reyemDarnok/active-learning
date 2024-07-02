@@ -131,6 +131,34 @@ def load_test_set(location: Path) -> Generator[Combination, None, None]:
             yield Combination(**json.load(combination_file))
 
 
+def _normalize_hash_feature(hashable: Any) -> float:
+    """
+    Normalize a hashable feature to a value in [-1, 1]
+    :param hashable: The value to hash. Note that str hashes are not stable
+    :return: The normalized value
+    >>> import sys
+    >>> _normalize_hash_feature(tuple([1,2,3,4,5]))
+    0.9015438605851986
+    """
+    return _normalize_feature(hash(hashable), - 2 ** (sys.hash_info.width - 1), 2 ** (sys.hash_info.width - 1))
+
+
+def _normalize_feature(value: float, lower_bound: float, upper_bound: float) -> float:
+    """Given the value of a feature and its possible range, normalize it into the [-1,1] range
+    :param value: The feature value
+    :param lower_bound: The lowest the value could have been
+    :param upper_bound: The highest the value could have benn
+    :return: A float in [-1, 1] that represents the value in its range
+    >>> _normalize_feature(1, 0, 4)
+    -0.5
+    >>> _normalize_feature(100, -50, 200)
+    0.19999999999999996
+    """
+    if upper_bound == lower_bound:
+        return 0
+    return ((value - lower_bound) / (upper_bound - lower_bound)) * 2 - 1
+
+
 def _make_vector(combination: Combination, definition: Dict) -> Tuple[float, ...]:
     """
     Given a combination and the sample definition that generates it,
@@ -138,7 +166,9 @@ def _make_vector(combination: Combination, definition: Dict) -> Tuple[float, ...
     :param combination: The combination to investigate
     :param definition: The definition that created or could create the combination
     :return: A tuple of coordinates describing the Combination in the context of the definition.
-    All values will be between -1 and 1
+    All values will be between -1 and 1. A given definition will always result in a tuple of the same length,
+    but different definitions will create different length tuples. Each template in a definition adds a certain length
+    to the tuple
     """
     dict_conversion = json.loads(json.dumps(combination, cls=EnhancedJSONEncoder))
     return _make_vector_recursive(dict_conversion, definition)
@@ -150,6 +180,8 @@ def _make_vector_recursive(source: Any, definition: Dict) -> Tuple[float, ...]:
     :param source: Any fragment of the combination dict
     :param definition: The fragment of the definition describing the source fragment
     :return: The part of the Combination vector describing source
+    >>> _make_vector_recursive(3, {"type": "choices", "parameters": {"options": [2,3,4,5]}})
+    (-0.33333333333333337,)
     """
     if isinstance(definition, (dict, UserDict)):
         if 'type' in definition.keys() and 'parameters' in definition.keys():
@@ -170,30 +202,15 @@ def _make_vector_template(source: Any, definition: Dict) -> Tuple[float, ...]:
     :param definition: The part of the definition describing the template that generated source
     :return: The vector fragment for the template
     >>> _make_vector_template(3, {"type": "choices", "parameters": {"options": [2,3,4,5]}})
-    (0.25,)
+    (-0.33333333333333337,)
     """
     types = {
         'choices': _make_vector_choices,
         'steps': _make_vector_steps,
         'random': _make_vector_random,
         'copies': _make_vector_copies,
-        'dict_copies': _make_vector_dict_copies
     }
     return types[definition['type']](source, definition['parameters'])
-
-
-def _make_vector_dict_copies(source: Dict, definition: Dict) -> Tuple[float, float, float]:
-    """Make a vector fragment for the dictionary copies template
-    :param source: The generated dict
-    :param definition: The template that generated it
-    :return: A tuple of coordinates representing, in order the keys, values and number of copies in the source
-    """
-    number = (len(source.keys()) - definition['minimum']) / (definition['maximum'] - definition['minimum'])
-    values = hash(tuple(_make_vector_recursive(val, definition['value']) for val in source.values())) / (
-            2 ** sys.hash_info.width)
-    keys = hash(tuple(_make_vector_recursive(key, definition['key']) for key in source.keys())) / (
-                2 ** sys.hash_info.width)
-    return keys, values, number
 
 
 def _make_vector_copies(source: List, definition: Dict) -> Tuple[float, float]:
@@ -202,10 +219,9 @@ def _make_vector_copies(source: List, definition: Dict) -> Tuple[float, float]:
     :param definition: The template that generated it
     :return: A tuple with two values which, in order, describe The values of the vector and how many were generated
     >>> _make_vector_copies([3,3,3], {"minimum": 1, "maximum": 5, "value": 3})
-    (0.34174874711717196, 0.5)"""
-    number = (len(source) - definition['minimum']) / (definition['maximum'] - definition['minimum'])
-    values_vector = tuple(_make_vector_recursive(val, definition['value']) for val in source)
-    values = hash(values_vector) / (2 ** sys.hash_info.width)
+    (0.6834974942343439, 0.0)"""
+    number = _normalize_feature(len(source), definition['minimum'], definition['maximum'])
+    values = _normalize_hash_feature(tuple(_make_vector_recursive(val, definition['value']) for val in source))
     return values, number
 
 
@@ -214,11 +230,17 @@ def _make_vector_choices(source: Any, definition: Dict) -> Tuple[float]:
     :param source: The choice that was made
     :param definition: The definition of the choices template
     :return: A single value tuple describing which choice was taken
+    >>> _make_vector_choices(1, {"options": [1,5,10,100]})
+    (-1.0,)
     >>> _make_vector_choices(5, {"options": [1,5,10,100]})
-    (0.25,)"""
+    (-0.33333333333333337,)
+    >>> _make_vector_choices(10, {"options": [1,5,10,100]})
+    (0.33333333333333326,)
+    >>> _make_vector_choices(100, {"options": [1,5,10,100]})
+    (1.0,)"""
     if source in definition['options']:
         index: int = definition['options'].index(source)
-        return (index / len(definition['options']),)
+        return (_normalize_feature(index, 0, len(definition['options']) - 1),)
     else:
         return (0,)
 
@@ -229,8 +251,8 @@ def _make_vector_steps(source: int, definition: Dict) -> Tuple[float]:
     :param definition: The definition of the steps template
     :return: A single value tuple describing how far along the range the value is
     >>> _make_vector_steps(10, {"start": 4, "stop": 16, "step": 2})
-    (0.5,)"""
-    return ((source - definition['start']) / (definition['stop'] - definition['start']),)
+    (0.0,)"""
+    return (_normalize_feature(source, definition['start'], definition['stop']),)
 
 
 def _make_vector_random(source: float, definition: Dict) -> Tuple[float]:
@@ -239,9 +261,9 @@ def _make_vector_random(source: float, definition: Dict) -> Tuple[float]:
     :param definition: The definition of the random template
     :return: A single value tuple describing how far along the range the value is
     >>> _make_vector_random(2, {"lower_bound": 0, "upper_bound": 10})
-    (0.2,)
+    (-0.6,)
     >>> _make_vector_random(10, {"lower_bound": 1, "upper_bound": 10000, "log_random": True})
-    (0.25,)"""
+    (-0.5,)"""
     if definition.get('log_random', False):
         lower_bound = math.log(definition['lower_bound'])
         upper_bound = math.log(definition['upper_bound'])
@@ -249,7 +271,7 @@ def _make_vector_random(source: float, definition: Dict) -> Tuple[float]:
     else:
         lower_bound = definition['lower_bound']
         upper_bound = definition['upper_bound']
-    return ((source - lower_bound) / (upper_bound - lower_bound),)
+    return (_normalize_feature(source, lower_bound, upper_bound),)
 
 
 def create_samples(definition: Dict) -> Generator[Combination, None, None]:
@@ -309,10 +331,6 @@ def random_template(lower_bound: float, upper_bound: float, log_random: bool = F
 
 def copies_template(minimum: int, maximum: int, value: Any) -> List[Any]:
     return [create_any_sample(value) for _ in range(random.randint(minimum, maximum))]
-
-
-def dict_copies_template(minimum: int, maximum: int, key: Any, value: Any) -> Dict[Any, Any]:
-    return {create_any_sample(key): create_any_sample(value) for _ in range(random.randint(minimum, maximum))}
 
 
 def choices_template(options: List) -> Any:
