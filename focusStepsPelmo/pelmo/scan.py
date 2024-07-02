@@ -3,20 +3,18 @@ import itertools
 import json
 import logging
 import math
-import random
-import sys
 from argparse import ArgumentParser, Namespace
-from collections import UserDict, UserList
 from contextlib import suppress
 from dataclasses import replace
 from os import cpu_count
 from pathlib import Path
 from shutil import rmtree
-from typing import Any, Dict, Generator, Iterable, List, Optional, Set, Tuple, Union, Sequence
+from typing import Dict, Generator, Iterable, Optional, Set, Tuple, Union, Sequence
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
+from focusStepsPelmo.pelmo.generation_definition import Definition
 from focusStepsPelmo.pelmo.local import run_local
 from focusStepsPelmo.pelmo.remote_bhpc import run_bhpc
 from focusStepsPelmo.util import conversions, jsonLogger
@@ -102,24 +100,28 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     :param test_set_buffer: How far any point in the sample has to be from the test set
     (Euclidean distance between features normalised to [-1,1] range)
     """
+    logger = logging.getLogger()
     with suppress(FileNotFoundError):
         rmtree(output_dir)
     output_dir.mkdir(parents=True)
+    definition = Definition.parse(definition)
     samples = create_samples(definition)
     if make_test_set:
-        test_set = set(_make_vector(c, definition) for c in itertools.islice(samples, test_set_size))
+        test_set = set(definition.make_vector(c) for c in itertools.islice(samples, test_set_size))
     elif test_set_path:
-        test_set = set(_make_vector(c, definition) for c in load_test_set(test_set_path))
+        test_set = set(definition.make_vector(c) for c in load_test_set(test_set_path))
     else:
         test_set = set()
     collected_samples = 0
+    total_attempts = 0
     while collected_samples < sample_size:
+        total_attempts += 1
         combination = next(samples)
-        if not test_set or _shortest_distance_to_set(_make_vector(combination, definition), test_set) > test_set_buffer:
+        if not test_set or _shortest_distance_to_set(definition.make_vector(combination), test_set) > test_set_buffer:
             with (output_dir / f"{hash(combination)}.json").open('w') as fp:
                 json.dump(combination, fp, cls=EnhancedJSONEncoder)
             collected_samples += 1
-
+    logger.info("Created %s samples after %s attempts", sample_size, total_attempts)
 
 def load_test_set(location: Path) -> Generator[Combination, None, None]:
     """Loads Combinations from the given Path
@@ -131,247 +133,22 @@ def load_test_set(location: Path) -> Generator[Combination, None, None]:
             yield Combination(**json.load(combination_file))
 
 
-def _normalize_hash_feature(hashable: Any) -> float:
-    """
-    Normalize a hashable feature to a value in [-1, 1]
-    :param hashable: The value to hash. Note that str hashes are not stable
-    :return: The normalized value
-    >>> import sys
-    >>> _normalize_hash_feature(tuple([1,2,3,4,5]))
-    0.9015438605851986
-    """
-    return _normalize_feature(hash(hashable), - 2 ** (sys.hash_info.width - 1), 2 ** (sys.hash_info.width - 1))
-
-
-def _normalize_feature(value: float, lower_bound: float, upper_bound: float) -> float:
-    """Given the value of a feature and its possible range, normalize it into the [-1,1] range
-    :param value: The feature value
-    :param lower_bound: The lowest the value could have been
-    :param upper_bound: The highest the value could have benn
-    :return: A float in [-1, 1] that represents the value in its range
-    >>> _normalize_feature(1, 0, 4)
-    -0.5
-    >>> _normalize_feature(100, -50, 200)
-    0.19999999999999996
-    """
-    if upper_bound == lower_bound:
-        return 0
-    return ((value - lower_bound) / (upper_bound - lower_bound)) * 2 - 1
-
-
-def _make_vector(combination: Combination, definition: Dict) -> Tuple[float, ...]:
-    """
-    Given a combination and the sample definition that generates it,
-    create a vector with normalised coordinates describing it.
-    :param combination: The combination to investigate
-    :param definition: The definition that created or could create the combination
-    :return: A tuple of coordinates describing the Combination in the context of the definition.
-    All values will be between -1 and 1. A given definition will always result in a tuple of the same length,
-    but different definitions will create different length tuples. Each template in a definition adds a certain length
-    to the tuple
-    """
-    dict_conversion = json.loads(json.dumps(combination, cls=EnhancedJSONEncoder))
-    return _make_vector_recursive(dict_conversion, definition)
-
-
-def _make_vector_recursive(source: Any, definition: Dict) -> Tuple[float, ...]:
-    """
-    Anchor for recursive generation of the tuple for a combination vector
-    :param source: Any fragment of the combination dict
-    :param definition: The fragment of the definition describing the source fragment
-    :return: The part of the Combination vector describing source
-    >>> _make_vector_recursive(3, {"type": "choices", "parameters": {"options": [2,3,4,5]}})
-    (-0.33333333333333337,)
-    """
-    if isinstance(definition, (dict, UserDict)):
-        if 'type' in definition.keys() and 'parameters' in definition.keys():
-            return _make_vector_template(source, definition)
-        else:
-            return tuple(val for key in definition.keys()
-                         for val in _make_vector_recursive(source[key], definition[key]))
-    elif isinstance(definition, (list, UserList)):
-        return tuple(val for combination_element, definition_element in zip(source, definition)
-                     for val in _make_vector_recursive(combination_element, definition_element))
-    return tuple()
-
-
-def _make_vector_template(source: Any, definition: Dict) -> Tuple[float, ...]:
-    """
-    Creates the vector fragments for the templates in the definition
-    :param source: The part of the Combination generated by a template
-    :param definition: The part of the definition describing the template that generated source
-    :return: The vector fragment for the template
-    >>> _make_vector_template(3, {"type": "choices", "parameters": {"options": [2,3,4,5]}})
-    (-0.33333333333333337,)
-    """
-    types = {
-        'choices': _make_vector_choices,
-        'steps': _make_vector_steps,
-        'random': _make_vector_random,
-        'copies': _make_vector_copies,
-    }
-    return types[definition['type']](source, definition['parameters'])
-
-
-def _make_vector_copies(source: List, definition: Dict) -> Tuple[float, float]:
-    """Make a vector fragment for the vector copies template
-    :param source: The generate list
-    :param definition: The template that generated it
-    :return: A tuple with two values which, in order, describe The values of the vector and how many were generated
-    >>> _make_vector_copies([3,3,3], {"minimum": 1, "maximum": 5, "value": 3})
-    (0.6834974942343439, 0.0)"""
-    number = _normalize_feature(len(source), definition['minimum'], definition['maximum'])
-    values = _normalize_hash_feature(tuple(_make_vector_recursive(val, definition['value']) for val in source))
-    return values, number
-
-
-def _make_vector_choices(source: Any, definition: Dict) -> Tuple[float]:
-    """Make a vector fragment for the choices template
-    :param source: The choice that was made
-    :param definition: The definition of the choices template
-    :return: A single value tuple describing which choice was taken
-    >>> _make_vector_choices(1, {"options": [1,5,10,100]})
-    (-1.0,)
-    >>> _make_vector_choices(5, {"options": [1,5,10,100]})
-    (-0.33333333333333337,)
-    >>> _make_vector_choices(10, {"options": [1,5,10,100]})
-    (0.33333333333333326,)
-    >>> _make_vector_choices(100, {"options": [1,5,10,100]})
-    (1.0,)"""
-    if source in definition['options']:
-        index: int = definition['options'].index(source)
-        return (_normalize_feature(index, 0, len(definition['options']) - 1),)
-    else:
-        return (0,)
-
-
-def _make_vector_steps(source: int, definition: Dict) -> Tuple[float]:
-    """Make a vector fragment for the steps template
-    :param source: The int step that was chosen
-    :param definition: The definition of the steps template
-    :return: A single value tuple describing how far along the range the value is
-    >>> _make_vector_steps(10, {"start": 4, "stop": 16, "step": 2})
-    (0.0,)"""
-    return (_normalize_feature(source, definition['start'], definition['stop']),)
-
-
-def _make_vector_random(source: float, definition: Dict) -> Tuple[float]:
-    """Make a vector fragment for the random template
-    :param source: The generated float
-    :param definition: The definition of the random template
-    :return: A single value tuple describing how far along the range the value is
-    >>> _make_vector_random(2, {"lower_bound": 0, "upper_bound": 10})
-    (-0.6,)
-    >>> _make_vector_random(10, {"lower_bound": 1, "upper_bound": 10000, "log_random": True})
-    (-0.5,)"""
-    if definition.get('log_random', False):
-        lower_bound = math.log(definition['lower_bound'])
-        upper_bound = math.log(definition['upper_bound'])
-        source = math.log(source)
-    else:
-        lower_bound = definition['lower_bound']
-        upper_bound = definition['upper_bound']
-    return (_normalize_feature(source, lower_bound, upper_bound),)
-
-
-def create_samples(definition: Dict) -> Generator[Combination, None, None]:
+def create_samples(definition: Definition) -> Generator[Combination, None, None]:
     """Create Combinations according to a definition
     :param definition: Defines the space of possibilities for the Combination
     :return: A Generator that will infinitely generate more Combinations according to the definition
     >>> test_definition = {"gap":{"modelCrop":{"type":"choices","parameters":{"options":["MZ","AP"]}},"application":{"number":{"type":"steps","parameters":{"start":1,"stop":4,"step":1,"scale_factor":1}},"interval":14,"rate":{"type":"random","parameters":{"lower_bound":1,"upper_bound":10000}},"timing":{"bbch_state":{"type":"choices","parameters":{"options":[-1,10,40,80,90]}}}}},"compound":{"metabolites":{"type":"copies","parameters":{"minimum":0,"maximum":4,"value":{"formation_fraction":0.2,"metabolite":{"metabolites":None,"molarMass":300,"volatility":{"water_solubility":90.0,"vaporization_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"degradation":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}}},"molarMass":300,"volatility":{"water_solubility":90.0,"vaporization_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"degradation":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}
     >>> import random
     >>> random.seed(42)
-    >>> sample_generator = create_samples(test_definition)
+    >>> sample_generator = create_samples(Definition.parse(test_definition))
     >>> next(sample_generator)
     Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(display_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=7415.7634470985695, timing=Timing(bbch_state=10), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=296.4339328696138, freundlich=0.9952462562245198), degradation=Degradation(system=6.0, soil=1.1987525689363516, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=(MetaboliteDescription(formation_fraction=0.2, metabolite=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=23.80173872410029, freundlich=0.7512475880857536), degradation=Degradation(system=6.0, soil=68.3476855994171, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=None)),)))
     >>> next(sample_generator)
     Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(display_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=2327.376273014005, timing=Timing(bbch_state=90), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=327.1776208099365, freundlich=1.0580098064612016), degradation=Degradation(system=6.0, soil=54.60934890188404, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=()))
 """
     while True:
-        d = create_dict_sample(definition)
+        d = definition.make_sample()
         yield Combination(**d)
-
-
-def create_any_sample(definition: Any) -> Any:
-    """Anchor for recursive generation
-    :param definition: The current fragment of the definition
-    :return: Whatever the definition defines
-    >>> import random
-    >>> random.seed(42)
-    >>> test_definition = {'type': "random", 'parameters': {'lower_bound': 0, 'upper_bound': 1}}
-    >>> create_any_sample(test_definition)"""
-    if isinstance(definition, (dict, UserDict)):
-        if 'type' in definition.keys() and 'parameters' in definition.keys():
-            return evaluate_template(definition)
-        return create_dict_sample(definition)
-    elif isinstance(definition, (list, UserList)):
-        return create_list_sample(definition)
-    else:
-        return definition
-
-
-def create_dict_sample(definition: Dict) -> Dict:
-    """Recurse over a dict
-    :param definition: A definition that takes the form of a dict
-    :return: The definition dict with all templates replaced by values
-    >>> import random
-    >>> random.seed(42)
-    >>> test_definition = {'key': {'type': "random", 'parameters': {'lower_bound': 0, 'upper_bound': 1}}}
-    >>> create_dict_sample(test_definition)"""
-    return {key: create_any_sample(value) for key, value in definition.items()}
-
-
-def create_list_sample(definition: List) -> List:
-    """Recurse over a list
-    :param definition: The list fragment of the definition to evaluate
-    :return: definition with all templates replaced by values
-    >>> import random
-    >>> random.seed(42)
-    >>> test_definition = [{'type': "random", 'parameters': {'lower_bound': 0, 'upper_bound': 1}}]
-    >>> create_list_sample(test_definition)"""
-    return [create_any_sample(value) for value in definition]
-
-
-def evaluate_template(definition: Dict) -> Any:
-    """Evaluate a template
-    :param definition: The template definition. Should contain the keys 'type' and 'parameters', all other keys will be
-    discarded
-    :return: The evaluated value of the template
-    >>> import random
-    >>> random.seed(42)
-    >>> test_definition = {'type': "random", 'parameters': {'lower_bound': 0, 'upper_bound': 1}}
-    >>> evaluate_template(test_definition)"""
-    types = {
-        'choices': choices_template,
-        'steps': steps_template,
-        'random': random_template,
-        'copies': copies_template,
-    }
-    return types[definition['type']](**definition['parameters'])
-
-
-def random_template(lower_bound: float, upper_bound: float, log_random: bool = False) -> float:
-    """Evaluates the template for a random value"""
-    if log_random:
-        lower_bound = math.log(lower_bound)
-        upper_bound = math.log(upper_bound)
-    result = random.uniform(lower_bound, upper_bound)
-    if log_random:
-        result = math.exp(result)
-    return result
-
-
-def copies_template(minimum: int, maximum: int, value: Any) -> List[Any]:
-    return [create_any_sample(value) for _ in range(random.randint(minimum, maximum))]
-
-
-def choices_template(options: List) -> Any:
-    return create_any_sample(random.choice(options))
-
-
-def steps_template(start: int, stop: int, step: int = 1, scale_factor: float = 1) -> float:
-    return random.randrange(start, stop, step) * scale_factor
-
 
 def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Path, gap_dir: Optional[Path] = None,
                 bbch: Iterable[int] = None, rate: Iterable[float] = None,
