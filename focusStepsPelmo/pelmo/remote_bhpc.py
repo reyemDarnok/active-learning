@@ -76,7 +76,7 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
     logger.info('Generating sub files for bhpc')
     make_sub_file(psm_file_data=psm_file_data, target_dir=submit,
                   crops=crops, scenarios=scenarios,
-                  batch_size=1000)
+                  batch_size=10000)
 
     if run:
         logger.info('Starting Pelmo run')
