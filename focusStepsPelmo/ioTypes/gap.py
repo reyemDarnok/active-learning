@@ -454,6 +454,7 @@ class MultiGAP(GAP):
                 init_dict_copy.update(timing_init)
                 corrected_timings += tuple([GAP.parse(init_dict_copy)])
         object.__setattr__(self, 'timings', corrected_timings)
+        super().__post_init__()
 
     timings: Tuple[GAP, ...] = field(default_factory=tuple)
 
