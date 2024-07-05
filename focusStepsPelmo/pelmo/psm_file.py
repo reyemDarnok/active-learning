@@ -2,13 +2,14 @@ import math
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple, Generator, Set
+from typing import Dict, List, Optional, Tuple, Generator, FrozenSet
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
 from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, Volatility, Sorption, Degradation
-from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
-from focusStepsPelmo.util.conversions import map_to_class, str_to_enum
+from focusStepsPelmo.ioTypes.gap import GAP, Scenario
+from focusStepsPelmo.util.conversions import map_to_class
+from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 PELMO_UNSET = -99
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
@@ -57,7 +58,7 @@ class PsmApplication(GAP):
         yield from self.wrapped.application_data(scenario)
 
     @property
-    def defined_scenarios(self) -> Set[Scenario]:
+    def defined_scenarios(self) -> FrozenSet[Scenario]:
         return self.wrapped.defined_scenarios
 
     type: ApplicationType = ApplicationType.soil
@@ -204,11 +205,10 @@ PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(k
 
 
 @dataclass
-class PsmFile:
+class PsmFile(TypeCorrecting):
     application: PsmApplication
     compound: PsmCompound
     metabolites: List[PsmCompound]
-    crop: FOCUSCrop
     comment: str = "No comment"
     num_soil_horizons: int = 0
     degradation_type: DegradationType = DegradationType.FACTORS
@@ -218,7 +218,6 @@ class PsmFile:
             "application": self.application,
             "compound": self.compound,
             "metabolites": self.metabolites,
-            "crop": self.crop,
             "comment": self.comment,
             "num_soil_horizons": self.num_soil_horizons,
             "degradation_type": self.degradation_type,
@@ -282,7 +281,6 @@ class PsmFile:
         return PsmFile(application=application,
                        compound=psm_compound,
                        metabolites=metabolite_list,
-                       crop=gap.modelCrop,
                        comment="No comment",
                        num_soil_horizons=0,
                        degradation_type=DegradationType.FACTORS,
@@ -307,16 +305,8 @@ class PsmFile:
                             )
         return compound, self.application.wrapped
 
-    def __post_init__(self):
-        self.application = map_to_class(self.application, PsmApplication)
-        self.compound = map_to_class(self.compound, PsmCompound)
-        self.metabolites = [map_to_class(metabolite, PsmCompound) if metabolite else PsmCompound.empty for metabolite in
-                            self.metabolites]
-        self.crop = str_to_enum(self.crop, FOCUSCrop)
-        self.num_soil_horizons = int(self.num_soil_horizons)
-        self.degradation_type = str_to_enum(self.degradation_type, DegradationType)
-
     def render(self) -> str:
         psm_template = jinja_env.get_template('general.psm.j2')
         template_data = self.asdict()
+        template_data['dummy_event'] = tuple([datetime(year=1, month=1, day=1), 0])
         return psm_template.render(**template_data)

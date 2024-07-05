@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, Optional, Set, FrozenSet
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, Optional, FrozenSet
 
 import numpy
 import pandas
@@ -271,7 +271,7 @@ class GAP(ABC, TypeCorrecting):
     model_specific_data: Dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
 
     @property
-    def defined_scenarios(self) -> Set[Scenario]:
+    def defined_scenarios(self) -> FrozenSet[Scenario]:
         return self.modelCrop.defined_scenarios
 
     @property
@@ -383,7 +383,7 @@ class GAP(ABC, TypeCorrecting):
                     continue
                 scenario_name = scenario.replace('ü', 'u')
                 if not numpy.isnan(row[scenario_name]):
-                    scenarios[Scenario(scenario)] = excel_date_to_datetime(row[scenario_name])
+                    scenarios[Scenario(scenario)] = {"time_in_year": excel_date_to_datetime(row[scenario_name])}
             first_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
                                             number=number, period_between_applications=period_between_applications,
                                             interval=interval,
@@ -435,10 +435,12 @@ def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pand
 class MultiGAP(GAP):
 
     @property
-    def defined_scenarios(self) -> Set[Scenario]:
-        intersect = set(FOCUSCrop)
-        intersect.intersection_update(timing.defined_scenarios for timing in self.timings)
-        return intersect
+    def defined_scenarios(self) -> FrozenSet[Scenario]:
+        result = set(Scenario)
+        for timing in self.timings:
+            result.intersection_update(timing.defined_scenarios)
+        # noinspection PyTypeChecker
+        return frozenset(result)
 
     def asdict(self) -> Dict:
         super_dict = super().asdict()
@@ -551,7 +553,7 @@ class AbsoluteScenarioGAP(GAP):
 
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
-        return self.modelCrop.defined_scenarios.intersection(self._scenario_gaps.keys())
+        return frozenset(self.modelCrop.defined_scenarios.intersection(self._scenario_gaps.keys()))
 
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         yield from self._scenario_gaps[scenario].application_data(scenario)
