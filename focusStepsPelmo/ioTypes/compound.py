@@ -68,7 +68,7 @@ class Compound(TypeCorrecting):
     @staticmethod
     def from_excel(excel_file: Path) -> List['Compound']:
         compounds = pandas.read_excel(io=excel_file, sheet_name="Compound Properties")
-        compounds['Pelmo Position'].fillna('No Position', inplace=True)
+        compounds['Pelmo Position'].fillna(None, inplace=True)
         metabolite_relationships = pandas.read_excel(io=excel_file, sheet_name="Metabolite Relationships")
         compound_list = [
             Compound(name=row['Name'], molarMass=row['Molar Mass'],
@@ -81,9 +81,10 @@ class Compound(TypeCorrecting):
                                              soil=row['DT50 Soil'],
                                              sediment=row['DT50 Sediment'],
                                              surfaceWater=row['DT50 Surface Water']),
-                     model_specific_data={'pelmo': {'position': row['Pelmo Position']
-                     if row['Pelmo Position'] != 'No Position'
-                     else None}})
+                     model_specific_data={'pelmo': {'position': row['Pelmo Position'] if row['Pelmo Position'] else None
+                                                    }
+                                          }
+                     )
             for _, row in compounds.iterrows()
         ]
         parents = [compound for compound in compound_list if

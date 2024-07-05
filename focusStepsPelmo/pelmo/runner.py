@@ -21,6 +21,7 @@ from focusStepsPelmo.ioTypes.pelmo import ChemPLM, PelmoResult, WaterPLM
 from focusStepsPelmo.pelmo.summarize import rebuild_output_to_file
 from focusStepsPelmo.util import conversions
 from focusStepsPelmo.util import jsonLogger
+from focusStepsPelmo.util.datastructures import correct_type
 
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
@@ -230,7 +231,7 @@ def parse_args() -> Namespace:
                              "Should be listed as a two letter acronym. "
                              "The selected crops have to be present in the FOCUS zip, "
                              "the bundled zip includes all crops. Defaults to all crops.")
-    parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario),
+    parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: correct_type(x, Scenario),
                         default=list(gap.Scenario),
                         help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. "
                              "A scenario will be calculated if it is defined both here and for the crop")

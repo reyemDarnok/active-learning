@@ -14,6 +14,7 @@ PELMO_UNSET = -99
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
 
+
 class Emergence(int, Enum):
     """The possible application crop development timings for Pelmo"""
     first_emergence = 0

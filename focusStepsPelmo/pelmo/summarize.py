@@ -136,9 +136,12 @@ def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) 
         with file.open() as fp:
             json_data = json.load(fp)
         for candidate in candidate_classes:
+            # noinspection PyBroadException
             try:
+                # noinspection PyTypeChecker
                 obj = correct_type(json_data, candidate)
                 hashes[hash(obj)] = obj
-            except:
+            except TypeError:
+                # Failure of conversion is expected to frequently happen
                 pass
     return hashes

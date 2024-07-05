@@ -8,6 +8,7 @@ from typing import Any, Generator, Iterable, List, TypeVar, Union, Dict
 
 T = TypeVar('T')
 
+
 class EnhancedJSONEncoder(JSONEncoder):
     """Adds several previously not serializable classes to the JSON encoder
     Cannot be trivially extended to change the representation of serializable objects

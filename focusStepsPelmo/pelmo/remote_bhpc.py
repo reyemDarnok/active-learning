@@ -18,8 +18,8 @@ from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario, GAP
 from focusStepsPelmo.pelmo.creator import generate_psm_files
 from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
-from focusStepsPelmo.util import conversions
 from focusStepsPelmo.util import jsonLogger
+from focusStepsPelmo.util.datastructures import correct_type
 
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
@@ -255,7 +255,7 @@ def parse_args() -> Namespace:
                         help='Where to output the final results. Defaults to output')
     parser.add_argument('--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.from_acronym,
                         help="Which crops to run. Defaults to all crops")
-    parser.add_argument('--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario),
+    parser.add_argument('--scenario', nargs='*', type=lambda x: correct_type(x, Scenario),
                         default=list(Scenario),
                         help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. "
                              "A scenario will be calculated if it is defined both here and for the crop")

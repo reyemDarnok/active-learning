@@ -17,8 +17,9 @@ from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, RelativeGAP
 from focusStepsPelmo.pelmo.generation_definition import Definition
 from focusStepsPelmo.pelmo.local import run_local
 from focusStepsPelmo.pelmo.remote_bhpc import run_bhpc
-from focusStepsPelmo.util import conversions, jsonLogger
+from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
+from focusStepsPelmo.util.datastructures import correct_type
 
 
 def main():
@@ -327,7 +328,7 @@ def parse_args() -> Namespace:
                              "Should be listed as a two letter acronym. "
                              "The selected crops have to be present in the FOCUS zip, "
                              "the bundled zip includes all crops. Defaults to all crops.")
-    parser.add_argument('--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario),
+    parser.add_argument('--scenario', nargs='*', type=lambda x: correct_type(x, Scenario),
                         default=list(Scenario),
                         help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. "
                              "A scenario will be calculated if it is defined both here and for the crop")
