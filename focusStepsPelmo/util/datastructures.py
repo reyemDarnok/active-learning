@@ -55,7 +55,7 @@ class NoValidStrategyException(Exception):
 
 
 def correct_type(input_value: Any, t: Type[T]) -> T:
-    if type(input_value) == t:
+    if t == typing.Any:
         return input_value
     if hasattr(t, '__origin__'):  # Typing with Type Vars
         origin = t.__origin__
@@ -113,6 +113,8 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
         else:
             # noinspection PyProtectedMember
             raise NotImplementedError('Type Correction for %s' % t._name)
+    if isinstance(input_value, t):
+        return input_value
     if input_value is None:
         return None
     if is_dataclass(t):
