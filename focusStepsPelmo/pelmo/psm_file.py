@@ -1,5 +1,5 @@
 import math
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
@@ -214,7 +214,7 @@ class PsmFile:
 
     @staticmethod
     def from_input(compound: Compound, gap: GAP) -> 'PsmFile':
-        application = PsmApplication(**asdict(gap))
+        application = PsmApplication(gap=gap)
 
         metabolites: Dict[str, Compound] = {}
         if 'pelmo' in compound.model_specific_data.keys():
