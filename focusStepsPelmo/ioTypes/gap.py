@@ -539,7 +539,7 @@ class AbsoluteScenarioGAP(GAP):
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         yield from self._scenario_gaps[scenario].application_data(scenario)
 
-    scenarios: Dict[Scenario, datetime] = field(
+    scenarios: Dict[Scenario, Dict] = field(
         default_factory=lambda: {})
 
     _scenario_gaps: Dict[Scenario, AbsoluteConstantGAP] = field(init=False, repr=False, hash=False, compare=False)
@@ -548,9 +548,18 @@ class AbsoluteScenarioGAP(GAP):
         object.__setattr__(self, 'modelCrop', str_to_enum(self.modelCrop, FOCUSCrop))
         init_dict = self.asdict()
         init_dict.pop('scenarios')
-        scenario_gaps = {scenario: AbsoluteConstantGAP(time_in_year=date, **init_dict)
-                         for scenario, date in self.scenarios.items()}
-        object.__setattr__(self, '_scenario_gaps', scenario_gaps)
+        corrected_scenarios = {}
+        for scenario, scenario_data in self.scenarios.items():
+            if isinstance(scenario_data, GAP):
+                corrected_scenarios[scenario] = scenario_data
+            else:
+                # We are initialising - assume only a dict of values was
+                # provided that has to be parsed to a final result
+                # noinspection PyTypeChecker
+                init_dict_copy = init_dict.copy()
+                init_dict_copy.update(scenario_data)
+                corrected_scenarios[scenario] = AbsoluteConstantGAP(**init_dict_copy)
+        object.__setattr__(self, '_scenario_gaps', corrected_scenarios)
         super().__post_init__()
 
     def asdict(self) -> Dict:
