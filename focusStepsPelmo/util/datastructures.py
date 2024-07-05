@@ -117,6 +117,8 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
         return input_value
     if input_value is None:
         return None
+    if hasattr(t, 'parse'):
+        return t.parse(input_value)
     if is_dataclass(t):
         return t(**input_value)
     if issubclass(t, Enum):
