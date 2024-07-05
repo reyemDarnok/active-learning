@@ -1,12 +1,13 @@
 import math
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Generator, Set
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
 from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, Volatility, Sorption, Degradation
-from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
 from focusStepsPelmo.util.conversions import map_to_class, str_to_enum
 
 PELMO_UNSET = -99
@@ -41,18 +42,30 @@ class ApplicationType(int, Enum):
 
 
 @dataclass(frozen=True)
-class PsmApplication:
-    gap: GAP
+class PsmApplication(GAP):
+    wrapped: GAP = None
+
+    def asdict(self) -> Dict:
+        return {**super().asdict(),
+                "type": self.type,
+                "lower_depth": self.lower_depth, "upper_depth": self.upper_depth,
+                "ffield": self.ffield,
+                "frpex": self.frpex,
+                "time": self.time}
+
+    def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
+        yield from self.wrapped.application_data(scenario)
+
+    @property
+    def defined_scenarios(self) -> Set[Scenario]:
+        return self.wrapped.defined_scenarios
+
     type: ApplicationType = ApplicationType.soil
     lower_depth: float = 0
     upper_depth: float = 0
     ffield: float = 0
     frpex: float = 0
     time: float = 0
-
-    @property
-    def rate_in_kg(self):
-        return self.gap.rate / 1000
 
 
 class DegradationType(int, Enum):
@@ -200,20 +213,20 @@ class PsmFile:
     num_soil_horizons: int = 0
     degradation_type: DegradationType = DegradationType.FACTORS
 
-    def _asdict(self):
+    def asdict(self):
         return {
             "application": self.application,
             "compound": self.compound,
+            "metabolites": self.metabolites,
             "crop": self.crop,
             "comment": self.comment,
             "num_soil_horizons": self.num_soil_horizons,
-            "metabolites": self.metabolites,
-            "degradation_type": self.degradation_type
+            "degradation_type": self.degradation_type,
         }
 
     @staticmethod
     def from_input(compound: Compound, gap: GAP) -> 'PsmFile':
-        application = PsmApplication(gap=gap)
+        application = PsmApplication(wrapped=gap, modelCrop=gap.modelCrop, rate=gap.rate)
 
         metabolites: Dict[str, Compound] = {}
         if 'pelmo' in compound.model_specific_data.keys():
@@ -292,7 +305,7 @@ class PsmFile:
                                                     sediment=math.log(2) / self.compound.degradations[0].rate),
                             plant_uptake=self.compound.plant_uptake
                             )
-        return compound, self.application.gap
+        return compound, self.application.wrapped
 
     def __post_init__(self):
         self.application = map_to_class(self.application, PsmApplication)
@@ -305,4 +318,5 @@ class PsmFile:
 
     def render(self) -> str:
         psm_template = jinja_env.get_template('general.psm.j2')
-        return psm_template.render(**self._asdict())
+        template_data = self.asdict()
+        return psm_template.render(**template_data)

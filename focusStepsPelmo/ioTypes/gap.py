@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, Optional
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, Optional, Set, FrozenSet
 
 import numpy
 import pandas
@@ -21,8 +21,6 @@ bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BB
                                                             'Crop Interception(%)': 'byte'},
                                                      parse_dates=['Recommended Application date'],
                                                      dayfirst=True)
-bbch_application['Location'] = bbch_application['Location'].cat.rename_categories({'Kremsmunster': 'Kremsmünster',
-                                                                                   'Chateaudun': 'Châteaudun'})
 
 
 class Scenario(str, Enum):
@@ -56,7 +54,7 @@ class FOCUSCropMixin(NamedTuple):
     """Crop information for Pelmo"""
     focus_name: str
     """The full name of the focus crop"""
-    defined_scenarios: Tuple[Scenario, ...]
+    defined_scenarios: FrozenSet[Scenario]
     """The scenarios that are defined for this Crop in Pelmo"""
     interception: OrderedDict[PrincipalStage, float]
     """Mapping bbch states to interception values"""
@@ -71,145 +69,141 @@ _s = PrincipalStage
 class FOCUSCrop(FOCUSCropMixin, Enum):
     """The crops defined for Pelmo. Each defined as a PelmoCropMixin"""
     AP = FOCUSCropMixin(focus_name="Apples",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O,
-                             Scenario.S, Scenario.T]),
+                        defined_scenarios=frozenset({
+                            Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O,
+                            Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Maturity: 80, _s.DevelopmentFruit: 70, _s.Flowering: 65, _s.Germination: 50})
                         , bbch_application_name=["pome fruit"])
     BB = FOCUSCropMixin(focus_name="Bush berries",
-                        defined_scenarios=tuple([Scenario.J]),
+                        defined_scenarios=frozenset({Scenario.J}),
                         interception=HashableRSDict(
                             {_s.Maturity: 80, _s.DevelopmentFruit: 65, _s.Flowering: 65, _s.Germination: 50})
                         , bbch_application_name=["Missing"])  # TODO)
     BF = FOCUSCropMixin(focus_name="Beans (field)",
-                        defined_scenarios=tuple([Scenario.H, Scenario.K, Scenario.N]),
+                        defined_scenarios=frozenset({Scenario.H, Scenario.K, Scenario.N}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 25, _s.Tillering: 40, _s.Flowering: 70, _s.Senescence: 80})
                         , bbch_application_name=["beans 1", "beans 2"])
     BV = FOCUSCropMixin(focus_name="Beans (vegetables)",
-                        defined_scenarios=tuple([Scenario.O, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.O, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 25, _s.Tillering: 40, _s.Flowering: 70, _s.Senescence: 80})
                         , bbch_application_name=["beans 1", "beans 2"])
     CA = FOCUSCropMixin(focus_name="Carrots",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O,
+                                                     Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 25, _s.Tillering: 60, _s.Flowering: 80, _s.Senescence: 80})
                         , bbch_application_name=["carrots 1", "carrots 2"])
     CB = FOCUSCropMixin(focus_name="Cabbage",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O, Scenario.S, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O,
+                                                     Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 25, _s.Tillering: 40, _s.Flowering: 70, _s.Senescence: 90})
                         , bbch_application_name=["cabbage 1", "cabbage 2"])
     CI = FOCUSCropMixin(focus_name="Citrus",
-                        defined_scenarios=tuple([Scenario.P, Scenario.O, Scenario.S, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.P, Scenario.O, Scenario.S, Scenario.T}),
                         interception=HashableRSDict({_s.Germination: 70})
                         , bbch_application_name=["cabbage 1", "cabbage 2"])
     CO = FOCUSCropMixin(focus_name="Cotton",
-                        defined_scenarios=tuple([Scenario.S, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 30, _s.Tillering: 60, _s.Flowering: 75, _s.Senescence: 90})
                         , bbch_application_name=["cotton"])
     GA = FOCUSCropMixin(focus_name="Grass and alfalfa",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O,
-                             Scenario.S, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N,
+                                                     Scenario.P, Scenario.O, Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 40, _s.Tillering: 60, _s.Flowering: 70, _s.Senescence: 90})
                         , bbch_application_name=["Missing"])  # TODO)
     LS = FOCUSCropMixin(focus_name="Linseed",
-                        defined_scenarios=tuple([Scenario.N]),
+                        defined_scenarios=frozenset({Scenario.N}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 30, _s.Tillering: 60, _s.Flowering: 70, _s.Senescence: 90})
                         , bbch_application_name=["linseed"])
     MZ = FOCUSCropMixin(focus_name="Maize",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.K, Scenario.N, Scenario.P, Scenario.O, Scenario.S,
-                             Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.K, Scenario.N, Scenario.P,
+                                                     Scenario.O, Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 25, _s.Tillering: 50, _s.Flowering: 75, _s.Senescence: 90}),
                         bbch_application_name=["maize"])
     ON = FOCUSCropMixin(focus_name="Onions",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.O,
+                                                     Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 10, _s.Tillering: 25, _s.Flowering: 40, _s.Senescence: 60}),
                         bbch_application_name=["onions"])
     OS = FOCUSCropMixin(focus_name="Oilseed rape (summer)",
-                        defined_scenarios=tuple([Scenario.J, Scenario.N, Scenario.O]),
+                        defined_scenarios=frozenset({Scenario.J, Scenario.N, Scenario.O}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 40, _s.Tillering: 80, _s.Flowering: 80, _s.Senescence: 90}),
                         bbch_application_name=["oil seed rape, summer"])
     OW = FOCUSCropMixin(focus_name="Oilseed rape (winter)",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.K, Scenario.N, Scenario.P, Scenario.O]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.K, Scenario.N, Scenario.P,
+                                                     Scenario.O}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 40, _s.Tillering: 80, _s.Flowering: 80, _s.Senescence: 90}),
                         bbch_application_name=["oil seed rape, winter"])
     PE = FOCUSCropMixin(focus_name="Peas (animals)",
-                        defined_scenarios=tuple([Scenario.C, Scenario.H, Scenario.J, Scenario.N]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.N}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 35, _s.Tillering: 55, _s.Flowering: 85, _s.Senescence: 85}),
                         bbch_application_name=["peas"])
     PO = FOCUSCropMixin(focus_name="Potatoes",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O,
-                             Scenario.S, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N,
+                                                     Scenario.P, Scenario.O, Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 15, _s.Tillering: 50, _s.Flowering: 80, _s.Senescence: 50}),
                         bbch_application_name=["potatoes"])
     SB = FOCUSCropMixin(focus_name="Sugar beets",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O,
-                             Scenario.S, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N,
+                                                     Scenario.P, Scenario.O, Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 20, _s.Tillering: 70, _s.Flowering: 90, _s.Senescence: 90}),
                         bbch_application_name=["sugar beet"])
     SC = FOCUSCropMixin(focus_name="Spring cereals",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.O]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N,
+                                                     Scenario.O}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 25, _s.Tillering: 50, _s.Elongation: 70, _s.Flowering: 90,
                              _s.Senescence: 90}),
                         bbch_application_name=["cereals spring"])
     SF = FOCUSCropMixin(focus_name="Sunflower",
-                        defined_scenarios=tuple([Scenario.P, Scenario.S]),
+                        defined_scenarios=frozenset({Scenario.P, Scenario.S}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 20, _s.Tillering: 50, _s.Flowering: 75, _s.Senescence: 90}),
                         bbch_application_name=["sunflower"])
     SO = FOCUSCropMixin(focus_name="Soybeans",
-                        defined_scenarios=tuple([Scenario.P]),
+                        defined_scenarios=frozenset({Scenario.P}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 35, _s.Tillering: 55, _s.Flowering: 85, _s.Senescence: 65}),
                         bbch_application_name=["soybean"])
     SW = FOCUSCropMixin(focus_name="Strawberries",
-                        defined_scenarios=tuple([Scenario.H, Scenario.J, Scenario.K, Scenario.S]),
+                        defined_scenarios=frozenset({Scenario.H, Scenario.J, Scenario.K, Scenario.S}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 30, _s.Tillering: 50, _s.Flowering: 60, _s.Senescence: 60}),
                         bbch_application_name=["strawberries"])
     TB = FOCUSCropMixin(focus_name="Tobacco",
-                        defined_scenarios=tuple([Scenario.P, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.P, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 50, _s.Tillering: 70, _s.Flowering: 90, _s.Senescence: 90}),
                         bbch_application_name=["tobacco"])
     TM = FOCUSCropMixin(focus_name="Tomatoes",
-                        defined_scenarios=tuple([Scenario.C, Scenario.P, Scenario.O, Scenario.S, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.P, Scenario.O, Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 50, _s.Tillering: 70, _s.Flowering: 80, _s.Senescence: 50}),
                         bbch_application_name=["tomatoes"])
     VI = FOCUSCropMixin(focus_name="Vines",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.K, Scenario.P, Scenario.O, Scenario.S, Scenario.T]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.K, Scenario.P, Scenario.O,
+                                                     Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Maturity: 85, _s.DevelopmentFruit: 70, _s.Flowering: 60, _s.Inflorescence: 50,
                              _s.Germination: 40}),
                         bbch_application_name=["vines"])
     WC = FOCUSCropMixin(focus_name="Winter cereals",
-                        defined_scenarios=tuple(
-                            [Scenario.C, Scenario.H, Scenario.J, Scenario.N, Scenario.P, Scenario.O]),
+                        defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.N, Scenario.P,
+                                                     Scenario.O}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 25, _s.Tillering: 50, _s.Elongation: 70, _s.Flowering: 90,
                              _s.Senescence: 90}),
@@ -275,6 +269,14 @@ class GAP(ABC, TypeCorrecting):
     interval: timedelta = 1
     """What is the minimum interval between applications"""
     model_specific_data: Dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
+
+    @property
+    def defined_scenarios(self) -> Set[Scenario]:
+        return self.modelCrop.defined_scenarios
+
+    @property
+    def rate_in_kg(self):
+        return self.rate / 1000
 
     @abstractmethod
     def asdict(self) -> Dict:
@@ -411,7 +413,8 @@ class GAP(ABC, TypeCorrecting):
 # parameters are used in pandas query, which PyCharm does not notice
 # noinspection PyUnusedLocal
 def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Series:
-    return bbch_application.query('Location == @scenario.name '
+    scenario_name = scenario.replace("â", "a").replace("ü", "u")
+    return bbch_application.query('Location == @scenario_name '
                                   '& Crop == @crop_name'
                                   '& `Requested BBCH Code` == @bbch').iloc[0]
 
@@ -419,9 +422,10 @@ def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Se
 # parameters are used in pandas query, which PyCharm does not notice
 # noinspection PyUnusedLocal
 def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pandas.Series:
-    filtered_frame: pandas.DataFrame = bbch_application.query('Location == @scenario.value '
+    scenario_name = scenario.replace("â", "a").replace("ü", "u")
+    filtered_frame: pandas.DataFrame = bbch_application.query('Location == @scenario_name '
                                                               '& Crop == @crop_name'
-                                                              '& `Recommended Application date` > '
+                                                              '& `Recommended Application date` >= '
                                                               '@date'
                                                               )
     return filtered_frame.sort_values(ascending=True, by=['Recommended Application date']).iloc[0]
@@ -429,6 +433,13 @@ def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pand
 
 @dataclass(frozen=True)
 class MultiGAP(GAP):
+
+    @property
+    def defined_scenarios(self) -> Set[Scenario]:
+        intersect = set(FOCUSCrop)
+        intersect.intersection_update(timing.defined_scenarios for timing in self.timings)
+        return intersect
+
     def asdict(self) -> Dict:
         super_dict = super().asdict()
         super_dict.update({'timings': self.timings})
@@ -472,10 +483,10 @@ class RelativeGAP(GAP):
             application_time = time_in_year + self.interval * index
             application_line = date_to_data_row(application_time, scenario, self.modelCrop.bbch_application_name[0])
             interception = application_line['Crop Interception(%)']
-            time_and_interception += application_time, interception
+            time_and_interception += tuple([tuple([application_time, interception])])
         for year in range(1, 6 + 20 * self.period_between_applications + 1, self.period_between_applications):
             for appl_date, interception in time_and_interception:
-                appl_date = appl_date.replace(year=year)
+                appl_date = datetime(year=year, month=appl_date.month, day=appl_date.day)
                 yield appl_date, interception
 
     def asdict(self) -> Dict:
@@ -502,8 +513,9 @@ class AbsoluteConstantGAP(GAP):
             interception = application_line['Crop Interception(%)']
             time_and_interception += tuple([tuple([application_time, interception])])
         for year in range(1, 6 + 20 * self.period_between_applications + 1, self.period_between_applications):
-            for date, interception in time_and_interception:
-                yield date.replace(year=year), interception
+            for appl_date, interception in time_and_interception:
+                appl_date = datetime(year=year, month=appl_date.month, day=appl_date.day)
+                yield appl_date.replace(year=year), interception
 
     def asdict(self) -> Dict:
         super_dict = super().asdict()
@@ -536,6 +548,11 @@ class AbsoluteDayOfYearGAP(AbsoluteConstantGAP):
 
 @dataclass(frozen=True)
 class AbsoluteScenarioGAP(GAP):
+
+    @property
+    def defined_scenarios(self) -> FrozenSet[Scenario]:
+        return self.modelCrop.defined_scenarios.intersection(self._scenario_gaps.keys())
+
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         yield from self._scenario_gaps[scenario].application_data(scenario)
 
