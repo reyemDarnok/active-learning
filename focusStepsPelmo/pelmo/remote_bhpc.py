@@ -10,7 +10,7 @@ from shutil import rmtree
 from typing import Generator, Iterable, Optional, Sequence, Tuple, TypeVar, List
 from zipfile import ZipFile
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from jinja2 import Environment, StrictUndefined, select_autoescape, ModuleLoader
 
 from focusStepsPelmo.bhpc import commands
 from focusStepsPelmo.ioTypes.combination import Combination
@@ -21,8 +21,8 @@ from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
 from focusStepsPelmo.util import conversions
 from focusStepsPelmo.util import jsonLogger
 
-jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(),
-                        undefined=StrictUndefined)
+jinja_env = Environment(loader=ModuleLoader('templates'),
+                        autoescape=select_autoescape(), undefined=StrictUndefined)
 
 T = TypeVar('T')
 
@@ -229,9 +229,9 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
         batch_name = f"psm{i}.d"
         logger.info('Adding psm files for batch %s', i)
         logger.info('Created batch %s', i)
-        for psm_file in batch:
-            if psm_file is not None:
-                with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for psm_file in batch:
+                if psm_file is not None:
                     zip_file.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
         yield batch_name
 
