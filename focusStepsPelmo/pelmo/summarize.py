@@ -20,7 +20,8 @@ def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Tuple
     write_results_to_file(rebuild_scattered_output(parent, input_directories, glob_pattern), file)
 
 
-def rebuild_output_to_file(file: Path, results: Union[Path, Iterable[PelmoResult]], input_directories: Tuple[Path, ...]):
+def rebuild_output_to_file(file: Path,
+                           results: Union[Path, Iterable[PelmoResult]], input_directories: Tuple[Path, ...]):
     write_results_to_file(rebuild_output(results, input_directories), file)
 
 

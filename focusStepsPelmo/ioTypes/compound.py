@@ -40,6 +40,7 @@ class MetaboliteDescription(TypeCorrecting):
     formation_fraction: float
     metabolite: 'Compound'
 
+
 @dataclass(frozen=True)
 class Compound(TypeCorrecting):
     """A Compound definition"""
@@ -81,8 +82,8 @@ class Compound(TypeCorrecting):
                                              sediment=row['DT50 Sediment'],
                                              surfaceWater=row['DT50 Surface Water']),
                      model_specific_data={'pelmo': {'position': row['Pelmo Position']
-                                                                if row['Pelmo Position'] != 'No Position'
-                                                                else None}})
+                     if row['Pelmo Position'] != 'No Position'
+                     else None}})
             for _, row in compounds.iterrows()
         ]
         parents = [compound for compound in compound_list if

@@ -55,6 +55,7 @@ class PsmApplication:
     def rate_in_kg(self):
         return self.gap.rate / 1000
 
+
 class DegradationType(int, Enum):
     """Used by Pelmo to describe the type of degradation"""
     FACTORS = 0
