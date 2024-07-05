@@ -197,13 +197,26 @@ class TemplateDefinition(Definition, ABC):
             'choices': ChoicesDefinition,
             'steps': StepsDefinition,
             'random': RandomDefinition,
-            'copies': CopiesDefinition
+            'copies': CopiesDefinition,
+            'log_normal': LogNormalDefinition
         }
         return types[to_parse['type']](**to_parse['parameters'])
 
     @property
     def is_static(self) -> bool:
         return False
+
+
+class LogNormalDefinition(TemplateDefinition):
+    def __init__(self, mu: float, sigma: float):
+        self.mu = mu
+        self.sigma = sigma
+
+    def make_sample(self) -> float:
+        return random.lognormvariate(self.mu, self.sigma)
+
+    def make_vector(self, obj: float) -> Tuple[float, ...]:
+        return (min(-1.0, max(1.0, (obj - self.mu) / self.sigma / 3)),)
 
 
 class ChoicesDefinition(TemplateDefinition):
