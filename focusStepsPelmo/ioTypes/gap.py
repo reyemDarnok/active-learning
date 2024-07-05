@@ -452,8 +452,9 @@ class MultiGAP(GAP):
                 # noinspection PyTypeChecker
                 timing_init: Dict = timing
                 init_dict_copy = init_dict.copy()
-                init_dict_copy.update(timing_init)
-                corrected_timings += tuple([GAP.parse(init_dict_copy)])
+                init_dict_copy.update(timing_init['arguments'])
+                timing_init['arguments'] = init_dict_copy
+                corrected_timings += tuple([GAP.parse(timing_init)])
         object.__setattr__(self, 'timings', corrected_timings)
         super().__post_init__()
 
