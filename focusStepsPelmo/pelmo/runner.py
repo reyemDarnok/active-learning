@@ -10,7 +10,7 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copytree, rmtree
 from threading import current_thread
-from typing import Generator, Iterable, List, Optional, Tuple, TypeVar, Union, Sequence
+from typing import Generator, Iterable, Optional, Tuple, TypeVar, Union
 from zipfile import ZipFile
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
@@ -123,7 +123,7 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
         run_dir = scenario_dir / f'{psm_file.stem}.run'
     else:
         run_dir = scenario_dir / f'{hash(psm_file)}.run'
-    crop_dir = run_dir / crop.display_name
+    crop_dir = run_dir / crop.focus_name
 
     logger.debug('Creating run directory %s', crop_dir)
     crop_dir.mkdir(exist_ok=True, parents=True)
@@ -144,18 +144,18 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
     target_dat_file.write_text(dat_file_template.render())
 
     logger.info('Starting PELMO run for compound: %s :: crop: %s :: scenario: %s', target_psm_file.stem,
-                crop.display_name, scenario.value)
+                crop.focus_name, scenario.value)
     try:
         process = subprocess.run([str((Path(__file__).parent / 'data' / 'PELMO500.EXE').absolute())], cwd=crop_dir,
                                  check=True, capture_output=True)
     except subprocess.CalledProcessError as e:
         raise ValueError(
-            f"Pelmo exited prematurely with an error while calculating {psm_file.name} {crop.display_name} "
+            f"Pelmo exited prematurely with an error while calculating {psm_file.name} {crop.focus_name} "
             f"{scenario.value}. Pelmo returned exitcode {e.returncode}. The Pelmo error was {e.output}")
-    logger.info('Finished PELMO run for %s, %s and %s', target_psm_file.stem, crop.display_name, scenario.value)
+    logger.info('Finished PELMO run for %s, %s and %s', target_psm_file.stem, crop.focus_name, scenario.value)
     if b"F A T A L   E R R O R" in process.stdout:
         raise ValueError(
-            f"Pelmo completed with error while calculating {psm_file.name} {crop.display_name} {scenario.value}. "
+            f"Pelmo completed with error while calculating {psm_file.name} {crop.focus_name} {scenario.value}. "
             f"The Pelmo output was {process.stdout.decode(errors='backslashreplace')}")
 
     with psm_file.open() as psm:
