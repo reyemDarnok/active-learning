@@ -1,13 +1,13 @@
 import contextlib
-from dataclasses import dataclass
-from pathlib import Path
-import os
 import logging
+import os
 import random
 import subprocess
-from sys import stdin
 import time
+from dataclasses import dataclass
+from pathlib import Path
 from subprocess import PIPE
+from sys import stdin
 from typing import Generator, Optional
 
 bhpc_dir = Path('C:\\_AWS', 'actualVersion')
@@ -212,7 +212,7 @@ def remove(session: str, kill: bool = True):
         logger.info('Running remove command')
         p = subprocess.Popen([
             str(bhpc_exe.absolute()), "remove", session],
-            stdin=PIPE, text=True)
+            stdin=PIPE, stdout=PIPE, text=True)
         if kill:
             remove_stdout, _ = p.communicate("yes")
         else:
