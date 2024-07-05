@@ -408,12 +408,16 @@ class GAP(ABC, TypeCorrecting):
                 yield first_gap
 
 
+# parameters are used in pandas query, which PyCharm does not notice
+# noinspection PyUnusedLocal
 def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Series:
     return bbch_application.query('Location == @scenario.name '
                                   '& Crop == @crop_name'
                                   '& `Requested BBCH Code` == @bbch').iloc[0]
 
 
+# parameters are used in pandas query, which PyCharm does not notice
+# noinspection PyUnusedLocal
 def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pandas.Series:
     filtered_frame: pandas.DataFrame = bbch_application.query('Location == @scenario.value '
                                                               '& Crop == @crop_name'
