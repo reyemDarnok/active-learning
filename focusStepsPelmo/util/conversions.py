@@ -1,9 +1,10 @@
-from collections import OrderedDict, UserDict
 import dataclasses
-from json import JSONEncoder
 import re
-from typing import Any, Generator, Iterable, List, TypeVar, Union, Dict, Type
+from collections import OrderedDict, UserDict
+from datetime import datetime, timedelta
 from enum import Enum
+from json import JSONEncoder
+from typing import Any, Generator, Iterable, List, TypeVar, Union, Dict, Type
 
 T = TypeVar('T')
 
@@ -102,3 +103,8 @@ def flatten(to_flatten: Union[List, Dict, Any]) -> str:
     else:
         to_flatten = str(to_flatten)
         return re.sub(r'([\\,])', r"\\\1", to_flatten)
+
+
+def excel_date_to_datetime(excel_date: int) -> datetime:
+    base_date = datetime(year=1899, month=12, day=30)
+    return base_date + timedelta(excel_date)
