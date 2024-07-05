@@ -1,11 +1,10 @@
 import re
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Tuple
 
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
-from focusStepsPelmo.util.conversions import str_to_enum
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
@@ -132,10 +131,9 @@ class PECResult:
     crop: FOCUSCrop
     pec: Tuple[float, ...]
 
-    def _asdict(self):
-        # noinspection PyProtectedMember
-        return {"compound": asdict(self.compound),
-                "gap": self.gap._asdict(),
-                "scenario": self.scenario.name,
+    def asdict(self):
+        return {"compound": self.compound,
+                "gap": self.gap,
+                "scenario": self.scenario,
                 "crop": self.crop.name,
                 "pec": self.pec}

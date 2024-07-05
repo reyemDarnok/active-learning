@@ -42,7 +42,7 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
             writer.writerow(header)
             writer.writerow(row)
             # noinspection PyProtectedMember
-            writer.writerows((x[1] for x in flatten_to_tuples(r._asdict())) for r in results)
+            writer.writerows((x[1] for x in flatten_to_tuples(r.asdict())) for r in results)
     else:
         raise ValueError("Could not infer format, please specify explicitly")
 

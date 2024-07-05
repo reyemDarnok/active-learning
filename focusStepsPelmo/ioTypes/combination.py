@@ -1,12 +1,11 @@
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Generator
 
-from focusStepsPelmo.util.datastructures import TypeCorrecting
-
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP
+from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
 @dataclass(frozen=True)
@@ -14,10 +13,6 @@ class Combination(TypeCorrecting):
     """A dataclass combining a gap and a compound definition"""
     gap: GAP
     compound: Compound
-
-    def _asdict(self):
-        # noinspection PyProtectedMember
-        return {'gap': self.gap._asdict(), 'compound': self.compound}
 
     @staticmethod
     def from_path(path: Path) -> Generator['Combination', None, None]:
