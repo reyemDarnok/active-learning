@@ -107,9 +107,11 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     definition = Definition.parse(definition)
     samples = create_samples(definition)
     if make_test_set:
-        test_set = set(definition.make_vector(c) for c in itertools.islice(samples, test_set_size))
+        test_set = set(definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
+                       for c in itertools.islice(samples, test_set_size))
     elif test_set_path:
-        test_set = set(definition.make_vector(c) for c in load_test_set(test_set_path))
+        test_set = set(definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
+                       for c in load_test_set(test_set_path))
     else:
         test_set = set()
     collected_samples = 0
@@ -117,7 +119,8 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     while collected_samples < sample_size:
         total_attempts += 1
         combination = next(samples)
-        if not test_set or _shortest_distance_to_set(definition.make_vector(combination), test_set) > test_set_buffer:
+        current_vector = definition.make_vector(json.loads(json.dumps(combination, cls=EnhancedJSONEncoder)))
+        if not test_set or _shortest_distance_to_set(current_vector, test_set) > test_set_buffer:
             with (output_dir / f"{hash(combination)}.json").open('w') as fp:
                 json.dump(combination, fp, cls=EnhancedJSONEncoder)
             collected_samples += 1
@@ -143,9 +146,9 @@ def create_samples(definition: Definition) -> Generator[Combination, None, None]
     >>> random.seed(42)
     >>> sample_generator = create_samples(Definition.parse(test_definition))
     >>> next(sample_generator)
-    Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(display_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=7415.7634470985695, timing=Timing(bbch_state=10), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=296.4339328696138, freundlich=0.9952462562245198), degradation=Degradation(system=6.0, soil=1.1987525689363516, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=(MetaboliteDescription(formation_fraction=0.2, metabolite=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=23.80173872410029, freundlich=0.7512475880857536), degradation=Degradation(system=6.0, soil=68.3476855994171, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=None)),)))
+    Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(focus_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=7415.7634470985695, timing=GAP(bbch_state=10), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=296.4339328696138, freundlich=0.9952462562245198), degradation=Degradation(system=6.0, soil=1.1987525689363516, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=(MetaboliteDescription(formation_fraction=0.2, metabolite=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=23.80173872410029, freundlich=0.7512475880857536), degradation=Degradation(system=6.0, soil=68.3476855994171, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=None)),)))
     >>> next(sample_generator)
-    Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(display_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=2327.376273014005, timing=Timing(bbch_state=90), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=327.1776208099365, freundlich=1.0580098064612016), degradation=Degradation(system=6.0, soil=54.60934890188404, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=()))
+    Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(focus_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=2327.376273014005, timing=GAP(bbch_state=90), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=327.1776208099365, freundlich=1.0580098064612016), degradation=Degradation(system=6.0, soil=54.60934890188404, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=()))
 """
     while True:
         d = definition.make_sample()
@@ -332,7 +335,7 @@ def parse_args() -> Namespace:
                         help="How far a point has to be from the test set to be allowed in the sample")
     test_set_group = parser.add_argument_group('Test Set')
     test_set = test_set_group.add_mutually_exclusive_group()
-    test_set.add_argument('--make-test-set', action="store_True", default=False,
+    test_set.add_argument('--make-test-set', action="store_true", default=False,
                           help="Generate a test set of a given size")
     test_set.add_argument('--use-test-set', type=Path, default=None,
                           help="Use a preexisting test set (should be a directory)")
