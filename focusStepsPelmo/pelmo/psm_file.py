@@ -5,7 +5,7 @@ from typing import Dict, List, Optional, Tuple
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, ModuleLoader
 
-from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription
+from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, Volatility, Sorption, Degradation
 from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop
 from focusStepsPelmo.util.conversions import map_to_class, str_to_enum
 
@@ -43,22 +43,17 @@ class ApplicationType(int, Enum):
 
 @dataclass(frozen=True)
 class PsmApplication:
-    rate: float = 0
+    gap: GAP
     type: ApplicationType = ApplicationType.soil
     lower_depth: float = 0
     upper_depth: float = 0
     ffield: float = 0
     frpex: float = 0
     time: float = 0
-    offset: Optional[int] = 0
-
-    # @property
-    # def stage(self) -> Emergence:
-    #    return Emergence.from_stage(self.timing.principal_stage)
 
     @property
     def rate_in_kg(self):
-        return self.rate / 1000
+        return self.gap.rate / 1000
 
 class DegradationType(int, Enum):
     """Used by Pelmo to describe the type of degradation"""
@@ -280,25 +275,24 @@ class PsmFile:
                        degradation_type=DegradationType.FACTORS,
                        )
 
-    # def to_input(self) -> Tuple[Compound, GAP]:
-    #     """Convert this psmFile to ioTypes input data.
-    #     WARNING: This is lossy, as psmFiles do not use all data from the input files"""
-    #     volatility = Volatility(water_solubility=self.compound.volatizations[0].solubility,
-    #                             vaporization_pressure=self.compound.volatizations[0].vaporization_pressure,
-    #                             reference_temperature=(self.compound.volatizations[0].temperature +
-    #                                                    self.compound.volatizations[1].temperature) / 2)
-    #     compound = Compound(molarMass=self.compound.molar_mass,
-    #                         volatility=volatility,
-    #                         sorption=Sorption(koc=self.compound.adsorptions[0].koc,
-    #                                           freundlich=self.compound.adsorptions[0].freundlich),
-    #                         degradation=Degradation(system=math.log(2) / self.compound.degradations[0].rate,
-    #                                                 soil=math.log(2) / self.compound.degradations[0].rate,
-    #                                                 surfaceWater=math.log(2) / self.compound.degradations[0].rate,
-    #                                                 sediment=math.log(2) / self.compound.degradations[0].rate),
-    #                         plant_uptake=self.compound.plant_uptake
-    #                         )
-    #     gap = GAP(modelCrop=self.crop, application=self.application)
-    #     return compound, gap
+    def to_input(self) -> Tuple[Compound, GAP]:
+        """Convert this psmFile to ioTypes input data.
+        WARNING: This is lossy, as psmFiles do not use all data from the input files"""
+        volatility = Volatility(water_solubility=self.compound.volatizations[0].solubility,
+                                vaporization_pressure=self.compound.volatizations[0].vaporization_pressure,
+                                reference_temperature=(self.compound.volatizations[0].temperature +
+                                                       self.compound.volatizations[1].temperature) / 2)
+        compound = Compound(molarMass=self.compound.molar_mass,
+                            volatility=volatility,
+                            sorption=Sorption(koc=self.compound.adsorptions[0].koc,
+                                              freundlich=self.compound.adsorptions[0].freundlich),
+                            degradation=Degradation(system=math.log(2) / self.compound.degradations[0].rate,
+                                                    soil=math.log(2) / self.compound.degradations[0].rate,
+                                                    surfaceWater=math.log(2) / self.compound.degradations[0].rate,
+                                                    sediment=math.log(2) / self.compound.degradations[0].rate),
+                            plant_uptake=self.compound.plant_uptake
+                            )
+        return compound, self.application.gap
 
     def __post_init__(self):
         self.application = map_to_class(self.application, PsmApplication)

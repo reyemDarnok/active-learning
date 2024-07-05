@@ -13,7 +13,7 @@ from typing import Dict, Generator, Iterable, Optional, Set, Tuple, Union, Seque
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
-from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, RelativeGAP
 from focusStepsPelmo.pelmo.generation_definition import Definition
 from focusStepsPelmo.pelmo.local import run_local
 from focusStepsPelmo.pelmo.remote_bhpc import run_bhpc
@@ -235,9 +235,11 @@ def span_bbch(gaps: Iterable[GAP], bbchs: Sequence[int]) -> Generator[GAP, None,
     :return: A generator for every gap/bbch combination"""
     for gap in gaps:
         for bbch in bbchs:
-            new_timing = replace(gap.application.timing, bbch_state=bbch)
-            new_application = replace(gap.application, timing=new_timing)
-            yield replace(gap, application=new_application)
+            new_gap = RelativeGAP(modelCrop=gap.modelCrop, rate=gap.rate,
+                                  period_between_applications=gap.period_between_applications,
+                                  number=gap.number, interval=gap.interval, model_specific_data=gap.model_specific_data,
+                                  bbch=bbch)
+            yield new_gap
 
 
 def span_rate(gaps: Iterable[GAP], rates: Sequence[float]) -> Generator[GAP, None, None]:
@@ -247,8 +249,7 @@ def span_rate(gaps: Iterable[GAP], rates: Sequence[float]) -> Generator[GAP, Non
     :return: A generator for every gap/application rate combination"""
     for gap in gaps:
         for rate in rates:
-            new_application = replace(gap.application, rate=rate)
-            yield replace(gap, application=new_application)
+            yield replace(gap, rate=rate)
 
 
 def span_compounds(template_compounds: Union[Compound, Iterable[Compound]], dt50: Optional[Sequence[float]] = None,
