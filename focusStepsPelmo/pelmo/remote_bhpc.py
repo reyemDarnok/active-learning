@@ -10,7 +10,7 @@ from shutil import rmtree
 from typing import Generator, Iterable, Optional, Sequence, Tuple, TypeVar, List
 from zipfile import ZipFile
 
-from jinja2 import Environment, StrictUndefined, select_autoescape, ModuleLoader
+from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
 
 from focusStepsPelmo.bhpc import commands
 from focusStepsPelmo.ioTypes.combination import Combination
@@ -21,7 +21,7 @@ from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
 from focusStepsPelmo.util import conversions
 from focusStepsPelmo.util import jsonLogger
 
-jinja_env = Environment(loader=ModuleLoader('templates'),
+jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
 
 T = TypeVar('T')

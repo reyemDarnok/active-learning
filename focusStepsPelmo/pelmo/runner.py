@@ -13,7 +13,7 @@ from threading import current_thread
 from typing import Generator, Iterable, Optional, Tuple, TypeVar, Union
 from zipfile import ZipFile
 
-from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
+from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
 
 from focusStepsPelmo.ioTypes import gap
 from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario
@@ -22,8 +22,8 @@ from focusStepsPelmo.pelmo.summarize import rebuild_output_to_file
 from focusStepsPelmo.util import conversions
 from focusStepsPelmo.util import jsonLogger
 
-jinja_env = Environment(loader=FileSystemLoader(Path(__file__).parent / "templates"), autoescape=select_autoescape(),
-                        undefined=StrictUndefined)
+jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
+                        autoescape=select_autoescape(), undefined=StrictUndefined)
 
 
 def _init_thread(working_dir: Path):

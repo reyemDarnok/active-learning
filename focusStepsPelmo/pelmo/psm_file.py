@@ -3,16 +3,15 @@ from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
-from jinja2 import Environment, select_autoescape, StrictUndefined, ModuleLoader
+from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
 from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, Volatility, Sorption, Degradation
 from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop
 from focusStepsPelmo.util.conversions import map_to_class, str_to_enum
 
 PELMO_UNSET = -99
-jinja_env = Environment(loader=ModuleLoader('templates'),
+jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
-
 
 class Emergence(int, Enum):
     """The possible application crop development timings for Pelmo"""

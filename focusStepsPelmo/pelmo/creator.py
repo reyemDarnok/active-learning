@@ -5,7 +5,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Generator, Iterable, Type, TypeVar, Union
 
-from jinja2 import Environment, select_autoescape, StrictUndefined, ModuleLoader
+from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
@@ -13,7 +13,7 @@ from focusStepsPelmo.ioTypes.gap import GAP
 from focusStepsPelmo.pelmo.psm_file import PsmFile
 from focusStepsPelmo.util import jsonLogger as jsonLogger
 
-jinja_env = Environment(loader=ModuleLoader('templates'),
+jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
 
 
