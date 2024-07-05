@@ -59,6 +59,8 @@ class EnhancedJSONEncoder(JSONEncoder):
         if hasattr(o, '_asdict'):
             # noinspection PyProtectedMember
             return o._asdict()
+        if isinstance(o, timedelta):
+            return {"microseconds": o.microseconds}
         if isinstance(o, frozenset):
             return list(o)
         if dataclasses.is_dataclass(o):

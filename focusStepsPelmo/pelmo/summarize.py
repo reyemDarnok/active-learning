@@ -13,6 +13,7 @@ from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP
 from focusStepsPelmo.ioTypes.pelmo import PECResult, PelmoResult
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
+from focusStepsPelmo.util.datastructures import correct_type
 
 
 def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Tuple[Path, ...],
@@ -132,11 +133,12 @@ def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) 
     else:
         files = []
     for file in files:
+        with file.open() as fp:
+            json_data = json.load(fp)
         for candidate in candidate_classes:
             try:
-                with file.open() as fp:
-                    obj = candidate(**json.load(fp))
-                    hashes[hash(obj)] = obj
-            except TypeError:
+                obj = correct_type(json_data, candidate)
+                hashes[hash(obj)] = obj
+            except:
                 pass
     return hashes
