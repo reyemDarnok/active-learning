@@ -2,7 +2,6 @@ import itertools
 import sys
 import typing
 from collections import OrderedDict, UserDict
-from dataclasses import is_dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type, TypeVar, Union
 
@@ -113,14 +112,17 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
         else:
             # noinspection PyProtectedMember
             raise NotImplementedError('Type Correction for %s' % t._name)
+    # After the typing evaluation because isinstance errors if given a type hint as class instead of returning False
     if isinstance(input_value, t):
         return input_value
     if input_value is None:
         return None
     if hasattr(t, 'parse'):
         return t.parse(input_value)
-    if is_dataclass(t):
+    try:
         return t(**input_value)
+    except Exception:
+        pass
     if issubclass(t, Enum):
         try:
             return t[input_value]

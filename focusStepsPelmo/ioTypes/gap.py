@@ -503,6 +503,18 @@ class AbsoluteConstantGAP(GAP):
         super_dict.update({'time_in_year': self.time_in_year})
         return super_dict
 
+    def __post_init__(self):
+        date = None
+        if isinstance(self.time_in_year, dict):
+            date = datetime(**self.time_in_year)
+        elif isinstance(self.time_in_year, (int, float)):
+            date = datetime.fromtimestamp(self.time_in_year)
+        elif isinstance(self.time_in_year, str):
+            date = datetime.fromisoformat(self.time_in_year)
+        if date is not None:
+            object.__setattr__(self, 'time_in_year', date)
+        super().__post_init__()
+
 
 @dataclass(frozen=True)
 class AbsoluteDayOfYearGAP(AbsoluteConstantGAP):
