@@ -434,6 +434,23 @@ class MultiGAP(GAP):
         for timing in self.timings:
             yield from timing.application_data(scenario)
 
+    def __post_init__(self):
+        init_dict = self.asdict()
+        init_dict.pop('timings')
+        corrected_timings = tuple()
+        for timing in self.timings:
+            if isinstance(timing, GAP):
+                corrected_timings += tuple([timing])
+            else:
+                # We are initialising - assume only a dict of values was
+                # provided that has to be parsed to a final result
+                # noinspection PyTypeChecker
+                timing_init: Dict = timing
+                init_dict_copy = init_dict.copy()
+                init_dict_copy.update(timing_init)
+                corrected_timings += tuple([GAP.parse(init_dict_copy)])
+        object.__setattr__(self, 'timings', corrected_timings)
+
     timings: Tuple[GAP, ...] = field(default_factory=tuple)
 
 
