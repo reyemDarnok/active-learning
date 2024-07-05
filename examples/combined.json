@@ -1,12 +1,28 @@
 {"gap":  {
-  "modelCrop": "MZ",
-  "application": {
-    "number": 1,
-    "interval": 1,
-    "rate": 1,
-    "timing": {
-      "bbch_state": -1
-    }
+  "type": "multi",
+  "arguments": {
+    "modelCrop": "CA",
+    "number": 2,
+    "interval": 14,
+    "rate": 1000,
+    "timings": [
+      {
+        "type": "relative",
+        "arguments": {
+          "bbch": 10
+        }
+      },
+      {
+        "type": "scenario",
+        "arguments": {
+          "scenarios": {
+            "T": {
+              "time_in_year": "2001-07-01"
+            }
+          }
+        }
+      }
+    ]
   }
 }, "compound":  {
     "metabolites": null,
