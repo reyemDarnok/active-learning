@@ -2,19 +2,19 @@
 import logging
 from argparse import ArgumentParser, Namespace
 from contextlib import suppress
+from multiprocessing import cpu_count
 from pathlib import Path
+from shutil import rmtree
 from typing import Sequence
+
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
-from focusStepsPelmo.pelmo.summarize import rebuild_output_to_file
-from focusStepsPelmo.util import conversions
 from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
 from focusStepsPelmo.pelmo.creator import generate_psm_files
 from focusStepsPelmo.pelmo.runner import run_psms
-from shutil import rmtree
+from focusStepsPelmo.pelmo.summarize import rebuild_output_to_file
 from focusStepsPelmo.util import jsonLogger
-
-from multiprocessing import cpu_count
+from focusStepsPelmo.util.datastructures import correct_type
 
 
 def main():
@@ -76,7 +76,7 @@ def parse_args() -> Namespace:
                         help="Which crops to run. Defaults to all crops")
     parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1,
                         help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
-    parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: conversions.str_to_enum(x, Scenario),
+    parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: correct_type(x, Scenario),
                         default=list(Scenario),
                         help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. "
                              "A scenario will be calculated if it is defined both here and for the crop")

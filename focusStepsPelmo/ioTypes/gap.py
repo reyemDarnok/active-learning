@@ -10,8 +10,8 @@ from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, O
 import numpy
 import pandas
 
-from focusStepsPelmo.util.conversions import excel_date_to_datetime, str_to_enum
-from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting
+from focusStepsPelmo.util.conversions import excel_date_to_datetime
+from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting, correct_type
 
 bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BBCHGW.csv',
                                                      header=0,
@@ -452,7 +452,7 @@ class MultiGAP(GAP):
             yield from timing.application_data(scenario)
 
     def __post_init__(self):
-        object.__setattr__(self, 'modelCrop', str_to_enum(self.modelCrop, FOCUSCrop))
+        object.__setattr__(self, 'modelCrop', correct_type(self.modelCrop, FOCUSCrop))
         init_dict = self.asdict()
         init_dict.pop('timings')
         corrected_timings = tuple()
@@ -570,7 +570,7 @@ class AbsoluteScenarioGAP(GAP):
                            tuple([tuple([key, value]) for key, value in self._scenario_gaps.items()])]))
 
     def __post_init__(self):
-        object.__setattr__(self, 'modelCrop', str_to_enum(self.modelCrop, FOCUSCrop))
+        object.__setattr__(self, 'modelCrop', correct_type(self.modelCrop, FOCUSCrop))
         init_dict = self.asdict()
         init_dict.pop('scenarios')
         corrected_scenarios = {}

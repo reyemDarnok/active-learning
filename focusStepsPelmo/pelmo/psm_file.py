@@ -8,7 +8,6 @@ from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoade
 
 from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, Volatility, Sorption, Degradation
 from focusStepsPelmo.ioTypes.gap import GAP, Scenario
-from focusStepsPelmo.util.conversions import map_to_class
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 PELMO_UNSET = -99
@@ -100,7 +99,7 @@ class Moisture:
 
 
 @dataclass
-class DegradationData:
+class DegradationData(TypeCorrecting):
     rate: float
     temperature: float = 20
     q10: float = 2.58
@@ -110,28 +109,19 @@ class DegradationData:
     inverse_rate: float = 0
     i_ref: float = 100
 
-    def __post_init__(self):
-        object.__setattr__(self, 'moisture', map_to_class(self.moisture, Moisture))
-
 
 @dataclass
-class PsmDegradation:
+class PsmDegradation(TypeCorrecting):
     to_disregard: DegradationData
     metabolites: Optional[Tuple['PsmDegradation', ...]] = field(default_factory=tuple)
 
     # None if it is degradation to BR/CO2
 
     def __post_init__(self):
-        object.__setattr__(self, 'to_disregard', map_to_class(self.to_disregard, DegradationData))
         if self.metabolites is not None:
-            if len(self.metabolites) == 4:
-                object.__setattr__(self, 'metabolites', [map_to_class(x, PsmDegradation) for x in self.metabolites])
-            elif len(self.metabolites) < 4:
-                metabolites = list(self.metabolites)
-                for _ in range(4 - len(self.metabolites)):
-                    next_filler = PsmDegradation(to_disregard=DegradationData(rate=0), metabolites=None)
-                    metabolites += [next_filler]
-                    object.__setattr__(self, 'metabolites', tuple(metabolites))
+            object.__setattr__(self, 'metabolites', self.metabolites +
+                               tuple([PsmDegradation(to_disregard=DegradationData(rate=0), metabolites=None)] *
+                                     (4 - len(self.metabolites))))
         else:
             object.__setattr__(self, 'metabolites', tuple())
 
