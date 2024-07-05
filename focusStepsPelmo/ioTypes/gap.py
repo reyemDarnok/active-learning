@@ -441,8 +441,8 @@ class MultiGAP(GAP):
 class RelativeGAP(GAP):
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         application_line = bbch_to_data_row(self.bbch, scenario,
-                                            self.modelCrop.bbch_application_name[0])  # TODO multi season
-        time_in_year = application_line['Recommended Application date'][0]
+                                            self.modelCrop.bbch_application_name[self.season])
+        time_in_year = application_line['Recommended Application date']
         time_and_interception = tuple()
         for index in range(self.number):
             application_time = time_in_year + self.interval * index
@@ -460,6 +460,7 @@ class RelativeGAP(GAP):
         return super_dict
 
     bbch: int = 0
+    season: int = 0
 
 
 @dataclass(frozen=True)
