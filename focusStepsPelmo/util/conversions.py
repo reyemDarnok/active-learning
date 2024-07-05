@@ -53,6 +53,8 @@ class EnhancedJSONEncoder(JSONEncoder):
                 return o.value
             else:
                 return o.name
+        if hasattr(o, 'asdict'):
+            return o.asdict()
         if hasattr(o, '_asdict'):
             # noinspection PyProtectedMember
             return o._asdict()
