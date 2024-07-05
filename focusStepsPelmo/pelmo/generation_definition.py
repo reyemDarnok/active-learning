@@ -148,6 +148,7 @@ class ListDefinition(Definition):
     >>> test.make_sample()
     [1, 2]
     >>> test.make_vector([1,2])
+    (0, 0)
     >>> static_test = ListDefinition([3,4,5])
     >>> static_test.is_static
     True"""
@@ -165,7 +166,12 @@ class ListDefinition(Definition):
         return [value.make_sample() for value in self.definition]
 
     def make_vector(self, obj: List) -> Tuple[float, ...]:
-        pass
+        return tuple(val
+                     for item, item_definition in zip(obj, self.definition)
+                     for val in item_definition.make_vector(item))
+
+
+
 
 
 class TemplateDefinition(Definition, ABC):
