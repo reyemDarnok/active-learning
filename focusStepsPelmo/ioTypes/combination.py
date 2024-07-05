@@ -16,6 +16,9 @@ class Combination(TypeCorrecting):
 
     @staticmethod
     def from_path(path: Path) -> Generator['Combination', None, None]:
+        """Create Combinations from a path
+        :param path: The path to search for combination files
+        :return: A Generator that lazily creates all Combinations in path"""
         if path.is_dir():
             for file in path.iterdir():
                 yield from Combination.from_file(file)
@@ -24,6 +27,10 @@ class Combination(TypeCorrecting):
 
     @staticmethod
     def from_file(file: Path) -> Generator['Combination', None, None]:
+        """Create Combinations from a single file. This may create multiple Combinations as many formats support
+        multiple objects per file
+        :param file: The file to parse
+        :return: The Combinations in the file"""
         if file.suffix == '.json':
             with file.open() as f:
                 json_content = json.load(f)
