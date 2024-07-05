@@ -545,6 +545,7 @@ class AbsoluteScenarioGAP(GAP):
     _scenario_gaps: Dict[Scenario, AbsoluteConstantGAP] = field(init=False, repr=False, hash=False, compare=False)
 
     def __post_init__(self):
+        object.__setattr__(self, 'modelCrop', str_to_enum(self.modelCrop, FOCUSCrop))
         init_dict = self.asdict()
         init_dict.pop('scenarios')
         scenario_gaps = {scenario: AbsoluteConstantGAP(time_in_year=date, **init_dict)
