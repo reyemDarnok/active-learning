@@ -540,9 +540,15 @@ class AbsoluteScenarioGAP(GAP):
         yield from self._scenario_gaps[scenario].application_data(scenario)
 
     scenarios: Dict[Scenario, Dict] = field(
-        default_factory=lambda: {})
+        default_factory=lambda: {}, hash=False)
 
     _scenario_gaps: Dict[Scenario, AbsoluteConstantGAP] = field(init=False, repr=False, hash=False, compare=False)
+
+    def __hash__(self) -> int:
+        init_dict = self.asdict()
+        init_dict.pop('scenarios')
+        return hash(tuple([tuple([tuple([key, value]) for key, value in init_dict.items()]),
+                           tuple([tuple([key, value]) for key, value in self._scenario_gaps.items()])]))
 
     def __post_init__(self):
         object.__setattr__(self, 'modelCrop', str_to_enum(self.modelCrop, FOCUSCrop))
