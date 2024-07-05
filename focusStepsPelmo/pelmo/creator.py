@@ -5,7 +5,7 @@ from argparse import ArgumentParser, Namespace
 from pathlib import Path
 from typing import Generator, Iterable, Type, TypeVar, Union
 
-from jinja2 import Environment, FileSystemLoader, select_autoescape, StrictUndefined
+from jinja2 import Environment, select_autoescape, StrictUndefined, ModuleLoader
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
@@ -13,9 +13,8 @@ from focusStepsPelmo.ioTypes.gap import GAP
 from focusStepsPelmo.pelmo.psm_file import PsmFile
 from focusStepsPelmo.util import jsonLogger as jsonLogger
 
-jinja_env = Environment(loader=FileSystemLoader(
-    [Path(__file__).parent / "templates", Path(__file__).parent / "templates" / "psm-fragments"]),
-    autoescape=select_autoescape(), undefined=StrictUndefined)
+jinja_env = Environment(loader=ModuleLoader('templates'),
+                        autoescape=select_autoescape(), undefined=StrictUndefined)
 
 
 def main():
@@ -88,10 +87,9 @@ def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
     :return: The contents of the psm file"""
 
     psm_file = PsmFile.from_input(compound=compound, gap=gap)
-    psm_template = jinja_env.get_template('general.psm.j2')
     psm_file.comment = comment
     # noinspection PyProtectedMember
-    return psm_template.render(**psm_file._asdict())
+    return psm_file.render()
 
 
 def parse_args() -> Namespace:

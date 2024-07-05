@@ -3,11 +3,15 @@ from dataclasses import asdict, dataclass, field, replace
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
-from focusStepsPelmo.ioTypes.compound import Compound, Degradation, MetaboliteDescription, Sorption, Volatility
-from focusStepsPelmo.ioTypes.gap import GAP, Application, FOCUSCrop
+from jinja2 import Environment, select_autoescape, StrictUndefined, ModuleLoader
+
+from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop
 from focusStepsPelmo.util.conversions import map_to_class, str_to_enum
 
 PELMO_UNSET = -99
+jinja_env = Environment(loader=ModuleLoader('templates'),
+                        autoescape=select_autoescape(), undefined=StrictUndefined)
 
 
 class Emergence(int, Enum):
@@ -38,7 +42,8 @@ class ApplicationType(int, Enum):
 
 
 @dataclass(frozen=True)
-class PsmApplication(Application):
+class PsmApplication:
+    rate: float = 0
     type: ApplicationType = ApplicationType.soil
     lower_depth: float = 0
     upper_depth: float = 0
@@ -47,24 +52,13 @@ class PsmApplication(Application):
     time: float = 0
     offset: Optional[int] = 0
 
-    @property
-    def stage(self) -> Emergence:
-        return Emergence.from_stage(self.timing.principal_stage)
+    # @property
+    # def stage(self) -> Emergence:
+    #    return Emergence.from_stage(self.timing.principal_stage)
 
     @property
     def rate_in_kg(self):
         return self.rate / 1000
-
-    def __post_init__(self):
-        super().__post_init__()
-        if self.offset is None:
-            if self.timing.bbch_state > 90:
-                object.__setattr__(self, 'offset', self.timing.bbch_state - 90)
-            elif self.timing.bbch_state > 80:
-                object.__setattr__(self, 'offset', self.timing.bbch_state - 80)
-            else:
-                object.__setattr__(self, 'offset', self.timing.bbch_state)
-
 
 class DegradationType(int, Enum):
     """Used by Pelmo to describe the type of degradation"""
@@ -224,7 +218,7 @@ class PsmFile:
 
     @staticmethod
     def from_input(compound: Compound, gap: GAP) -> 'PsmFile':
-        application = PsmApplication(**asdict(gap.application))
+        application = PsmApplication(**asdict(gap))
 
         metabolites: Dict[str, Compound] = {}
         if 'pelmo' in compound.model_specific_data.keys():
@@ -286,25 +280,25 @@ class PsmFile:
                        degradation_type=DegradationType.FACTORS,
                        )
 
-    def to_input(self) -> Tuple[Compound, GAP]:
-        """Convert this psmFile to ioTypes input data.
-        WARNING: This is lossy, as psmFiles do not use all data from the input files"""
-        volatility = Volatility(water_solubility=self.compound.volatizations[0].solubility,
-                                vaporization_pressure=self.compound.volatizations[0].vaporization_pressure,
-                                reference_temperature=(self.compound.volatizations[0].temperature +
-                                                       self.compound.volatizations[1].temperature) / 2)
-        compound = Compound(molarMass=self.compound.molar_mass,
-                            volatility=volatility,
-                            sorption=Sorption(koc=self.compound.adsorptions[0].koc,
-                                              freundlich=self.compound.adsorptions[0].freundlich),
-                            degradation=Degradation(system=math.log(2) / self.compound.degradations[0].rate,
-                                                    soil=math.log(2) / self.compound.degradations[0].rate,
-                                                    surfaceWater=math.log(2) / self.compound.degradations[0].rate,
-                                                    sediment=math.log(2) / self.compound.degradations[0].rate),
-                            plant_uptake=self.compound.plant_uptake
-                            )
-        gap = GAP(modelCrop=self.crop, application=self.application)
-        return compound, gap
+    # def to_input(self) -> Tuple[Compound, GAP]:
+    #     """Convert this psmFile to ioTypes input data.
+    #     WARNING: This is lossy, as psmFiles do not use all data from the input files"""
+    #     volatility = Volatility(water_solubility=self.compound.volatizations[0].solubility,
+    #                             vaporization_pressure=self.compound.volatizations[0].vaporization_pressure,
+    #                             reference_temperature=(self.compound.volatizations[0].temperature +
+    #                                                    self.compound.volatizations[1].temperature) / 2)
+    #     compound = Compound(molarMass=self.compound.molar_mass,
+    #                         volatility=volatility,
+    #                         sorption=Sorption(koc=self.compound.adsorptions[0].koc,
+    #                                           freundlich=self.compound.adsorptions[0].freundlich),
+    #                         degradation=Degradation(system=math.log(2) / self.compound.degradations[0].rate,
+    #                                                 soil=math.log(2) / self.compound.degradations[0].rate,
+    #                                                 surfaceWater=math.log(2) / self.compound.degradations[0].rate,
+    #                                                 sediment=math.log(2) / self.compound.degradations[0].rate),
+    #                         plant_uptake=self.compound.plant_uptake
+    #                         )
+    #     gap = GAP(modelCrop=self.crop, application=self.application)
+    #     return compound, gap
 
     def __post_init__(self):
         self.application = map_to_class(self.application, PsmApplication)
@@ -314,3 +308,7 @@ class PsmFile:
         self.crop = str_to_enum(self.crop, FOCUSCrop)
         self.num_soil_horizons = int(self.num_soil_horizons)
         self.degradation_type = str_to_enum(self.degradation_type, DegradationType)
+
+    def render(self) -> str:
+        psm_template = jinja_env.get_template('general.psm.j2')
+        return psm_template.render(**self._asdict())
