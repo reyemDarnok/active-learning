@@ -226,7 +226,7 @@ class PsmFile:
 
             for current in all_metabolites:
                 metabolites[compound_position(current.metabolite)] = current.metabolite
-        else:
+        elif compound.metabolites:
             for index, metabolite in enumerate(compound.metabolites):
                 metabolites[chr(ord('A') + index) + "1"] = metabolite.metabolite
                 if metabolite.metabolite.metabolites:
