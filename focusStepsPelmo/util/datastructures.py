@@ -99,14 +99,16 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
         elif origin == dict:
             if not input_value:
                 return {}
-            keys = input_value.keys()
+            access_keys = input_value.keys()
+            correct_keys = input_value.keys()
             if hasattr(t, '__args__'):
                 type_args = t.__args__
                 if not isinstance(type_args[0], TypeVar):
-                    keys = (correct_type(key, type_args[0]) for key in keys)
+                    correct_keys = (correct_type(key, type_args[0]) for key in access_keys)
                 if not isinstance(type_args[1], TypeVar):
-                    return {key: correct_type(input_value[key], type_args[1]) for key in keys}
-            return {key: input_value[key] for key in keys}
+                    return {correct_key: correct_type(input_value[access_key], type_args[1])
+                            for correct_key, access_key in zip(correct_keys, access_keys)}
+            return {key: input_value[key] for key in access_keys}
         elif t._name is None:
             return None
         else:
