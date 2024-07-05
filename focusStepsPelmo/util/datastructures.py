@@ -119,6 +119,7 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
         return None
     if hasattr(t, 'parse'):
         return t.parse(input_value)
+    # noinspection PyBroadException
     try:
         return t(**input_value)
     except Exception:
