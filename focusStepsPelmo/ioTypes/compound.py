@@ -68,7 +68,7 @@ class Compound(TypeCorrecting):
     @staticmethod
     def from_excel(excel_file: Path) -> List['Compound']:
         compounds = pandas.read_excel(io=excel_file, sheet_name="Compound Properties")
-        compounds['Pelmo Position'].fillna(None, inplace=True)
+        compounds['Pelmo Position'].fillna('', inplace=True)
         metabolite_relationships = pandas.read_excel(io=excel_file, sheet_name="Metabolite Relationships")
         compound_list = [
             Compound(name=row['Name'], molarMass=row['Molar Mass'],

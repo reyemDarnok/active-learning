@@ -132,16 +132,24 @@ def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) 
         files = [directory]
     else:
         files = []
+    from_file_candidates = {candidate for candidate in candidate_classes if hasattr(candidate, 'from_file')}
+    json_candidates = {candidate for candidate in candidate_classes if candidate not in from_file_candidates}
     for file in files:
-        with file.open() as fp:
-            json_data = json.load(fp)
-        for candidate in candidate_classes:
+        for candidate in from_file_candidates:
+            # noinspection PyUnresolvedReferences
+            objs = candidate.from_file(file)  # guaranteed that method exists for from_file_candidate
+            for obj in objs:
+                hashes[hash(obj)] = obj
+        for candidate in json_candidates:
+            with file.open() as fp:
+                json_data = json.load(fp)
             # noinspection PyBroadException
             try:
                 # noinspection PyTypeChecker
                 obj = correct_type(json_data, candidate)
-                hashes[hash(obj)] = obj
             except TypeError:
                 # Failure of conversion is expected to frequently happen
-                pass
+                continue
+            hashes[hash(obj)] = obj
+
     return hashes
