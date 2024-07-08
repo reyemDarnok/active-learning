@@ -6,6 +6,10 @@
       <excludeFolder url="file://$MODULE_DIR$/test" />
       <excludeFolder url="file://$MODULE_DIR$/venv" />
       <excludeFolder url="file://$MODULE_DIR$/out2" />
+      <excludeFolder url="file://$MODULE_DIR$/ArGUSIIData2Run-work" />
+      <excludeFolder url="file://$MODULE_DIR$/ArGUSIIData2Run-work-csv" />
+      <excludeFolder url="file://$MODULE_DIR$/ArGUSIIData2Run-work-csv/submit" />
+      <excludeFolder url="file://$MODULE_DIR$/ArGUSIIData2Run-work/submit" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

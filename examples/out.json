@@ -1,0 +1,1238 @@
+[
+  {
+    "compound": {
+      "molarMass": 1000.0,
+      "volatility": {
+        "water_solubility": 90.0,
+        "vaporization_pressure": 0.0001,
+        "reference_temperature": 20.0
+      },
+      "sorption": {
+        "koc": 60.0,
+        "freundlich": 0.9
+      },
+      "degradation": {
+        "system": 2.0,
+        "soil": 10.0,
+        "surfaceWater": 2.0,
+        "sediment": 2.0
+      },
+      "plant_uptake": 0.5,
+      "name": "Some Parent",
+      "model_specific_data": {
+        "pelmo": {
+          "position": null
+        }
+      },
+      "metabolites": [
+        {
+          "formation_fraction": 0.1,
+          "metabolite": {
+            "molarMass": 100.0,
+            "volatility": {
+              "water_solubility": 90.0,
+              "vaporization_pressure": 0.0001,
+              "reference_temperature": 20.0
+            },
+            "sorption": {
+              "koc": 60.0,
+              "freundlich": 0.9
+            },
+            "degradation": {
+              "system": 2.0,
+              "soil": 1.0,
+              "surfaceWater": 2.0,
+              "sediment": 2.0
+            },
+            "plant_uptake": 0.5,
+            "name": "Metabolite A1",
+            "model_specific_data": {
+              "pelmo": {
+                "position": "A1"
+              }
+            },
+            "metabolites": [
+              {
+                "formation_fraction": 0.1,
+                "metabolite": {
+                  "molarMass": 100.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 2.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite B1",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "B1"
+                    }
+                  },
+                  "metabolites": [
+                    {
+                      "formation_fraction": 0.1,
+                      "metabolite": {
+                        "molarMass": 100.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 3.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite C1",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "C1"
+                          }
+                        },
+                        "metabolites": [
+                          {
+                            "formation_fraction": 0.1,
+                            "metabolite": {
+                              "molarMass": 100.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 4.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite D1",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "D1"
+                                }
+                              },
+                              "metabolites": [
+                                {
+                                  "formation_fraction": 0.4,
+                                  "metabolite": {
+                                    "molarMass": 10.0,
+                                    "volatility": {
+                                      "water_solubility": 90.0,
+                                      "vaporization_pressure": 0.0001,
+                                      "reference_temperature": 20.0
+                                    },
+                                    "sorption": {
+                                      "koc": 60.0,
+                                      "freundlich": 0.9
+                                    },
+                                    "degradation": {
+                                      "system": 2.0,
+                                      "soil": 8.0,
+                                      "surfaceWater": 2.0,
+                                      "sediment": 2.0
+                                    },
+                                    "plant_uptake": 0.5,
+                                    "name": "Metabolite D2",
+                                    "model_specific_data": {
+                                      "pelmo": {
+                                        "position": "D2"
+                                      }
+                                    },
+                                    "metabolites": []
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "formation_fraction": 0.2,
+                            "metabolite": {
+                              "molarMass": 10.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 7.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite C2",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "C2"
+                                }
+                              },
+                              "metabolites": [
+                                {
+                                  "formation_fraction": 0.5,
+                                  "metabolite": {
+                                    "molarMass": 10.0,
+                                    "volatility": {
+                                      "water_solubility": 90.0,
+                                      "vaporization_pressure": 0.0001,
+                                      "reference_temperature": 20.0
+                                    },
+                                    "sorption": {
+                                      "koc": 60.0,
+                                      "freundlich": 0.9
+                                    },
+                                    "degradation": {
+                                      "system": 2.0,
+                                      "soil": 8.0,
+                                      "surfaceWater": 2.0,
+                                      "sediment": 2.0
+                                    },
+                                    "plant_uptake": 0.5,
+                                    "name": "Metabolite D2",
+                                    "model_specific_data": {
+                                      "pelmo": {
+                                        "position": "D2"
+                                      }
+                                    },
+                                    "metabolites": []
+                                  }
+                                }
+                              ]
+                            }
+                          },
+                          {
+                            "formation_fraction": 0.3,
+                            "metabolite": {
+                              "molarMass": 10.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 8.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite D2",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "D2"
+                                }
+                              },
+                              "metabolites": []
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "formation_fraction": 0.2,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 6.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite B2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "B2"
+                          }
+                        },
+                        "metabolites": [
+                          {
+                            "formation_fraction": 0.5,
+                            "metabolite": {
+                              "molarMass": 10.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 7.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite C2",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "C2"
+                                }
+                              },
+                              "metabolites": [
+                                {
+                                  "formation_fraction": 0.5,
+                                  "metabolite": {
+                                    "molarMass": 10.0,
+                                    "volatility": {
+                                      "water_solubility": 90.0,
+                                      "vaporization_pressure": 0.0001,
+                                      "reference_temperature": 20.0
+                                    },
+                                    "sorption": {
+                                      "koc": 60.0,
+                                      "freundlich": 0.9
+                                    },
+                                    "degradation": {
+                                      "system": 2.0,
+                                      "soil": 8.0,
+                                      "surfaceWater": 2.0,
+                                      "sediment": 2.0
+                                    },
+                                    "plant_uptake": 0.5,
+                                    "name": "Metabolite D2",
+                                    "model_specific_data": {
+                                      "pelmo": {
+                                        "position": "D2"
+                                      }
+                                    },
+                                    "metabolites": []
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "formation_fraction": 0.3,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 7.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite C2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "C2"
+                          }
+                        },
+                        "metabolites": [
+                          {
+                            "formation_fraction": 0.5,
+                            "metabolite": {
+                              "molarMass": 10.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 8.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite D2",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "D2"
+                                }
+                              },
+                              "metabolites": []
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "formation_fraction": 0.2,
+                "metabolite": {
+                  "molarMass": 10.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 5.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite A2",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "A2"
+                    }
+                  },
+                  "metabolites": [
+                    {
+                      "formation_fraction": 0.5,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 6.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite B2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "B2"
+                          }
+                        },
+                        "metabolites": [
+                          {
+                            "formation_fraction": 0.5,
+                            "metabolite": {
+                              "molarMass": 10.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 7.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite C2",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "C2"
+                                }
+                              },
+                              "metabolites": [
+                                {
+                                  "formation_fraction": 0.5,
+                                  "metabolite": {
+                                    "molarMass": 10.0,
+                                    "volatility": {
+                                      "water_solubility": 90.0,
+                                      "vaporization_pressure": 0.0001,
+                                      "reference_temperature": 20.0
+                                    },
+                                    "sorption": {
+                                      "koc": 60.0,
+                                      "freundlich": 0.9
+                                    },
+                                    "degradation": {
+                                      "system": 2.0,
+                                      "soil": 8.0,
+                                      "surfaceWater": 2.0,
+                                      "sediment": 2.0
+                                    },
+                                    "plant_uptake": 0.5,
+                                    "name": "Metabolite D2",
+                                    "model_specific_data": {
+                                      "pelmo": {
+                                        "position": "D2"
+                                      }
+                                    },
+                                    "metabolites": []
+                                  }
+                                }
+                              ]
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "formation_fraction": 0.3,
+                "metabolite": {
+                  "molarMass": 10.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 6.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite B2",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "B2"
+                    }
+                  },
+                  "metabolites": [
+                    {
+                      "formation_fraction": 0.5,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 7.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite C2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "C2"
+                          }
+                        },
+                        "metabolites": [
+                          {
+                            "formation_fraction": 0.5,
+                            "metabolite": {
+                              "molarMass": 10.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 8.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite D2",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "D2"
+                                }
+                              },
+                              "metabolites": []
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "formation_fraction": 0.15,
+          "metabolite": {
+            "molarMass": 100.0,
+            "volatility": {
+              "water_solubility": 90.0,
+              "vaporization_pressure": 0.0001,
+              "reference_temperature": 20.0
+            },
+            "sorption": {
+              "koc": 60.0,
+              "freundlich": 0.9
+            },
+            "degradation": {
+              "system": 2.0,
+              "soil": 2.0,
+              "surfaceWater": 2.0,
+              "sediment": 2.0
+            },
+            "plant_uptake": 0.5,
+            "name": "Metabolite B1",
+            "model_specific_data": {
+              "pelmo": {
+                "position": "B1"
+              }
+            },
+            "metabolites": [
+              {
+                "formation_fraction": 0.1,
+                "metabolite": {
+                  "molarMass": 100.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 3.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite C1",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "C1"
+                    }
+                  },
+                  "metabolites": [
+                    {
+                      "formation_fraction": 0.1,
+                      "metabolite": {
+                        "molarMass": 100.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 4.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite D1",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "D1"
+                          }
+                        },
+                        "metabolites": [
+                          {
+                            "formation_fraction": 0.4,
+                            "metabolite": {
+                              "molarMass": 10.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 8.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite D2",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "D2"
+                                }
+                              },
+                              "metabolites": []
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "formation_fraction": 0.2,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 7.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite C2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "C2"
+                          }
+                        },
+                        "metabolites": [
+                          {
+                            "formation_fraction": 0.5,
+                            "metabolite": {
+                              "molarMass": 10.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 8.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite D2",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "D2"
+                                }
+                              },
+                              "metabolites": []
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "formation_fraction": 0.3,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 8.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite D2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "D2"
+                          }
+                        },
+                        "metabolites": []
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "formation_fraction": 0.2,
+                "metabolite": {
+                  "molarMass": 10.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 6.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite B2",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "B2"
+                    }
+                  },
+                  "metabolites": [
+                    {
+                      "formation_fraction": 0.5,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 7.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite C2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "C2"
+                          }
+                        },
+                        "metabolites": [
+                          {
+                            "formation_fraction": 0.5,
+                            "metabolite": {
+                              "molarMass": 10.0,
+                              "volatility": {
+                                "water_solubility": 90.0,
+                                "vaporization_pressure": 0.0001,
+                                "reference_temperature": 20.0
+                              },
+                              "sorption": {
+                                "koc": 60.0,
+                                "freundlich": 0.9
+                              },
+                              "degradation": {
+                                "system": 2.0,
+                                "soil": 8.0,
+                                "surfaceWater": 2.0,
+                                "sediment": 2.0
+                              },
+                              "plant_uptake": 0.5,
+                              "name": "Metabolite D2",
+                              "model_specific_data": {
+                                "pelmo": {
+                                  "position": "D2"
+                                }
+                              },
+                              "metabolites": []
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "formation_fraction": 0.3,
+                "metabolite": {
+                  "molarMass": 10.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 7.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite C2",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "C2"
+                    }
+                  },
+                  "metabolites": [
+                    {
+                      "formation_fraction": 0.5,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 8.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite D2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "D2"
+                          }
+                        },
+                        "metabolites": []
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        },
+        {
+          "formation_fraction": 0.2,
+          "metabolite": {
+            "molarMass": 100.0,
+            "volatility": {
+              "water_solubility": 90.0,
+              "vaporization_pressure": 0.0001,
+              "reference_temperature": 20.0
+            },
+            "sorption": {
+              "koc": 60.0,
+              "freundlich": 0.9
+            },
+            "degradation": {
+              "system": 2.0,
+              "soil": 3.0,
+              "surfaceWater": 2.0,
+              "sediment": 2.0
+            },
+            "plant_uptake": 0.5,
+            "name": "Metabolite C1",
+            "model_specific_data": {
+              "pelmo": {
+                "position": "C1"
+              }
+            },
+            "metabolites": [
+              {
+                "formation_fraction": 0.1,
+                "metabolite": {
+                  "molarMass": 100.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 4.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite D1",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "D1"
+                    }
+                  },
+                  "metabolites": [
+                    {
+                      "formation_fraction": 0.4,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 8.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite D2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "D2"
+                          }
+                        },
+                        "metabolites": []
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "formation_fraction": 0.2,
+                "metabolite": {
+                  "molarMass": 10.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 7.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite C2",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "C2"
+                    }
+                  },
+                  "metabolites": [
+                    {
+                      "formation_fraction": 0.5,
+                      "metabolite": {
+                        "molarMass": 10.0,
+                        "volatility": {
+                          "water_solubility": 90.0,
+                          "vaporization_pressure": 0.0001,
+                          "reference_temperature": 20.0
+                        },
+                        "sorption": {
+                          "koc": 60.0,
+                          "freundlich": 0.9
+                        },
+                        "degradation": {
+                          "system": 2.0,
+                          "soil": 8.0,
+                          "surfaceWater": 2.0,
+                          "sediment": 2.0
+                        },
+                        "plant_uptake": 0.5,
+                        "name": "Metabolite D2",
+                        "model_specific_data": {
+                          "pelmo": {
+                            "position": "D2"
+                          }
+                        },
+                        "metabolites": []
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "formation_fraction": 0.3,
+                "metabolite": {
+                  "molarMass": 10.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 8.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite D2",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "D2"
+                    }
+                  },
+                  "metabolites": []
+                }
+              }
+            ]
+          }
+        },
+        {
+          "formation_fraction": 0.25,
+          "metabolite": {
+            "molarMass": 100.0,
+            "volatility": {
+              "water_solubility": 90.0,
+              "vaporization_pressure": 0.0001,
+              "reference_temperature": 20.0
+            },
+            "sorption": {
+              "koc": 60.0,
+              "freundlich": 0.9
+            },
+            "degradation": {
+              "system": 2.0,
+              "soil": 4.0,
+              "surfaceWater": 2.0,
+              "sediment": 2.0
+            },
+            "plant_uptake": 0.5,
+            "name": "Metabolite D1",
+            "model_specific_data": {
+              "pelmo": {
+                "position": "D1"
+              }
+            },
+            "metabolites": [
+              {
+                "formation_fraction": 0.4,
+                "metabolite": {
+                  "molarMass": 10.0,
+                  "volatility": {
+                    "water_solubility": 90.0,
+                    "vaporization_pressure": 0.0001,
+                    "reference_temperature": 20.0
+                  },
+                  "sorption": {
+                    "koc": 60.0,
+                    "freundlich": 0.9
+                  },
+                  "degradation": {
+                    "system": 2.0,
+                    "soil": 8.0,
+                    "surfaceWater": 2.0,
+                    "sediment": 2.0
+                  },
+                  "plant_uptake": 0.5,
+                  "name": "Metabolite D2",
+                  "model_specific_data": {
+                    "pelmo": {
+                      "position": "D2"
+                    }
+                  },
+                  "metabolites": []
+                }
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "gap": {
+      "modelCrop": "AP",
+      "rate": 100.0,
+      "period_between_applications": 1,
+      "number": 2,
+      "interval": {
+        "microseconds": 0
+      },
+      "bbch": 10
+    },
+    "scenario": "Châteaudun",
+    "crop": "AP",
+    "pec": {
+      "Some Parent": 0.00020848099618495417,
+      "Metabolite A1": 1.0846780523907777e-07,
+      "Metabolite A2": 9.287876307846174e-09,
+      "Metabolite B1": 3.995903281742078e-07,
+      "Metabolite B2": 5.72809236828742e-08,
+      "Metabolite C1": 9.348224150467673e-07,
+      "Metabolite C2": 1.7902495379523492e-07,
+      "Metabolite D1": 1.8345644390985538e-06,
+      "Metabolite D2": 6.407369273380127e-07
+    }
+  }
+]
