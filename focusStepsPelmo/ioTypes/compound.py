@@ -53,10 +53,16 @@ class Compound(TypeCorrecting):
     """Degradation behaviours"""
     plant_uptake: float = 0
     """Fraction of plant uptake"""
-    name: str = field(hash=False, default="Unknown Name")  # str hash is not stable
+    name: str = field(hash=False, default='')  # str hash is not stable
     model_specific_data: Dict = field(compare=False, hash=False, default_factory=dict)
     metabolites: Optional[Tuple[MetaboliteDescription, ...]] = field(default_factory=tuple)
     """The compounds metabolites"""
+
+    def __post_init__(self):
+        super().__post_init__()
+        # To ensure a stable, unique name for a compound that has no name given
+        if self.name == '':
+            object.__setattr__(self, 'name', f"Compound {hash(self)}")
 
     def metabolite_description_by_name(self, name: str) -> Optional[MetaboliteDescription]:
         if self.metabolites is not None:

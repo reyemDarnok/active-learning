@@ -1,7 +1,7 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Dict
 
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
@@ -113,7 +113,11 @@ class PelmoResult(TypeCorrecting):
     psm_comment: str
     scenario: Scenario
     crop: FOCUSCrop
-    pec: Tuple[float, ...]
+    pec: Dict[str, float]
+
+    def __hash__(self):
+        return hash(tuple([self.scenario, self.crop,
+                           tuple(tuple([tuple(ord(c) for c in key), value]) for key, value in self.pec.items())]))
 
     def _asdict(self):
         # noinspection PyProtectedMember
@@ -129,7 +133,11 @@ class PECResult:
     gap: GAP
     scenario: Scenario
     crop: FOCUSCrop
-    pec: Tuple[float, ...]
+    pec: Dict[str, float]
+
+    def __hash__(self):
+        return hash(tuple([self.compound, self.gap, self.scenario, self.crop,
+                           tuple(tuple([tuple(ord(c) for c in key), value]) for key, value in self.pec.items())]))
 
     def asdict(self):
         return {"compound": self.compound,

@@ -4,7 +4,7 @@
 {% with application_event=dummy_event %}{% include "psm-fragments/application.j2" %}{% endwith %}
 {% for scenario in application.defined_scenarios %}{{ "%03d" % (application.application_data(scenario) | list | length)}}   {{ scenario.name }}         <number of application location>
 {% for application_event in application.application_data(scenario) %}{% include "psm-fragments/application.j2" %}{% if not loop.last%}
-{% endif%}{% endfor %}
- {{ application.type.value }}    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually>{% if not loop.last%}
+{% endif%}{% endfor %}{% if not loop.last%}
 {% endif %}{% endfor %}
+ {{ application.type.value }}    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually>
 <END APPLICATION>

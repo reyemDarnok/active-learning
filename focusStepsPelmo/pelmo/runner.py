@@ -10,7 +10,7 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copytree, rmtree
 from threading import current_thread
-from typing import Generator, Iterable, Optional, Tuple, TypeVar, Union
+from typing import Generator, Iterable, Optional, Tuple, TypeVar, Union, Dict
 from zipfile import ZipFile
 
 from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
@@ -169,7 +169,7 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
     return result
 
 
-def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Tuple[float, ...]:
+def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Dict[str, float]:
     """Parses the Pelmo output files to determine the PEC that pelmo calculated
     :param run_dir: Where Pelmo was executed and placed its result files
     :param target_compartment: Which compartment to take as result
@@ -179,8 +179,12 @@ def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Tuple[float, ...
     chem_files = run_dir.glob("CHEM*.PLM")
 
     water_plm = WaterPLM(water_file)
-    results = []
+    results = {}
     for chem_file in chem_files:
+        if chem_file.stem == "CHEM":
+            compound_pec = "parent"
+        else:
+            compound_pec = chem_file.stem.split('_')[1]
         chem_plm = ChemPLM(chem_file)
         chem_horizons = [horizon for year in chem_plm.horizons for horizon in year if
                          horizon.compartment == target_compartment]
@@ -195,9 +199,9 @@ def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Tuple[float, ...
         percentile = 0.8
         lower = int((len(pecs) - 1) * percentile)
         pec_groundwater = (pecs[lower] + pecs[lower + 1]) / 2
-        results.append(pec_groundwater)
+        results[compound_pec] = pec_groundwater
 
-    return tuple(results)
+    return results
 
 
 def extract_zip(working_dir: Path, focus_zip: Path):
