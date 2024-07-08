@@ -402,7 +402,7 @@ class GAP(ABC, TypeCorrecting):
                                                  number=number, period_between_applications=period_between_applications,
                                                  interval=interval,
                                                  scenarios=second_scenarios)
-                MultiGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
+                yield MultiGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
                          number=number, period_between_applications=period_between_applications,
                          interval=interval,
                          timings=(first_gap, second_gap))
