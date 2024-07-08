@@ -11,10 +11,10 @@ METABOLITE {{ metabolite.position }}     Metabolite {{ metabolite.name}}
 <PLANT UPTAKE>
  {{ metabolite.plant_uptake }}      <plant uptake factor>
 <END PLANT UPTAKE>
-{% with compound = metabolite %}{% include "metabolite-degradation.j2" %}{% endwith %}
+{% with compound = metabolite %}{% include "psm-fragments/metabolite-degradation.j2" %}{% endwith %}
 <ADSORPTION>
 <Koc-value    Fr.exp.Koc  pH          pKa     limit for Freundl.  ann.incr.> <k_doc> <% change> KOC2      pH2    f_neq       kdes>
-{% for adsorption in metabolite.adsorptions%}{% include "adsorption.j2" %}{% endfor %}
+{% for adsorption in metabolite.adsorptions%}{% include "psm-fragments/adsorption.j2" %}{% endfor %}
 <END ADSORPTION>
 <DEPTH DEPENDENT SORPTION AND TRANSFORMATION VALUES>
 <Kd          Fr.exp.     BR/CO2   Met D2   BR/CO2   BR/CO2 >

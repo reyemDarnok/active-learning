@@ -1,6 +1,6 @@
 <DEGRADATION>
 <degrate    degtemp     q10         moist-abs   moist-rel   moist-exp   rel deg neq sites  stoichiometric factor>
-{% for degradation in compound.degradations %}{% include "degradation.j2" %}{% if not loop.last%}
+{% for degradation in compound.degradations %}{% include "psm-fragments/degradation.j2" %}{% if not loop.last%}
 {% endif %}{% endfor %}
  {{ compound.degradation_type.value }}                 <0 = degradation according to degradation factors, 1 = constant with depth,2 individual,3 = degradation according to degradation factors, 4 = constant with depth,5 individual, >2 deg in liquid phase only)
 <END DEGRADATION>
