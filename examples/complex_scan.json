@@ -4,7 +4,8 @@
             "type": "choices",
             "parameters": {
                 "options": ["MZ", "AP"]
-            }},
+            }
+        },
         "application": {
             "number": {
                 "type": "steps",
@@ -28,7 +29,13 @@
                 "bbch_state": {
                     "type":"choices",
                     "parameters":{
-                        "options": [-1,10,40,80,90]
+                        "options": [
+                            0,
+                            10,
+                            40,
+                            80,
+                            90
+                        ]
                     }
                 }
             }

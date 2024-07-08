@@ -1,13 +1,14 @@
+import logging
 import math
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple, Generator, FrozenSet
+from typing import Dict, List, Optional, Tuple
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
 from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, Volatility, Sorption, Degradation
-from focusStepsPelmo.ioTypes.gap import GAP, Scenario
+from focusStepsPelmo.ioTypes.gap import GAP
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 PELMO_UNSET = -99
@@ -43,24 +44,7 @@ class ApplicationType(int, Enum):
 
 
 @dataclass(frozen=True)
-class PsmApplication(GAP):
-    wrapped: GAP = None
-
-    def asdict(self) -> Dict:
-        return {**super().asdict(),
-                "type": self.type,
-                "lower_depth": self.lower_depth, "upper_depth": self.upper_depth,
-                "ffield": self.ffield,
-                "frpex": self.frpex,
-                "time": self.time}
-
-    def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
-        yield from self.wrapped.application_data(scenario)
-
-    @property
-    def defined_scenarios(self) -> FrozenSet[Scenario]:
-        return self.wrapped.defined_scenarios
-
+class PsmApplication(TypeCorrecting):
     type: ApplicationType = ApplicationType.soil
     lower_depth: float = 0
     upper_depth: float = 0
@@ -198,6 +182,7 @@ PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(k
 @dataclass
 class PsmFile(TypeCorrecting):
     application: PsmApplication
+    gap: GAP
     compound: PsmCompound
     metabolites: List[PsmCompound]
     comment: str = "No comment"
@@ -216,7 +201,7 @@ class PsmFile(TypeCorrecting):
 
     @staticmethod
     def from_input(compound: Compound, gap: GAP) -> 'PsmFile':
-        application = PsmApplication(wrapped=gap, modelCrop=gap.modelCrop, rate=gap.rate)
+        application = PsmApplication()
 
         metabolites: Dict[str, Compound] = {}
         if 'pelmo' in compound.model_specific_data.keys():
@@ -275,6 +260,7 @@ class PsmFile(TypeCorrecting):
                        comment="No comment",
                        num_soil_horizons=0,
                        degradation_type=DegradationType.FACTORS,
+                       gap=gap
                        )
 
     def to_input(self) -> Tuple[Compound, GAP]:
@@ -294,10 +280,14 @@ class PsmFile(TypeCorrecting):
                                                     sediment=math.log(2) / self.compound.degradations[0].rate),
                             plant_uptake=self.compound.plant_uptake
                             )
-        return compound, self.application.wrapped
+        return compound, self.gap
 
     def render(self) -> str:
+        logger = logging.getLogger()
         psm_template = jinja_env.get_template('general.psm.j2')
         template_data = self.asdict()
         template_data['dummy_event'] = tuple([datetime(year=1, month=1, day=1), 0])
-        return psm_template.render(**template_data)
+        template_data['gap'] = self.gap
+        rendered = psm_template.render(**template_data)
+        logger.debug("Rendered psm file")
+        return rendered

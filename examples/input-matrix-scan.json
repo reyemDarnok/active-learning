@@ -33,7 +33,7 @@
         "type": "choices",
         "parameters": {
           "options": [
-            -1,
+            0,
             10,
             40,
             80,

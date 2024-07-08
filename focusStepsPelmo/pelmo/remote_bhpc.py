@@ -142,7 +142,6 @@ def zip_common_directories(target: Path):
     logger = logging.getLogger()
     for directory in os.listdir(target):
         directory = Path(target / directory)
-        logger.debug('Considering to add %s to zip', directory)
         if directory.is_dir():
             logger.debug('Adding %s to zip', directory)
             zip_directory(Path(directory), 'common.zip')

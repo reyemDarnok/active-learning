@@ -268,7 +268,14 @@ class GAP(ABC, TypeCorrecting):
     """How often will be applied"""
     interval: timedelta = 1
     """What is the minimum interval between applications"""
+    _type: str = field(default='', hash=False)
     model_specific_data: Dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
+
+    @property
+    @abstractmethod
+    def _dict_args(self) -> Dict[str, Any]:
+        pass
+
 
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
@@ -280,11 +287,17 @@ class GAP(ABC, TypeCorrecting):
 
     @abstractmethod
     def asdict(self) -> Dict:
-        return {'modelCrop': self.modelCrop.name,
+        return {
+            "type": self._type,
+            "arguments": {
+                'modelCrop': self.modelCrop.name,
                 'rate': self.rate,
                 "period_between_applications": self.period_between_applications,
                 'number': self.number,
-                'interval': self.interval}
+                'interval': self.interval,
+                **self._dict_args
+            }
+        }
 
     @abstractmethod
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
@@ -410,29 +423,14 @@ class GAP(ABC, TypeCorrecting):
                 yield first_gap
 
 
-# parameters are used in pandas query, which PyCharm does not notice
-# noinspection PyUnusedLocal
-def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Series:
-    scenario_name = scenario.replace("â", "a").replace("ü", "u")
-    return bbch_application.query('Location == @scenario_name '
-                                  '& Crop == @crop_name'
-                                  '& `Requested BBCH Code` == @bbch').iloc[0]
-
-
-# parameters are used in pandas query, which PyCharm does not notice
-# noinspection PyUnusedLocal
-def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pandas.Series:
-    scenario_name = scenario.replace("â", "a").replace("ü", "u")
-    filtered_frame: pandas.DataFrame = bbch_application.query('Location == @scenario_name '
-                                                              '& Crop == @crop_name'
-                                                              '& `Recommended Application date` >= '
-                                                              '@date'
-                                                              )
-    return filtered_frame.sort_values(ascending=True, by=['Recommended Application date']).iloc[0]
-
-
 @dataclass(frozen=True)
 class MultiGAP(GAP):
+    _type = "multi"
+    timings: Tuple[GAP, ...] = field(default_factory=tuple)
+
+    @property
+    def _dict_args(self) -> Dict[str, Any]:
+        return {"timings": [timing.asdict() for timing in self.timings]}
 
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
@@ -471,11 +469,17 @@ class MultiGAP(GAP):
         object.__setattr__(self, 'timings', corrected_timings)
         super().__post_init__()
 
-    timings: Tuple[GAP, ...] = field(default_factory=tuple)
 
 
 @dataclass(frozen=True)
 class RelativeGAP(GAP):
+    _type: str = "relative"
+    bbch: int = 0
+    season: int = 0
+
+    @property
+    def _dict_args(self) -> Dict[str, Any]:
+        return {"bbch": self.bbch, "season": self.season}
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         application_line = bbch_to_data_row(self.bbch, scenario,
                                             self.modelCrop.bbch_application_name[self.season])
@@ -496,13 +500,17 @@ class RelativeGAP(GAP):
         super_dict.update({'bbch': self.bbch})
         return super_dict
 
-    bbch: int = 0
-    season: int = 0
+
 
 
 @dataclass(frozen=True)
 class AbsoluteConstantGAP(GAP):
+    _type: str = "absolute"
     time_in_year: datetime = datetime(year=1, month=1, day=1)
+
+    @property
+    def _dict_args(self) -> Dict[str, Any]:
+        return {"time_in_year": self.time_in_year.isoformat()}
 
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         time_and_interception: Tuple[Tuple[datetime, float]] = tuple()
@@ -550,7 +558,15 @@ class AbsoluteDayOfYearGAP(AbsoluteConstantGAP):
 
 @dataclass(frozen=True)
 class AbsoluteScenarioGAP(GAP):
+    _type: str = "scenario"
+    scenarios: Dict[Scenario, Dict] = field(
+        default_factory=lambda: {}, hash=False)
 
+    _scenario_gaps: Dict[Scenario, AbsoluteConstantGAP] = field(init=False, repr=False, hash=False, compare=False)
+
+    @property
+    def _dict_args(self) -> Dict[str, Any]:
+        return {"scenarios": {scenario.name: d for scenario, d in self.scenarios.items()}}
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
         return frozenset(self.modelCrop.defined_scenarios.intersection(self._scenario_gaps.keys()))
@@ -558,10 +574,7 @@ class AbsoluteScenarioGAP(GAP):
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         yield from self._scenario_gaps[scenario].application_data(scenario)
 
-    scenarios: Dict[Scenario, Dict] = field(
-        default_factory=lambda: {}, hash=False)
 
-    _scenario_gaps: Dict[Scenario, AbsoluteConstantGAP] = field(init=False, repr=False, hash=False, compare=False)
 
     def __hash__(self) -> int:
         init_dict = self.asdict()
@@ -591,3 +604,24 @@ class AbsoluteScenarioGAP(GAP):
         super_dict = super().asdict()
         super_dict.update({'scenarios': self.scenarios})
         return super_dict
+
+
+# parameters are used in pandas query, which PyCharm does not notice
+# noinspection PyUnusedLocal
+def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Series:
+    scenario_name = scenario.replace("â", "a").replace("ü", "u")
+    return bbch_application.query('Location == @scenario_name '
+                                  '& Crop == @crop_name'
+                                  '& `Requested BBCH Code` == @bbch').iloc[0]
+
+
+# parameters are used in pandas query, which PyCharm does not notice
+# noinspection PyUnusedLocal
+def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pandas.Series:
+    scenario_name = scenario.replace("â", "a").replace("ü", "u")
+    filtered_frame: pandas.DataFrame = bbch_application.query('Location == @scenario_name '
+                                                              '& Crop == @crop_name'
+                                                              '& `Recommended Application date` >= '
+                                                              '@date'
+                                                              )
+    return filtered_frame.sort_values(ascending=True, by=['Recommended Application date']).iloc[0]
