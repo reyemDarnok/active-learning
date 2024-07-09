@@ -276,6 +276,15 @@ class GAP(ABC, TypeCorrecting):
     def _dict_args(self) -> Dict[str, Any]:
         pass
 
+    def _get_common_dict(self) -> Dict[str, Any]:
+        return {
+            "modelCrop": self.modelCrop,
+            "rate": self.rate,
+            "period_between_applications": self.period_between_applications,
+            "number": self.number,
+            "interval": self.interval,
+            "model_specific_data": self.model_specific_data
+        }
 
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
@@ -285,7 +294,6 @@ class GAP(ABC, TypeCorrecting):
     def rate_in_kg(self):
         return self.rate / 1000
 
-    @abstractmethod
     def asdict(self) -> Dict:
         return {
             "type": self._type,
@@ -440,18 +448,12 @@ class MultiGAP(GAP):
         # noinspection PyTypeChecker
         return frozenset(result)
 
-    def asdict(self) -> Dict:
-        super_dict = super().asdict()
-        super_dict.update({'timings': self.timings})
-        return super_dict
-
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         for timing in self.timings:
             yield from timing.application_data(scenario)
 
     def __post_init__(self):
-        object.__setattr__(self, 'modelCrop', correct_type(self.modelCrop, FOCUSCrop))
-        init_dict = self.asdict()
+        init_dict = self._get_common_dict()
         init_dict.pop('timings')
         corrected_timings = tuple()
         for timing in self.timings:
@@ -495,11 +497,6 @@ class RelativeGAP(GAP):
                 appl_date = datetime(year=year, month=appl_date.month, day=appl_date.day)
                 yield appl_date, interception
 
-    def asdict(self) -> Dict:
-        super_dict = super().asdict()
-        super_dict.update({'bbch': self.bbch})
-        return super_dict
-
 
 
 
@@ -526,11 +523,6 @@ class AbsoluteConstantGAP(GAP):
             for appl_date, interception in time_and_interception:
                 appl_date = datetime(year=year, month=appl_date.month, day=appl_date.day)
                 yield appl_date.replace(year=year), interception
-
-    def asdict(self) -> Dict:
-        super_dict = super().asdict()
-        super_dict.update({'time_in_year': self.time_in_year})
-        return super_dict
 
     def __post_init__(self):
         date = None
@@ -599,11 +591,6 @@ class AbsoluteScenarioGAP(GAP):
                 corrected_scenarios[scenario] = AbsoluteConstantGAP(**init_dict_copy)
         object.__setattr__(self, '_scenario_gaps', corrected_scenarios)
         super().__post_init__()
-
-    def asdict(self) -> Dict:
-        super_dict = super().asdict()
-        super_dict.update({'scenarios': self.scenarios})
-        return super_dict
 
 
 # parameters are used in pandas query, which PyCharm does not notice
