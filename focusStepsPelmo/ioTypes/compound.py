@@ -1,4 +1,5 @@
 import json
+from collections import UserList
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Generator, List, Optional, Tuple, Dict
@@ -115,9 +116,9 @@ class Compound(TypeCorrecting):
         if file.suffix == '.json':
             with file.open() as f:
                 json_content = json.load(f)
-                try:
+                if isinstance(json_content, (list, UserList)):
                     yield from (Compound(**element) for element in json_content)
-                except TypeError:
+                else:
                     yield Compound(**json_content)
         if file.suffix == '.xlsx':
             yield from Compound.from_excel(file)

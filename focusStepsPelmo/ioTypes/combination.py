@@ -1,4 +1,5 @@
 import json
+from collections import UserList
 from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import Generator, Dict
@@ -38,9 +39,9 @@ class Combination(TypeCorrecting):
         if file.suffix == '.json':
             with file.open() as f:
                 json_content = json.load(f)
-                try:
+                if isinstance(json_content, (list, UserList)):
                     yield from (Combination(**element) for element in json_content)
-                except TypeError:
+                else:
                     yield Combination(**json_content)
         if file.suffix == '.xlsx':
             for compound in Compound.from_excel(file):

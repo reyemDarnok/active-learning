@@ -1,6 +1,7 @@
 import csv
 import json
 from abc import ABC, abstractmethod
+from collections import UserList
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
@@ -316,6 +317,10 @@ class GAP(ABC, TypeCorrecting):
 
     @staticmethod
     def parse(to_parse: Dict) -> 'GAP':
+        if not 'type' in to_parse.keys():
+            raise TypeError("Missing 'type' in to_parse definition")
+        if not 'arguments' in to_parse.keys():
+            raise TypeError("Missing 'arguments' in to_parse definition")
         types = {
             "relative": RelativeGAP,
             "absolute": AbsoluteConstantGAP,
@@ -349,9 +354,9 @@ class GAP(ABC, TypeCorrecting):
         if file.suffix == '.json':
             with file.open() as f:
                 json_content = json.load(f)
-                try:
+                if isinstance(json_content, (list, UserList)):
                     yield from (GAP.parse(element) for element in json_content)
-                except TypeError:
+                else:
                     yield GAP.parse(json_content)
         elif file.suffix == '.xlsx':
             yield from GAP.from_excel(file)
@@ -454,7 +459,6 @@ class MultiGAP(GAP):
 
     def __post_init__(self):
         init_dict = self._get_common_dict()
-        init_dict.pop('timings')
         corrected_timings = tuple()
         for timing in self.timings:
             if isinstance(timing, GAP):
@@ -569,15 +573,14 @@ class AbsoluteScenarioGAP(GAP):
 
 
     def __hash__(self) -> int:
-        init_dict = self.asdict()
-        init_dict.pop('scenarios')
+        init_dict = self._get_common_dict()
+        init_dict.pop('model_specific_data')
         return hash(tuple([tuple([tuple([key, value]) for key, value in init_dict.items()]),
                            tuple([tuple([key, value]) for key, value in self._scenario_gaps.items()])]))
 
     def __post_init__(self):
         object.__setattr__(self, 'modelCrop', correct_type(self.modelCrop, FOCUSCrop))
-        init_dict = self.asdict()
-        init_dict.pop('scenarios')
+        init_dict = self._get_common_dict()
         corrected_scenarios = {}
         for scenario, scenario_data in self.scenarios.items():
             if isinstance(scenario_data, GAP):
