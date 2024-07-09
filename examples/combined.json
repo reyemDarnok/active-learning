@@ -5,6 +5,7 @@
     "number": 2,
     "interval": 14,
     "rate": 1000,
+    "period_between_applications": 2,
     "timings": [
       {
         "type": "relative",
