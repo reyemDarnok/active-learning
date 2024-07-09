@@ -158,10 +158,10 @@ class PsmCompound:
         degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction)]
         volatizations = (Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility,
                                       vaporization_pressure=compound.volatility.vaporization_pressure,
-                                      temperature=compound.volatility.reference_temperature - 1),
-                         Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility,
-                                      vaporization_pressure=compound.volatility.vaporization_pressure,
-                                      temperature=compound.volatility.reference_temperature + 1))
+                                      temperature=compound.volatility.reference_temperature),
+                         Volatization(henry=3.33E-04 * 2, solubility=compound.volatility.water_solubility,
+                                      vaporization_pressure=compound.volatility.vaporization_pressure * 4,
+                                      temperature=compound.volatility.reference_temperature + 10))
         if 'pelmo' in compound.model_specific_data.keys():
             position = compound.model_specific_data['pelmo']['position']
         else:
