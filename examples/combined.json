@@ -1,10 +1,11 @@
-{"gap":  {
+{
+  "gap": {
   "type": "multi",
   "arguments": {
-    "modelCrop": "CA",
+    "modelCrop": "WC",
     "number": 2,
     "interval": 14,
-    "rate": 1000,
+    "rate": 10000,
     "period_between_applications": 2,
     "timings": [
       {
@@ -12,20 +13,11 @@
         "arguments": {
           "bbch": 10
         }
-      },
-      {
-        "type": "scenario",
-        "arguments": {
-          "scenarios": {
-            "T": {
-              "time_in_year": "2001-07-01"
-            }
-          }
-        }
       }
     ]
   }
-}, "compound":  {
+  },
+  "compound": {
     "metabolites": null,
     "molarMass": 300,
     "volatility": {
@@ -40,8 +32,9 @@
     "plant_uptake": 0.5,
     "degradation": {
       "system": 6,
-      "soil": 5,
+      "soil": 100,
       "surfaceWater": 6,
       "sediment": 6
     }
-}}
+  }
+}

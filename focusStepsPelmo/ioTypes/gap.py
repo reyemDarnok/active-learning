@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, Optional, FrozenSet
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, Optional, FrozenSet, Set
 
 import numpy
 import pandas
@@ -446,12 +446,12 @@ class MultiGAP(GAP):
         return {"timings": [timing.asdict() for timing in self.timings]}
 
     @property
-    def defined_scenarios(self) -> FrozenSet[Scenario]:
-        result = set(Scenario)
+    def defined_scenarios(self) -> Set[Scenario]:
+        result = super().defined_scenarios
         for timing in self.timings:
-            result.intersection_update(timing.defined_scenarios)
+            result = result.intersection(timing.defined_scenarios)
         # noinspection PyTypeChecker
-        return frozenset(result)
+        return result
 
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         for timing in self.timings:
@@ -565,7 +565,7 @@ class AbsoluteScenarioGAP(GAP):
         return {"scenarios": {scenario.name: d for scenario, d in self.scenarios.items()}}
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
-        return frozenset(self.modelCrop.defined_scenarios.intersection(self._scenario_gaps.keys()))
+        return super().defined_scenarios.intersection(self._scenario_gaps.keys())
 
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         yield from self._scenario_gaps[scenario].application_data(scenario)

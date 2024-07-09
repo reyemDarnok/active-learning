@@ -1,4 +1,3 @@
-import logging
 import math
 from dataclasses import dataclass, field, replace
 from datetime import datetime
@@ -283,7 +282,6 @@ class PsmFile(TypeCorrecting):
         return compound, self.gap
 
     def render(self) -> str:
-        logger = logging.getLogger()
         psm_template = jinja_env.get_template('general.psm.j2')
         template_data = self.asdict()
         template_data['dummy_event'] = tuple([datetime(year=1, month=1, day=1), 0])

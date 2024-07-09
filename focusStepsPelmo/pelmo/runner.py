@@ -108,6 +108,27 @@ def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path,
     pool.shutdown()
 
 
+def find_duration(psm_file_string) -> int:
+    in_application = False
+    max_year = 0
+    for line in psm_file_string.splitlines():
+        if not in_application:
+            if line.startswith("<APPLICATION>"):
+                in_application = True
+            continue
+        if in_application:
+            if line.startswith("<END APPLICATION>"):
+                break
+            try:
+                current = int(line.split()[2])
+                max_year = max(max_year, current)
+            except ValueError:
+                pass
+            except IndexError:
+                pass
+    return max_year + 1
+
+
 def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], working_dir: Path) -> PelmoResult:
     """Runs a single psm/crop/scenario combination.
     Assumes that it is in a multithreading context after _init_thread as run
@@ -137,11 +158,16 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
 
     logger.debug('Creating pelmo input files')
     if isinstance(psm_file, Path):
-        target_psm_file.write_text(psm_file.read_text())
+        psm_file_string = psm_file.read_text()
+        target_psm_file.write_text(psm_file_string)
     else:
+        psm_file_string = psm_file
         target_psm_file.write_text(psm_file)
         psm_file = target_psm_file
-    target_inp_file.write_text(inp_file_template.render(psm_file=psm_file, crop=crop, scenario=scenario))
+
+    duration = find_duration(psm_file_string)
+    target_inp_file.write_text(inp_file_template.render(psm_file=psm_file, crop=crop, scenario=scenario,
+                                                        duration=duration))
     target_dat_file.write_text(dat_file_template.render())
 
     logger.info('Starting PELMO run for compound: %s :: crop: %s :: scenario: %s', target_psm_file.stem,
@@ -179,6 +205,8 @@ def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Dict[str, float]
     chem_files = run_dir.glob("CHEM*.PLM")
 
     water_plm = WaterPLM(water_file)
+    water_horizons = [horizon for year in water_plm.horizons for horizon in year if
+                      horizon.compartment == target_compartment]
     results = {}
     for chem_file in chem_files:
         if chem_file.stem == "CHEM":
@@ -188,17 +216,21 @@ def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Dict[str, float]
         chem_plm = ChemPLM(chem_file)
         chem_horizons = [horizon for year in chem_plm.horizons for horizon in year if
                          horizon.compartment == target_compartment]
-        water_horizons = [horizon for year in water_plm.horizons for horizon in year if
-                          horizon.compartment == target_compartment]
+
+        #       calculate result in kg/(cm*ha)                 convert to microgram/L
+        pecs = [chemical.leaching_output / water.leaching_output * 10_000 if water.leaching_output > 0 else 0
+                for chemical, water in zip(chem_horizons, water_horizons)]
         # mass in g/ha / water in mm
         # input is in kg/ha and cm
-        pecs = [(chem_horizons[i].leaching_output * 1000 / (water_horizons[i].leaching_output * 10) * 100) if
-                water_horizons[i].leaching_output > 0 else 0 for i in range(len(chem_horizons))]
         pecs = pecs[6:]
-        pecs.sort()
+        pecs_per_application_period = len(pecs) // 20
+        mean_pecs = []
+        for index in range(0, len(pecs), pecs_per_application_period):
+            mean_pecs.append(sum(pecs[index:(index + pecs_per_application_period + 1)]))
+        mean_pecs.sort()
         percentile = 0.8
-        lower = int((len(pecs) - 1) * percentile)
-        pec_groundwater = (pecs[lower] + pecs[lower + 1]) / 2
+        lower = int((len(mean_pecs) - 1) * percentile)
+        pec_groundwater = (mean_pecs[lower] + mean_pecs[lower + 1]) / 2
         results[compound_pec] = pec_groundwater
 
     return results
