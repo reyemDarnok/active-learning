@@ -289,5 +289,4 @@ class PsmFile(TypeCorrecting):
         template_data['dummy_event'] = tuple([datetime(year=1, month=1, day=1), 0])
         template_data['gap'] = self.gap
         rendered = psm_template.render(**template_data)
-        logger.debug("Rendered psm file")
         return rendered

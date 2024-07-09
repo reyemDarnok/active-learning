@@ -227,11 +227,11 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
     for i, batch in enumerate(batches):
         batch_name = f"psm{i}.d"
         logger.info('Adding psm files for batch %s', i)
-        logger.info('Created batch %s', i)
         with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
             for psm_file in batch:
                 if psm_file is not None:
                     zip_file.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
+        logger.info('Created batch %s', i)
         yield batch_name
 
 
