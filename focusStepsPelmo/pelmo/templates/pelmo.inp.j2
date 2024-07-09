@@ -1,8 +1,8 @@
 {{ "%03d" % duration }} 01 01 31 12 Version 6
-{% if scenario.name != 'G' %}..\..\{{ scenario.value }}.soi
-{% endif %}..\..\{{ crop.focus_name }}.crp
+{% if scenario.name != 'G' %}..\..\..\{{ scenario.name }}.soi
+{% endif %}..\..\..\{{ scenario.name }}_{{ crop_file_name }}.crp
 {{ psm_file.name }}
-{% for index in range(1,duration + 1) %}..\..\{{ "%02d" % index }}.cli{% if not loop.last %}
+{% for index in range(1,duration + 1) %}..\..\..\{{ scenario.name }}_{{ "%02d" % index }}.cli{% if not loop.last %}
 {% endif %}{% endfor %}
 00000015  99.0    0000000000000000
     LEAC    TSER  100.0  1.0E09 00000002

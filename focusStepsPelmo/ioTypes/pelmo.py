@@ -8,6 +8,37 @@ from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
+def lookup_crop_file_name(crop):
+    lookup_table = {
+        FOCUSCrop.AP: "apples",
+        FOCUSCrop.BB: "bushb",
+        FOCUSCrop.BF: "fbeans",
+        FOCUSCrop.BV: "vbeans",
+        FOCUSCrop.CA: "carrot",
+        FOCUSCrop.CB: "cabbag",
+        FOCUSCrop.CI: "citrus",
+        FOCUSCrop.CO: "cotton",
+        FOCUSCrop.GA: "grass",
+        FOCUSCrop.LS: "linse",
+        FOCUSCrop.MZ: "maize",
+        FOCUSCrop.ON: "onions",
+        FOCUSCrop.OS: "rapesu",
+        FOCUSCrop.OW: "rapewi",
+        FOCUSCrop.PE: "peas",
+        FOCUSCrop.PO: "potato",
+        FOCUSCrop.SB: "sbeets",
+        FOCUSCrop.SC: "scerea",
+        FOCUSCrop.SF: "sunflo",
+        FOCUSCrop.SO: "soyb",
+        FOCUSCrop.SW: "strawb",
+        FOCUSCrop.TB: "tobacc",
+        FOCUSCrop.TM: "tomato",
+        FOCUSCrop.VI: "vines",
+        FOCUSCrop.WC: "wcerea"
+    }
+    return lookup_table[crop]
+
+
 @dataclass()
 class WaterHorizon:
     """Class describing a horizon segment line of a WASSER.PLM"""

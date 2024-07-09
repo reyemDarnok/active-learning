@@ -36,7 +36,7 @@ class EnhancedJSONEncoder(JSONEncoder):
             # noinspection PyProtectedMember
             return o._asdict()
         if isinstance(o, timedelta):
-            return {"microseconds": o.microseconds}
+            return {"seconds": o.total_seconds()}
         if isinstance(o, frozenset):
             return list(o)
         if dataclasses.is_dataclass(o):
@@ -44,7 +44,6 @@ class EnhancedJSONEncoder(JSONEncoder):
         if isinstance(o, UserDict):
             return o.data
         return super().default(o)
-
 
 def flatten_to_csv(to_flatten: Iterable[Dict[str, Any]]) -> Generator[str, None, None]:
     """Takes an Iterable of dictionaries and flattens them to csv data. 

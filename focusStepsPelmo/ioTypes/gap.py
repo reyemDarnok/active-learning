@@ -429,9 +429,9 @@ class GAP(ABC, TypeCorrecting):
                                                  interval=interval,
                                                  scenarios=second_scenarios)
                 yield MultiGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
-                         number=number, period_between_applications=period_between_applications,
-                         interval=interval,
-                         timings=(first_gap, second_gap))
+                               number=number, period_between_applications=period_between_applications,
+                               interval=interval,
+                               timings=(first_gap, second_gap))
             else:
                 yield first_gap
 
@@ -476,7 +476,6 @@ class MultiGAP(GAP):
         super().__post_init__()
 
 
-
 @dataclass(frozen=True)
 class RelativeGAP(GAP):
     _type: str = "relative"
@@ -486,6 +485,7 @@ class RelativeGAP(GAP):
     @property
     def _dict_args(self) -> Dict[str, Any]:
         return {"bbch": self.bbch, "season": self.season}
+
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         application_line = bbch_to_data_row(self.bbch, scenario,
                                             self.modelCrop.bbch_application_name[self.season])
@@ -500,8 +500,6 @@ class RelativeGAP(GAP):
             for appl_date, interception in time_and_interception:
                 appl_date = datetime(year=year, month=appl_date.month, day=appl_date.day)
                 yield appl_date, interception
-
-
 
 
 @dataclass(frozen=True)
@@ -563,14 +561,13 @@ class AbsoluteScenarioGAP(GAP):
     @property
     def _dict_args(self) -> Dict[str, Any]:
         return {"scenarios": {scenario.name: d for scenario, d in self.scenarios.items()}}
+
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
         return super().defined_scenarios.intersection(self._scenario_gaps.keys())
 
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         yield from self._scenario_gaps[scenario].application_data(scenario)
-
-
 
     def __hash__(self) -> int:
         init_dict = self._get_common_dict()
