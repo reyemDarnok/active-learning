@@ -56,7 +56,7 @@ class Compound(TypeCorrecting):
     """Fraction of plant uptake"""
     name: str = field(hash=False, default='')  # str hash is not stable
     model_specific_data: Dict = field(compare=False, hash=False, default_factory=dict)
-    metabolites: Optional[Tuple[MetaboliteDescription, ...]] = field(default_factory=tuple)
+    metabolites: Tuple[MetaboliteDescription, ...] = field(default_factory=tuple)
     """The compounds metabolites"""
 
     def __post_init__(self):
