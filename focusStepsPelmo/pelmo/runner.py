@@ -210,7 +210,13 @@ def parse_pelmo_result(run_dir: Path) -> Dict[str, float]:
     m1_compartment = 20
 
     water_plm = WaterPLM(water_file)
-    m1_water_height = [year[m1_compartment].leaching_output for year in water_plm.horizons]
+    m1_water_height = [year[m1_compartment].leaching_output for year in water_plm.horizons][6:]
+    pecs_per_application_period = len(m1_water_height) // 20
+    mean_water_height = []
+    for index in range(0, len(m1_water_height), pecs_per_application_period):
+        mean_water_height.append(
+            sum(m1_water_height[index:(index + pecs_per_application_period)]) / pecs_per_application_period)
+    m1_water_height = mean_water_height
     results = {}
     for chem_file in chem_files:
         if chem_file.stem == "CHEM":
@@ -218,21 +224,21 @@ def parse_pelmo_result(run_dir: Path) -> Dict[str, float]:
         else:
             compound_pec = chem_file.stem.split('_')[1]
         chem_plm = ChemPLM(chem_file)
-        m1_chem_mass = [year[m1_compartment].leaching_output for year in chem_plm.horizons]
+        m1_chem_mass = [year[m1_compartment].leaching_output for year in chem_plm.horizons][6:]
+        mean_chem_mass = []
+        for index in range(0, len(m1_chem_mass), pecs_per_application_period):
+            mean_chem_mass.append(
+                sum(m1_chem_mass[index:(index + pecs_per_application_period)]) / pecs_per_application_period)
+        m1_chem_mass = mean_chem_mass
         #       calculate result in kg/(cm*ha)                 convert to microgram/L
         m1_pecs = [chemical / water * 10_000 if water > 0 else 0
                    for chemical, water in zip(m1_chem_mass, m1_water_height)]
         # mass in g/ha / water in mm
         # input is in kg/ha and cm
-        m1_pecs = m1_pecs[6:]
-        pecs_per_application_period = len(m1_pecs) // 20
-        mean_pecs = []
-        for index in range(0, len(m1_pecs), pecs_per_application_period):
-            mean_pecs.append(sum(m1_pecs[index:(index + pecs_per_application_period)]) / pecs_per_application_period)
-        mean_pecs.sort()
+        m1_pecs.sort()
         percentile = 0.8
-        lower = int((len(mean_pecs) - 1) * percentile)
-        pec_groundwater = (mean_pecs[lower] + mean_pecs[lower + 1]) / 2
+        lower = int((len(m1_pecs) - 1) * percentile)
+        pec_groundwater = (m1_pecs[lower] + m1_pecs[lower + 1]) / 2
         results[compound_pec] = pec_groundwater
 
     return results
