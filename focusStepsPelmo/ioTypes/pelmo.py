@@ -8,7 +8,10 @@ from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
-def lookup_crop_file_name(crop):
+def lookup_crop_file_name(crop) -> str:
+    """A lookup that translates FOCUSCrops to their names in the Pelmo file structure
+    :param crop: The crop to use
+    :return: The string that pelmo uses in its filenames to represent the crop"""
     lookup_table = {
         FOCUSCrop.AP: "apples",
         FOCUSCrop.BB: "bushb",
@@ -141,10 +144,15 @@ class ChemPLM:
 
 @dataclass(frozen=True)
 class PelmoResult(TypeCorrecting):
+    """A structure holding the result of a pelmo calculation"""
     psm_comment: str
+    """The comment in the psm file. Often useful to find the data that generated the psm file"""
     scenario: Scenario
+    """Which scenario was calculated"""
     crop: FOCUSCrop
+    """Which crop was run"""
     pec: Dict[str, float]
+    """A mapping from compound names (in Pelmo, i.e. parent, A1, B2) to their PECs"""
 
     def __hash__(self):
         return hash(tuple([self.scenario, self.crop,
@@ -160,11 +168,17 @@ class PelmoResult(TypeCorrecting):
 
 @dataclass(frozen=True)
 class PECResult:
+    """A structure holding the result of a calculation that has been referenced back to its input values"""
     compound: Compound
+    """The compound that was under consideration"""
     gap: GAP
+    """The gap that was under consideration"""
     scenario: Scenario
+    """The scenario that was under consideration"""
     crop: FOCUSCrop
+    """The crop that was under consideration"""
     pec: Dict[str, float]
+    """A mapping from compound names (The compound and all its metabolites) to their PECs"""
 
     def __hash__(self):
         return hash(tuple([self.compound, self.gap, self.scenario, self.crop,
