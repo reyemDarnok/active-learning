@@ -25,7 +25,7 @@ bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BB
 
 
 class Scenario(str, Enum):
-    """The Pelmo Scenarios. The key is the one letter shorthand and the value the full name"""
+    """The Pelmo Scenarios. The name is the one letter shorthand and the value the full name"""
     C = "Châteaudun"
     H = "Hamburg"
     J = "Jokioinen"
@@ -38,6 +38,7 @@ class Scenario(str, Enum):
 
 
 class PrincipalStage(int, Enum):
+    """The principal BBCH stages. The name is what the stage is and the value the BBCH Stage / 10 where it is reached"""
     Unplanted = -1
     Germination = 0
     Leaf = 1
@@ -68,7 +69,7 @@ _s = PrincipalStage
 
 # noinspection PyTypeChecker
 class FOCUSCrop(FOCUSCropMixin, Enum):
-    """The crops defined for Pelmo. Each defined as a PelmoCropMixin"""
+    """The crops defined for FOCUS. Each defined as a FOCUSCropMixin"""
     AP = FOCUSCropMixin(focus_name="Apples",
                         defined_scenarios=frozenset({
                             Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N, Scenario.P, Scenario.O,
@@ -260,28 +261,36 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
 
 @dataclass(frozen=True)
 class GAP(ABC, TypeCorrecting):
+    """An abstract superclass for different ways to create GAPs.
+    Most users will want to create GAP Objects with GAP.parse"""
     modelCrop: FOCUSCrop
     """The crop that the field is modelled after"""
     rate: float
     """How much compound will be applied in g/ha"""
     period_between_applications: int = 1
+    """The time between applications in years. Use this to indicate years without applications"""
     number: int = 1
     """How often will be applied"""
     interval: timedelta = 1
     """What is the minimum interval between applications"""
     model_specific_data: Dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
+    """Any data that only specific models care about will be stored here"""
 
     @property
     @abstractmethod
     def _type(self) -> str:
+        """Which name this class uses during parsing.
+        When subclassing, note that this will have to be registered in the GAP.parse method"""
         pass
 
     @property
     @abstractmethod
     def _dict_args(self) -> Dict[str, Any]:
+        """Any special arguments that only this GAP needs, but the others don't"""
         pass
 
     def _get_common_dict(self) -> Dict[str, Any]:
+        """Returns a dict containing the parameters of this GAP that are common to all GAPS"""
         return {
             "modelCrop": self.modelCrop.name if hasattr(self.modelCrop, 'name') else self.modelCrop,
             "rate": self.rate,
@@ -293,13 +302,16 @@ class GAP(ABC, TypeCorrecting):
 
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
+        """Which scenarios this GAP is defined for"""
         return self.modelCrop.defined_scenarios
 
     @property
     def rate_in_kg(self):
+        """A conversion of the application rate into kg"""
         return self.rate / 1000
 
     def asdict(self) -> Dict:
+        """Represents this object as a dictionary"""
         return {
             "type": self._type,
             "arguments": {
@@ -317,6 +329,9 @@ class GAP(ABC, TypeCorrecting):
 
     @staticmethod
     def parse(to_parse: Dict) -> 'GAP':
+        """Parses a dictionary of parameters into a GAP
+        :param to_parse: The dictionary containing the GAP definition. Must have 'type' and 'arguments' as keys
+        :return: The GAP subclass defined by to_parse"""
         if 'type' not in to_parse.keys():
             raise TypeError("Missing 'type' in to_parse definition")
         if 'arguments' not in to_parse.keys():
@@ -330,19 +345,25 @@ class GAP(ABC, TypeCorrecting):
         return types[to_parse['type']](**to_parse['arguments'])
 
     @staticmethod
-    def from_excel(excel_file: Path) -> List['GAP']:
+    def from_excel(excel_file: Path) -> Generator['GAP', None, None]:
+        """Parse all GAPS from an excel file
+        :param excel_file: The file to parse
+        :return: All gaps defined in the file"""
         gaps = pandas.read_excel(io=excel_file, sheet_name="GAP Properties")
-        return [RelativeGAP(
-            modelCrop=row['Model Crop'],
-            rate=row['Rate'],
-            number=row['Number'],
-            interval=row['Interval'],
-            bbch=row['BBCH']
-        )
-            for _, row in gaps.iterrows()]
+        for _, row in gaps.iterrows():
+            yield RelativeGAP(
+                modelCrop=row['Model Crop'],
+                rate=row['Rate'],
+                number=row['Number'],
+                interval=row['Interval'],
+                bbch=row['BBCH']
+            )
 
     @staticmethod
     def from_path(path: Path) -> Generator['GAP', None, None]:
+        """Parse all GAPS in path
+        :param path: The path to traverse to find GAPs
+        :return: The GAPs found in path"""
         if path.is_dir():
             for file in path.iterdir():
                 yield from GAP.from_file(file)
@@ -351,6 +372,9 @@ class GAP(ABC, TypeCorrecting):
 
     @staticmethod
     def from_file(file: Path) -> Generator['GAP', None, None]:
+        """Parse a single file for all gaps in it
+        :param file: The file to parse
+        :return: The GAPs in file"""
         if file.suffix == '.json':
             with file.open() as f:
                 json_content = json.load(f)
@@ -363,8 +387,11 @@ class GAP(ABC, TypeCorrecting):
         elif file.suffix == '.gap':
             yield from GAP.from_gap_machine(file)
 
-    @classmethod
-    def from_gap_machine(cls, file: Path) -> Generator['GAP', None, None]:
+    @staticmethod
+    def from_gap_machine(file: Path) -> Generator['GAP', None, None]:
+        """Parse the Bayer GAP machine output into GAPs
+        :param: The file that is the result from an export in the GAP machine
+        :result: The GAPs defined in file"""
         with file.open() as gap_file:
             gap_file.readline()
             gap_file.readline()
@@ -438,8 +465,9 @@ class GAP(ABC, TypeCorrecting):
 
 @dataclass(frozen=True)
 class MultiGAP(GAP):
+    """A Container GAP that unifies multiple GAPs that all combine into one"""
     timings: Tuple[GAP, ...] = field(default_factory=tuple)
-
+    
     @property
     def _type(self) -> str:
         return 'multi'
@@ -520,6 +548,7 @@ class AbsoluteConstantGAP(GAP):
     @property
     def _type(self) -> str:
         return 'absolute'
+
     @property
     def _dict_args(self) -> Dict[str, Any]:
         return {"time_in_year": self.time_in_year.isoformat()}
