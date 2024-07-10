@@ -31,15 +31,22 @@ class Sorption(TypeCorrecting):
 
 @dataclass(frozen=True)
 class Volatility(TypeCorrecting):
+    """A structure describing the volatilization of a compound"""
     water_solubility: float
+    """The water solubility in mg/L"""
     vaporization_pressure: float
+    """The vaporization pressure in Pa"""
     reference_temperature: float
+    """The temperature the other values have been measured at in °C"""
 
 
 @dataclass(frozen=True)
 class MetaboliteDescription(TypeCorrecting):
+    """A structure describing a decay to a metabolite"""
     formation_fraction: float
+    """How much of all degradation forms this metabolite"""
     metabolite: 'Compound'
+    """The Compound that forms"""
 
 
 @dataclass(frozen=True)
