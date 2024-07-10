@@ -269,8 +269,12 @@ class GAP(ABC, TypeCorrecting):
     """How often will be applied"""
     interval: timedelta = 1
     """What is the minimum interval between applications"""
-    _type: str = field(default='', hash=False)
     model_specific_data: Dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
+
+    @property
+    @abstractmethod
+    def _type(self) -> str:
+        pass
 
     @property
     @abstractmethod
@@ -279,7 +283,7 @@ class GAP(ABC, TypeCorrecting):
 
     def _get_common_dict(self) -> Dict[str, Any]:
         return {
-            "modelCrop": self.modelCrop,
+            "modelCrop": self.modelCrop.name if hasattr(self.modelCrop, 'name') else self.modelCrop,
             "rate": self.rate,
             "period_between_applications": self.period_between_applications,
             "number": self.number,
@@ -299,11 +303,7 @@ class GAP(ABC, TypeCorrecting):
         return {
             "type": self._type,
             "arguments": {
-                'modelCrop': self.modelCrop.name,
-                'rate': self.rate,
-                "period_between_applications": self.period_between_applications,
-                'number': self.number,
-                'interval': self.interval,
+                **self._get_common_dict(),
                 **self._dict_args
             }
         }
@@ -317,9 +317,9 @@ class GAP(ABC, TypeCorrecting):
 
     @staticmethod
     def parse(to_parse: Dict) -> 'GAP':
-        if not 'type' in to_parse.keys():
+        if 'type' not in to_parse.keys():
             raise TypeError("Missing 'type' in to_parse definition")
-        if not 'arguments' in to_parse.keys():
+        if 'arguments' not in to_parse.keys():
             raise TypeError("Missing 'arguments' in to_parse definition")
         types = {
             "relative": RelativeGAP,
@@ -438,12 +438,20 @@ class GAP(ABC, TypeCorrecting):
 
 @dataclass(frozen=True)
 class MultiGAP(GAP):
-    _type = "multi"
     timings: Tuple[GAP, ...] = field(default_factory=tuple)
 
     @property
+    def _type(self) -> str:
+        return 'multi'
+
+    @property
     def _dict_args(self) -> Dict[str, Any]:
-        return {"timings": [timing.asdict() for timing in self.timings]}
+        return {"timings": [{"type": timing._type,
+                             "arguments": {key: value
+                                           for key, value in timing.asdict()['arguments'].items()
+                                           if key not in self._get_common_dict().keys()
+                                           or value != self._get_common_dict()[key]}}
+                            for timing in self.timings]}
 
     @property
     def defined_scenarios(self) -> Set[Scenario]:
@@ -478,9 +486,12 @@ class MultiGAP(GAP):
 
 @dataclass(frozen=True)
 class RelativeGAP(GAP):
-    _type: str = "relative"
     bbch: int = 0
     season: int = 0
+
+    @property
+    def _type(self) -> str:
+        return 'relative'
 
     @property
     def _dict_args(self) -> Dict[str, Any]:
@@ -504,9 +515,11 @@ class RelativeGAP(GAP):
 
 @dataclass(frozen=True)
 class AbsoluteConstantGAP(GAP):
-    _type: str = "absolute"
     time_in_year: datetime = datetime(year=1, month=1, day=1)
 
+    @property
+    def _type(self) -> str:
+        return 'absolute'
     @property
     def _dict_args(self) -> Dict[str, Any]:
         return {"time_in_year": self.time_in_year.isoformat()}
@@ -552,15 +565,23 @@ class AbsoluteDayOfYearGAP(AbsoluteConstantGAP):
 
 @dataclass(frozen=True)
 class AbsoluteScenarioGAP(GAP):
-    _type: str = "scenario"
     scenarios: Dict[Scenario, Dict] = field(
         default_factory=lambda: {}, hash=False)
 
     _scenario_gaps: Dict[Scenario, AbsoluteConstantGAP] = field(init=False, repr=False, hash=False, compare=False)
 
     @property
+    def _type(self) -> str:
+        return 'scenario'
+
+    @property
     def _dict_args(self) -> Dict[str, Any]:
-        return {"scenarios": {scenario.name: d for scenario, d in self.scenarios.items()}}
+        return {"scenarios": {scenario:
+                                  {key: value
+                                   for key, value in self._scenario_gaps[scenario].asdict().items()
+                                   if
+                                   key not in self._get_common_dict().keys() or self._get_common_dict()[key] != value}
+                              for scenario, gap in self._scenario_gaps.items()}}
 
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
