@@ -6,15 +6,17 @@ This Repository aims to automate interacting with FOCUS PELMO
 
 The scripts of this project call each other in a chain, with each script adding a additional automation.
 If a user already has the requirements for a lower level of automation, for example they don't want to scan a parameter
-matrix using `scan.py`
-but want to simply run a single run with `local.py`, they can directly call the lower script.
+matrix using [scan.py](focusStepsPelmo%2Fpelmo%2Fscan.py)
+but want to simply run a single run with [local.py](focusStepsPelmo%2Fpelmo%2Flocal.py), they can directly call the
+lower script.
 
 The full workflow is as follows:
 ![Flow diagram](Documentation/created/diagram.dot.svg)
 
 ### scan.py
 
-`scan.py` is intended to cover parameter matrixes and takes as input a template input and which range it should use for
+[scan.py](focusStepsPelmo%2Fpelmo%2Fscan.py) is intended to cover parameter matrixes and takes as input a template input
+and which range it should use for
 different parameters. Each part of this matrix can then either be simply written out or directly be calculated on the
 local machine or the BHPC.
 
@@ -39,15 +41,164 @@ other automations, they are primarily intended for invocation by the other three
 
 ## File Format
 
+This project uses several file format that users should be aware of. They will be listed in this section
+
 ### JSON Input
+
+Several of the inputs are json files. These follow the following, nested schema
+
+#### Combined
+
+```
+{
+    "gap": GAP,
+    "compound": Compound
+}
+```
+
+#### Compound
+
+```
+{
+    "molarMass": float,
+    "volatility": Volatility,
+    "sorption": Sorption,
+    "degradation": Degradation,
+    "plant_uptake": float,
+    "name": Optional[str],
+    "metabolites": List[MetaboliteDescription]
+    "model_specific_data": Dict
+}
+```
+
+#### GAP
+
+```
+{
+    "type": str,
+    "arguments": Union[MultiGAP, RelativeGAP, AbsoluteConstantGAP, AbsoluteScenarioGAP]
+}
+```
 
 ### GAP Machine
 
+One of the possible inputs is the BAYER GAP Machine. An example of its export output can be found
+in [GAP Machine example](examples%2FMI-134523625728_EUR__gw%20GAP%20grouped.gap).
+This can be parsed by the scripts into `AbsoluteScenarioGAP` and as such will still require compound information from
+another source.
+
 ### Excel
+
+The scripts of this project can also parse an Excel input file, if it follows a specified format.
+You can find an example [combined.xlsx](examples%2Fcombined.xlsx) here. As the name of the example suggests, it can be
+used as both a gap and a compound specification.
 
 ### JSON Output
 
+```
+[{
+    "compound": Compound,
+    "gap": GAP,
+    "scenario": Scenario,
+    "crop": FOCUSCrop,
+    "pec": Dict[str, float]
+}]
+```
 ### CSV Output
+
+The CSV output is simply a flattened version of the JSON output, with keys separated by `.` and list elements indicated
+by their index in their column headings.
+
+### JSON classes
+
+#### Volatility
+
+```
+{
+    "water_solubility": float,
+    "vaporization_pressure": float,
+    "reference_temperature": float
+}
+```
+
+#### Sorption
+
+```
+{
+    "koc": float,
+    "freundlich": float
+}
+```
+
+#### Degradation
+
+```
+{
+    "system": float,
+    "soil": float,
+    "soil": float,
+    "surfaceWater": float
+}
+```
+
+#### MetaboliteDescription
+
+```
+{
+    "formation_fraction": float,
+    "metabolite": Compound
+}
+```
+
+#### MultiGAP
+
+```
+{
+    **GAPcommonargs,
+    "timings": List[GAP]
+}
+```
+
+#### RelativeGAP
+
+```
+{
+    **GAPcommonargs,
+    "bbch": int,
+    "season": Optional[int]
+}
+```
+
+#### AbsoluteConstantGAP
+
+```
+{
+    **GAPcommonargs,
+    "time_in_year": Union[datetime, str]
+}
+```
+
+#### AbsoluteScenarioGAP
+
+```
+{
+    **GAPcommonargs,
+    "scenarios": Dict[Scenario, AbsoluteConstantGAP]
+}
+```
+
+#### GAPcommonargs
+
+```
+{
+    "modelCrop": FOCUSCrop,
+    "rate": float,
+    "period_between_application": int,
+    "number": int,
+    "interval": Union[timedelta, int],
+    "model_specific_data": Dict
+}
+```
 
 ## PELMO
 

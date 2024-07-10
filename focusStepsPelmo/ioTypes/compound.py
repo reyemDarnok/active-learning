@@ -62,7 +62,7 @@ class Compound(TypeCorrecting):
     """Degradation behaviours"""
     plant_uptake: float = 0
     """Fraction of plant uptake"""
-    name: str = field(hash=False, default='')  # str hash is not stable
+    name: Optional[str] = field(hash=False, default='')  # str hash is not stable
     """The compounds name. Used only for labelling purposes"""
     model_specific_data: Dict = field(compare=False, hash=False, default_factory=dict)
     """Some data only of interest to specific models"""
