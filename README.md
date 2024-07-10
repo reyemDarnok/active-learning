@@ -2,6 +2,53 @@
 
 This Repository aims to automate interacting with FOCUS PELMO
 
+## Components
+
+The scripts of this project call each other in a chain, with each script adding a additional automation.
+If a user already has the requirements for a lower level of automation, for example they don't want to scan a parameter
+matrix using `scan.py`
+but want to simply run a single run with `local.py`, they can directly call the lower script.
+
+The full workflow is as follows:
+![Flow diagram](Documentation/created/diagram.dot.svg)
+
+### scan.py
+
+`scan.py` is intended to cover parameter matrixes and takes as input a template input and which range it should use for
+different parameters. Each part of this matrix can then either be simply written out or directly be calculated on the
+local machine or the BHPC.
+
+### local.py
+
+This script runs the defined runs on the local machine. To keep the machine still usable, it uses one less thread than
+the machine has cores, as reported by pythons cpu_count(). It is not required to install PELMO to run this script, as it
+uses its own bundled executable, regardless of whether is installed or not.
+
+### remote_bhpc.py
+
+This script runs the defined runs on the BHPC. This primarily makes sense for larger runs as a single PELMO run requires
+about 30 CPU seconds and a bhpc instance requires about 10 minutes to start and is billed for at least an hour. For
+larger runs however the BHPC can start several 96 core machines, which will greatly reduce the calculation time over
+smaller instances and, as long as the time remains above one our, reduce the cost as larger ec2 instances have less
+proportional overhead while maintaining the same cost per core.
+
+### Other Scripts
+
+While the other scripts can be directly run from the command line and this may be useful for testing or interacting with
+other automations, they are primarily intended for invocation by the other three scripts.
+
+## File Format
+
+### JSON Input
+
+### GAP Machine
+
+### Excel
+
+### JSON Output
+
+### CSV Output
+
 ## PELMO
 
 Pelmo is a european groundwater model. It takes proprietary inputs and delivers proprietary outputs
@@ -9,14 +56,6 @@ Pelmo is a european groundwater model. It takes proprietary inputs and delivers 
 ### PELMO Input
 
 Pelmo takes requires three files in the working directory, `pelmo.inp`, `input.dat` and a `*.psm` file, which in turn reference several other files by relative path
-
-#### 2 Levels above the working directory
-
-The scenario files, that is the `.cli`, `.soi` and `.crp` files for the run have to be here.
-
-#### In the working directory
-
-`pelmo.inp` lists all other required files (the files mentioned in the previous section and the `.psm` file), `input.dat` provides lookup values for the crop states and the `*.psm` file is the primary input.
 
 #### The psm file
 
@@ -35,24 +74,4 @@ PLM is a mixture of a space seperated tables, typically the interesting data, wi
 #### Finding the PEC
 
 To determine the PEC two files are relevant: `WASSER.PLM` and `CHEM.PLM`, listing the water volume and compound masses respectively. When calculating the PEC one needs to parse each year segment for the line with compartment 21 and extract the relevant column and calculate that years PEC. Then, the first 6 years of warmup have to be excluded and the 80% percentile of the remaining values has to be taken, which is the final result.
-
-## Components
-
-The primary scripts to execute are found in `code/focusStepsPelmo/pelmo` and are `creator.py`, `local.py`, `runner.py`, `remote_bhpc.py` and `scan.py`
-
-### scan.py
-
-`scan.py` is intended to cover parameter matrixes and takes as input a template input and which range it should use for different parameters. Each part of this matrix can then either be simply written out or directly be calculated on the local machine or the BHPC.
-
-### local.py
-
-This script runs the defined runs on the local machine. To keep the machine still usable, it uses one less thread than the machine has cores, as reported by pythons cpu_count(). It is not required to install PELMO to run this script, as it uses its own bundled executable, regardless of whether is installed or not.
-
-### remote_bhpc.py
-
-This script runs the defined runs on the BHPC. This primarily makes sense for larger runs as a single PELMO run requires about 30 CPU seconds and a bhpc instance requires about 10 minutes to start and is billed for at least an hour. For larger runs however the BHPC can start several 96 core machines, which will greatly reduce the calculation time over smaller instances and, as long as the time remains above one our, reduce the cost as larger ec2 instances have less proportional overhead while maintaining the same cost per core.
-
-### Other Scripts
-
-While the other scripts can be directly run from the command line and this may be usefull for testing, they are primarily intended for invocation by the other three scripts.
 

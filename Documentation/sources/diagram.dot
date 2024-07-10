@@ -1,0 +1,58 @@
+digraph {
+subgraph scripts {
+"scan.py"
+subgraph orchestrators {
+rank = same
+"local.py"
+"remote_bhpc.py"
+}
+"creator.py"
+"runner.py"
+"summarize.py"
+}
+
+subgraph externals {
+node [style = filled, fillcolor = "lightgrey"]
+"Pelmo"
+"BHPC"
+}
+
+subgraph io {
+node [style = filled, fillcolor = "lightgreen", color = "green"]
+subgraph input {
+rank = same
+"GAP Machine"
+"Excel"
+"JSON Input"
+}
+subgraph output {
+node [style = filled, fillcolor = "green"]
+"JSON Output"
+"CSV Output"
+}
+}
+
+subgraph program_call_edges {
+edge [sametail = "caller", samehead = "callee", style = dashed]
+"scan.py" -> {"local.py", "remote_bhpc.py"}
+{"local.py", "remote_bhpc.py"} -> "creator.py"
+"local.py" -> "runner.py"
+"runner.py" -> "Pelmo"
+"remote_bhpc.py" -> "BHPC"
+"BHPC" -> "runner.py"
+"runner.py" -> "summarize.py"
+}
+
+subgraph data_transfer_edges {
+edge [sametail = "creator", samehead = "receiver", style =dotted]
+"creator.py" -> {"local.py", "remote_bhpc.py"}
+"Pelmo" -> "summarize.py"
+"summarize.py" -> {"JSON Output", "CSV Output"}
+}
+
+subgraph manual_flow_edges {
+edge [sametail = "source", style= bold]
+{ "GAP Machine", "Excel", "JSON Input" } -> {"local.py", "remote_bhpc.py"}
+{ "GAP Machine", "JSON Input" } -> {"scan.py"}
+}
+}
