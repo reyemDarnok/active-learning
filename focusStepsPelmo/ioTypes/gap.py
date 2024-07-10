@@ -465,9 +465,11 @@ class GAP(ABC, TypeCorrecting):
 
 @dataclass(frozen=True)
 class MultiGAP(GAP):
-    """A Container GAP that unifies multiple GAPs that all combine into one"""
+    """A Container GAP that unifies multiple GAPs that all combine into one.
+    Values common to all GAP classes can be specified directly in the MultiGAP definition
+    and can then be omitted in the definitions of the individual GAPs or overriden there"""
     timings: Tuple[GAP, ...] = field(default_factory=tuple)
-    
+    """The other GAPs that this GAP combines"""
     @property
     def _type(self) -> str:
         return 'multi'
@@ -514,8 +516,12 @@ class MultiGAP(GAP):
 
 @dataclass(frozen=True)
 class RelativeGAP(GAP):
+    """A GAP describing application relative to bbch values.
+    It will still yield absolute dates as its application data"""
     bbch: int = 0
+    """The BBCH of the first application of the season"""
     season: int = 0
+    """Which season this GAP is, 0-indexed, for the crops that have more than one"""
 
     @property
     def _type(self) -> str:
@@ -543,7 +549,10 @@ class RelativeGAP(GAP):
 
 @dataclass(frozen=True)
 class AbsoluteConstantGAP(GAP):
+    """A GAP describing an application starting at a given date"""
     time_in_year: datetime = datetime(year=1, month=1, day=1)
+    """The date when the first application is, the year component of this value will be ignored. 
+    The interval between applications will be added to this date for subsequent applications"""
 
     @property
     def _type(self) -> str:
@@ -583,7 +592,11 @@ class AbsoluteConstantGAP(GAP):
 
 @dataclass(frozen=True)
 class AbsoluteDayOfYearGAP(AbsoluteConstantGAP):
+    """A GAP to describe a absolute application date by a day of the year instead of date.
+    This class is not registered in the GAP.parse logic,
+    but can be directly instantiated and then used without issues"""
     day_of_year: int = 0
+    """The 0-indexed day of the year for the application date"""
 
     def __post_init__(self):
         year_start = datetime(2001, 1, 1)
@@ -594,6 +607,9 @@ class AbsoluteDayOfYearGAP(AbsoluteConstantGAP):
 
 @dataclass(frozen=True)
 class AbsoluteScenarioGAP(GAP):
+    """A GAP for specifying the day of the year to apply for each GAP individually.
+    Behaves similar to the MultiGAP, replacing its List with a Dict[Scenario, GAP] that elides the type determination
+    and fixes the type to AbsoluteContantGAP"""
     scenarios: Dict[Scenario, Dict] = field(
         default_factory=lambda: {}, hash=False)
 
