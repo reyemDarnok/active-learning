@@ -22,6 +22,8 @@ bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BB
                                                             'Crop Interception(%)': 'byte'},
                                                      parse_dates=['Recommended Application date'],
                                                      dayfirst=True)
+"""A dataframe containing information about when should the application happen and what is the crop interception
+during the application"""
 
 
 class Scenario(str, Enum):
@@ -662,6 +664,12 @@ class AbsoluteScenarioGAP(GAP):
 # parameters are used in pandas query, which PyCharm does not notice
 # noinspection PyUnusedLocal
 def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Series:
+    """Given a BBCH, Scenario and crop, find the first valid entry in the application table
+    :param bbch: The BBCH for the lookup. Needs to be in the range [0,99]
+    :param scenario: The scenario for the lookup. Must be defined for the given crop
+    :param crop_name: The name of the crop
+    :return: A pandas series containing the following values:
+    Location,Crop,Requested BBCH Code,Allocated BBCH Code,Recommended Application date,Crop Interception(%)"""
     scenario_name = scenario.replace("â", "a").replace("ü", "u")
     return bbch_application.query('Location == @scenario_name '
                                   '& Crop == @crop_name'
@@ -671,6 +679,12 @@ def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Se
 # parameters are used in pandas query, which PyCharm does not notice
 # noinspection PyUnusedLocal
 def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pandas.Series:
+    """Given a date, Scenario and crop, find the first valid entry in the application table
+    :param date: The date for the lookup. Needs to be in the winter of 2001 or the summer of 2002
+    :param scenario: The scenario for the lookup. Must be defined for the given crop
+    :param crop_name: The name of the crop
+    :return: A pandas series containing the following values:
+    Location,Crop,Requested BBCH Code,Allocated BBCH Code,Recommended Application date,Crop Interception(%)"""
     scenario_name = scenario.replace("â", "a").replace("ü", "u")
     filtered_frame: pandas.DataFrame = bbch_application.query('Location == @scenario_name '
                                                               '& Crop == @crop_name'
