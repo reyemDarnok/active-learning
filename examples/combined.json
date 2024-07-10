@@ -18,7 +18,7 @@
   }
   },
   "compound": {
-    "metabolites": null,
+    "metabolites": [],
     "molarMass": 300,
     "volatility": {
       "water_solubility": 90.0,
@@ -26,7 +26,7 @@
       "reference_temperature": 20
     },
     "sorption": {
-        "koc": 60,
+      "koc": 300,
         "freundlich": 0.9
     },
     "plant_uptake": 0.5,

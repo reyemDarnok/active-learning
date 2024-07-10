@@ -198,7 +198,7 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
     return result
 
 
-def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Dict[str, float]:
+def parse_pelmo_result(run_dir: Path) -> Dict[str, float]:
     """Parses the Pelmo output files to determine the PEC that pelmo calculated
     :param run_dir: Where Pelmo was executed and placed its result files
     :param target_compartment: Which compartment to take as result
@@ -207,9 +207,10 @@ def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Dict[str, float]
     water_file = run_dir / "WASSER.PLM"
     chem_files = run_dir.glob("CHEM*.PLM")
 
+    m1_compartment = 20
+
     water_plm = WaterPLM(water_file)
-    water_horizons = [horizon for year in water_plm.horizons for horizon in year if
-                      horizon.compartment == target_compartment]
+    m1_water_height = [year[m1_compartment].leaching_output for year in water_plm.horizons]
     results = {}
     for chem_file in chem_files:
         if chem_file.stem == "CHEM":
@@ -217,19 +218,17 @@ def parse_pelmo_result(run_dir: Path, target_compartment=21) -> Dict[str, float]
         else:
             compound_pec = chem_file.stem.split('_')[1]
         chem_plm = ChemPLM(chem_file)
-        chem_horizons = [horizon for year in chem_plm.horizons for horizon in year if
-                         horizon.compartment == target_compartment]
-
+        m1_chem_mass = [year[m1_compartment].leaching_output for year in chem_plm.horizons]
         #       calculate result in kg/(cm*ha)                 convert to microgram/L
-        pecs = [chemical.leaching_output / water.leaching_output * 10_000 if water.leaching_output > 0 else 0
-                for chemical, water in zip(chem_horizons, water_horizons)]
+        m1_pecs = [chemical / water * 10_000 if water > 0 else 0
+                   for chemical, water in zip(m1_chem_mass, m1_water_height)]
         # mass in g/ha / water in mm
         # input is in kg/ha and cm
-        pecs = pecs[6:]
-        pecs_per_application_period = len(pecs) // 20
+        m1_pecs = m1_pecs[6:]
+        pecs_per_application_period = len(m1_pecs) // 20
         mean_pecs = []
-        for index in range(0, len(pecs), pecs_per_application_period):
-            mean_pecs.append(sum(pecs[index:(index + pecs_per_application_period + 1)]))
+        for index in range(0, len(m1_pecs), pecs_per_application_period):
+            mean_pecs.append(sum(m1_pecs[index:(index + pecs_per_application_period)]) / pecs_per_application_period)
         mean_pecs.sort()
         percentile = 0.8
         lower = int((len(mean_pecs) - 1) * percentile)
