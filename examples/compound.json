@@ -1,5 +1,5 @@
 {
-    "metabolites": null,
+  "metabolites": [],
     "molarMass": 300,
     "volatility": {
       "water_solubility": 90.0,
