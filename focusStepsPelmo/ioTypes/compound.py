@@ -48,6 +48,7 @@ class Compound(TypeCorrecting):
     molarMass: float
     """molar mass in g/mol"""
     volatility: Volatility
+    """Volatilization behaviour"""
     sorption: Sorption
     """A sorption behaviour"""
     degradation: Degradation
@@ -55,7 +56,9 @@ class Compound(TypeCorrecting):
     plant_uptake: float = 0
     """Fraction of plant uptake"""
     name: str = field(hash=False, default='')  # str hash is not stable
+    """The compounds name. Used only for labelling purposes"""
     model_specific_data: Dict = field(compare=False, hash=False, default_factory=dict)
+    """Some data only of interest to specific models"""
     metabolites: Tuple[MetaboliteDescription, ...] = field(default_factory=tuple)
     """The compounds metabolites"""
 
@@ -66,6 +69,9 @@ class Compound(TypeCorrecting):
             object.__setattr__(self, 'name', f"Compound {hash(self)}")
 
     def metabolite_description_by_name(self, name: str) -> Optional[MetaboliteDescription]:
+        """Given a name, find the MetaboliteDescription for the Metabolite with that name
+        :param name: The name of the Metabolite to find
+        :return: The MetaboliteDescription for the degradation from self to the Metabolite named name"""
         if self.metabolites is not None:
             for met_des in self.metabolites:
                 if met_des.metabolite.name == name:
@@ -74,6 +80,9 @@ class Compound(TypeCorrecting):
 
     @staticmethod
     def from_excel(excel_file: Path) -> List['Compound']:
+        """Parse an Excel file and find all compounds defined in it
+        :param excel_file: The Excel File to parse
+        :return: The Compounds in the file"""
         compounds = pandas.read_excel(io=excel_file, sheet_name="Compound Properties")
         compounds['Pelmo Position'].fillna('', inplace=True)
         metabolite_relationships = pandas.read_excel(io=excel_file, sheet_name="Metabolite Relationships")
@@ -105,6 +114,9 @@ class Compound(TypeCorrecting):
 
     @staticmethod
     def from_path(path: Path) -> Generator['Compound', None, None]:
+        """Parse all Compounds found in path
+        :param path: The Path to traverse to find possible Compound definitions
+        :return: All Compounds that could be found in path"""
         if path.is_dir():
             for file in path.iterdir():
                 yield from Compound.from_file(file)
@@ -113,6 +125,9 @@ class Compound(TypeCorrecting):
 
     @staticmethod
     def from_file(file: Path) -> Generator['Compound', None, None]:
+        """Parse a file to compound definitions
+        :param file: The file to parse
+        :return: All Compounds that are defined in the file"""
         if file.suffix == '.json':
             with file.open() as f:
                 json_content = json.load(f)
