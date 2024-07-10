@@ -45,13 +45,13 @@ edge [sametail = "caller", samehead = "callee", style = dashed]
 
 subgraph data_transfer_edges {
 edge [sametail = "creator", samehead = "receiver", style =dotted]
-"creator.py" -> {"local.py", "remote_bhpc.py"}
-"Pelmo" -> "summarize.py"
-"summarize.py" -> {"JSON Output", "CSV Output"}
+"creator.py" -> {"local.py", "remote_bhpc.py"} [taillabel = "psm.py"]
+"Pelmo" -> "summarize.py" [taillabel ="*.PLM"]
+"summarize.py" -> {"JSON Output", "CSV Output"} [taillabel = "Output"]
 }
 
 subgraph manual_flow_edges {
-edge [sametail = "source", style= bold]
+edge [sametail = "source", style = bold]
 { "GAP Machine", "Excel", "JSON Input" } -> {"local.py", "remote_bhpc.py"}
 { "GAP Machine", "JSON Input" } -> {"scan.py"}
 }
