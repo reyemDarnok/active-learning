@@ -201,7 +201,6 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
 def parse_pelmo_result(run_dir: Path) -> Dict[str, float]:
     """Parses the Pelmo output files to determine the PEC that pelmo calculated
     :param run_dir: Where Pelmo was executed and placed its result files
-    :param target_compartment: Which compartment to take as result
     :return: A list of concentrations, element 0 is the parent
     and the others are the Metabolites in the order defined by Pelmo"""
     water_file = run_dir / "WASSER.PLM"

@@ -37,7 +37,7 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
         with file.with_suffix('.csv').open('w', newline='') as fp:
             writer = csv.writer(fp, )
             # noinspection PyProtectedMember,PyTypeChecker
-            doubles = list(flatten_to_tuples(next(results)._asdict()))
+            doubles = list(flatten_to_tuples(next(results).asdict()))
             header = [x[0] for x in doubles]
             row = [x[1] for x in doubles]
             writer.writerow(header)
@@ -55,6 +55,9 @@ def flatten_to_tuples(o: Any, prefix=None) -> Generator[Tuple[str, str], None, N
         yield from flatten_dict_to_tuples(o, prefix)
     elif isinstance(o, (list, UserList, tuple)):
         yield from flatten_list_to_tuples(o, prefix)
+    elif hasattr(o, 'asdict'):
+        for key, value in flatten_to_tuples(o.asdict, prefix):
+            yield key, value
     elif is_dataclass(o):
         for key, value in flatten_to_tuples(asdict(o), prefix):
             yield key, value
