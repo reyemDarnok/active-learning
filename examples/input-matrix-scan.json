@@ -29,18 +29,7 @@
           "log_random": false
         }
       },
-      "bbch": {
-        "type": "choices",
-        "parameters": {
-          "options": [
-            0,
-            10,
-            40,
-            80,
-            90
-          ]
-        }
-      }
+      "bbch": 0
     }
   },
   "compound": {
