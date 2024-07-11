@@ -127,9 +127,10 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
                 pecs[compound.name] = pec
             else:
                 for metabolite in all_metabolites:
-                    if compound_name.casefold() == metabolite.model_specific_data['pelmo']['position'].casefold():
-                        pecs[metabolite.name] = pec
-                        break
+                    if 'pelmo' in metabolite.model_specific_data.keys():
+                        if compound_name.casefold() == metabolite.model_specific_data['pelmo']['position'].casefold():
+                            pecs[metabolite.name] = pec
+                            break
                 else:  # if for wasn't completed by break
                     first_letter = compound_name[0].upper()
                     order = compound_name[1]
