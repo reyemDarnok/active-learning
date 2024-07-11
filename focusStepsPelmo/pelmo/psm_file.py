@@ -218,6 +218,23 @@ class PsmFile(TypeCorrecting):
                 if metabolite.metabolite.metabolites:
                     metabolites[chr(ord('A') + index) + "2"] = metabolite.metabolite.metabolites[0].metabolite
 
+        compound = PsmFile.reorder_metabolites(compound, metabolites)
+        psm_compound = PsmCompound.from_compound(compound)
+        metabolite_list: List[PsmCompound] = []
+        for position in ('A1', 'B1', 'C1', 'D1', 'A2', 'B2', 'C2', 'D2'):
+            if position in metabolites.keys():
+                metabolite_list.append(PsmCompound.from_compound(metabolites[position]))
+        return PsmFile(application=application,
+                       compound=psm_compound,
+                       metabolites=metabolite_list,
+                       comment="No comment",
+                       num_soil_horizons=0,
+                       degradation_type=DegradationType.FACTORS,
+                       gap=gap
+                       )
+
+    @staticmethod
+    def reorder_metabolites(compound, metabolites):
         def find_formation(parent: Compound, metabolite_position: str,
                            default: Optional[MetaboliteDescription] = None
                            ) -> Optional[MetaboliteDescription]:
@@ -248,19 +265,7 @@ class PsmFile(TypeCorrecting):
         c1_formation = find_formation(compound, 'C1')
         d1_formation = find_formation(compound, 'D1')
         compound = replace(compound, metabolites=(a1_formation, b1_formation, c1_formation, d1_formation))
-        psm_compound = PsmCompound.from_compound(compound)
-        metabolite_list: List[PsmCompound] = []
-        for position in ('A1', 'B1', 'C1', 'D1', 'A2', 'B2', 'C2', 'D2'):
-            if position in metabolites.keys():
-                metabolite_list.append(PsmCompound.from_compound(metabolites[position]))
-        return PsmFile(application=application,
-                       compound=psm_compound,
-                       metabolites=metabolite_list,
-                       comment="No comment",
-                       num_soil_horizons=0,
-                       degradation_type=DegradationType.FACTORS,
-                       gap=gap
-                       )
+        return compound
 
     def to_input(self) -> Tuple[Compound, GAP]:
         """Convert this psmFile to ioTypes input data.
