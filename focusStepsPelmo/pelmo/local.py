@@ -31,11 +31,18 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
               combination_dir: Path = None,
               crops: Sequence[FOCUSCrop] = FOCUSCrop, scenarios: Sequence[Scenario] = Scenario,
               threads: int = cpu_count() - 1):
+    """Run Pelmo locally
+    :param work_dir: The directory to use for Pelmos file structure
+    :param output_file: The file for the summary of results
+    :param compound_files: The compounds to combine with gaps to form runs
+    :param combination_dir: The combinations to form runs from
+    :param gap_files: The gaps to combine with compounds to form runs
+    :param crops: The crops to start runs for. Defaults to all crops
+    :param scenarios: The scenarios to start runs for. Defaults to all scenarios
+    :param threads: The number of threads to use when running. Defaults to using all but one CPU core of the system"""
     logger = logging.getLogger()
     with suppress(FileNotFoundError):
         rmtree(work_dir)
-    psm_dir: Path = work_dir / 'psm'
-    psm_dir.mkdir(exist_ok=True, parents=True)
     focus_dir: Path = work_dir / 'FOCUS'
     focus_dir.mkdir(exist_ok=True, parents=True)
 
