@@ -27,6 +27,14 @@ def write_psm_files(output_dir: Path,
                     compounds: Iterable[Union[Path, Compound]] = None,
                     gaps: Iterable[Union[Path, Compound]] = None,
                     combinations: Iterable[Union[Path, Compound]] = None) -> int:
+    """Writes psm files to the output_dir. psm files are named after the hash of their content, which as string hashs
+    are not stable due to security considerations in python that do not matter for this script.
+    Set the env var PYTHONHASHSEED for stable hashes.
+    :param output_dir: Where to write the psm files to
+    :param compounds: The compounds to combine with gaps to make psm files
+    :param gaps: The gaps to combine with compounds to make psm files
+    :param combinations: The combinations to turn into psm files
+    :return: The number of psm files written"""
     if compounds:
         compounds = load_or_use(compounds, Compound)
     if gaps:
@@ -44,6 +52,10 @@ T = TypeVar('T')
 
 
 def load_or_use(it: Iterable[Union[Path, T]], t: Type[T]) -> Generator[T, None, None]:
+    """Takes an iterable of type T or Paths to objects that can be parsed to T
+    :param it: The mixed iterable
+    :param t: The type to parse to
+    :return: The type T values in it"""
     for element in it:
         if isinstance(element, t):
             yield element
@@ -52,6 +64,10 @@ def load_or_use(it: Iterable[Union[Path, T]], t: Type[T]) -> Generator[T, None, 
 
 
 def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
+    """Given a path, load the object in the class
+    :param source: The source path for the object
+    :param t: The type of the object in source
+    :return: All objects of type t that could be parsed from source"""
     if source.suffix == '.json':
         with source.open() as file:
             json_content = json.load(file)
@@ -66,6 +82,11 @@ def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
 
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
                        combinations: Iterable[Combination] = None) -> Generator[str, None, None]:
+    """Create the contents of psm files
+    :param compounds: The compounds to combine with gaps to make psm files
+    :param gaps: The gaps to combine with compounds to make psm files
+    :param combinations: The combinations to turn into psm files
+    :return: The contents of the psm files"""
     assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
     if combinations:
         for combination in combinations:
@@ -88,7 +109,6 @@ def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
 
     psm_file = PsmFile.from_input(compound=compound, gap=gap)
     psm_file.comment = comment
-    # noinspection PyProtectedMember
     return psm_file.render()
 
 
