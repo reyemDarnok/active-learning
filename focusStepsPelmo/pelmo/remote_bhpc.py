@@ -7,7 +7,7 @@ from argparse import ArgumentParser, Namespace
 from contextlib import suppress
 from pathlib import Path
 from shutil import rmtree
-from typing import Generator, Iterable, Optional, Sequence, Tuple, TypeVar, List
+from typing import Generator, Iterable, Optional, TypeVar, List
 from zipfile import ZipFile
 
 from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
@@ -69,20 +69,18 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
                                        combinations=Combination.from_path(combination_dir) if combination_dir else None)
     crops = list(crops)
     scenarios = list(scenarios)
-    machines, cores, _ = find_core_bhpc_configuration(crops, scenarios, compound_file, gap_file, compound_file)
 
     with suppress(FileNotFoundError):
         rmtree(submit)
     logger.info('Generating sub files for bhpc')
-    make_sub_file(psm_file_data=psm_file_data, target_dir=submit,
-                  crops=crops, scenarios=scenarios,
-                  batch_size=10000)
-
+    batch_number = make_sub_file(psm_file_data=psm_file_data, target_dir=submit,
+                                 crops=crops, scenarios=scenarios,
+                                 batch_size=1000)
     if run:
         logger.info('Starting Pelmo run')
         session = commands.start_submit_file(submit_folder=submit, session_name_prefix='Pelmo',
                                              submit_file_regex='pelmo\\.sub',
-                                             machines=machines, cores=cores, multithreading=True,
+                                             machines=max(1, batch_number // 10), cores=2, multithreading=True,
                                              notification_email=notification_email, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         commands.download(session)
@@ -90,49 +88,6 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
                                   input_directories=tuple(x for x in (gap_file, compound_file, combination_dir) if x),
                                   glob_pattern="psm*.d-output.json")
         commands.remove(session)
-
-
-def find_core_bhpc_configuration(crops: Sequence[FOCUSCrop], scenarios: Sequence[Scenario],
-                                 compound_file: Optional[Path], gap_file: Optional[Path],
-                                 combination_file: Optional[Path]) -> Tuple[int, int, int]:
-    psm_count = 0
-    if compound_file:
-        if compound_file.is_dir():
-            psm_count = len(list(compound_file.glob('*')))
-        else:
-            psm_count = 1
-    if gap_file:
-        if gap_file.is_dir():
-            psm_count *= len(list(gap_file.glob('*')))
-    if combination_file:
-        if combination_file.is_dir():
-            psm_count += len(list(combination_file.glob('*')))
-        else:
-            psm_count += 1
-    logger = logging.getLogger()
-    single_pelmo_instance = 15  # seconds
-    crop_scenario_combinations = 0
-    for crop in crops:
-        crop_scenario_combinations += len(set(crop.defined_scenarios).intersection(scenarios))
-    single_pelmo = single_pelmo_instance * crop_scenario_combinations  # in seconds
-    target_duration = 120 * 60  # two hours
-    single_core_duration = single_pelmo * psm_count
-    desired_core_count = single_core_duration / target_duration
-    machines = 1
-    if desired_core_count < 3:
-        cores = 2
-    elif desired_core_count < 7:
-        cores = 4
-    elif desired_core_count < 15:
-        cores = 8
-    elif desired_core_count < 47:
-        cores = 16
-    else:
-        cores = 96
-        machines = max(1, int(desired_core_count) // 95)
-    batch_number = machines
-    logger.info(f'Determined to run with {cores} cores on {machines} machines')
-    return machines, cores, batch_number
 
 
 def zip_common_directories(target: Path):
@@ -186,13 +141,14 @@ def zip_directory(directory: Path, zip_name: str):
 
 def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
                   crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
-                  batch_size: int = 1000):
+                  batch_size: int = 1000) -> int:
     """Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_file_data: The contents of the psm files to be included in the submit file
     :param target_dir: The directory to write the sub file to
     :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
     :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
-    :param batch_size: How large a batch of psm files should be, each can be run in parallel"""
+    :param batch_size: How large a batch of psm files should be, each can be run in parallel
+    :return: The number of jobs in the sub file"""
     logger = logging.getLogger()
 
     logger.info('Setting up file system for the sub file')
@@ -209,9 +165,9 @@ def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
         batches=batch_directory_names,
         crops=crops,
         scenarios=scenarios,
-        loglevel=logger.getEffectiveLevel()
     ))
     logger.info('Finished creating files')
+    return len(batch_directory_names)
 
 
 def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int = 1000) -> Generator[str, None, None]:
