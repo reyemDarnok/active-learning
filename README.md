@@ -11,6 +11,7 @@ but want to simply run a single run with [local.py](focusStepsPelmo%2Fpelmo%2Flo
 lower script.
 
 The full workflow is as follows:
+
 ![Flow diagram](Documentation/created/diagram.dot.svg)
 
 ### scan.py
