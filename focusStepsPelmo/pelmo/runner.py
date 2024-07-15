@@ -80,10 +80,6 @@ def _make_runs(psm_files: Iterable[Union[Path, str]], crops: Iterable[FOCUSCrop]
                 yield psm_file, crop, scenario
 
 
-
-
-
-
 def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path,
              crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
              max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:

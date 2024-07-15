@@ -210,6 +210,7 @@ def make_batch(index: int, batch: Iterable[str], target_dir: Path) -> str:
     logger.info('Created batch %s', index)
     return batch_name
 
+
 def parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument('-c', '--compound-file', default=None, type=Path,

@@ -45,6 +45,7 @@ class EnhancedJSONEncoder(JSONEncoder):
             return o.data
         return super().default(o)
 
+
 def flatten_to_csv(to_flatten: Iterable[Dict[str, Any]]) -> Generator[str, None, None]:
     """Takes an Iterable of dictionaries and flattens them to csv data. 
     The fields are ordered alphabetically by their keys for dictionaries and by their index for lists.

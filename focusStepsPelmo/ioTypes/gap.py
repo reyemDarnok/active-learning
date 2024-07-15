@@ -472,6 +472,7 @@ class MultiGAP(GAP):
     and can then be omitted in the definitions of the individual GAPs or overriden there"""
     timings: Tuple[GAP, ...] = field(default_factory=tuple)
     """The other GAPs that this GAP combines"""
+
     @property
     def _type(self) -> str:
         return 'multi'
