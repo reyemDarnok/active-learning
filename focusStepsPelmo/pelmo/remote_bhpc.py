@@ -22,7 +22,7 @@ from focusStepsPelmo.pelmo.creator import generate_psm_files
 from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
 from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util.datastructures import correct_type
-from focusStepsPelmo.util.iterable_helper import repeat_infinite
+from focusStepsPelmo.util.iterable_helper import repeat_infinite, count_up
 
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
@@ -191,12 +191,6 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
                         repeat_infinite(target_dir))
     logger.info('Registered all batch creation functions')
     pool.shutdown()
-
-
-def count_up(start: int = 0) -> Generator[int, None, None]:
-    while True:
-        yield start
-        start += 1
 
 
 def make_batch(index: int, batch: Iterable[str], target_dir: Path) -> str:
