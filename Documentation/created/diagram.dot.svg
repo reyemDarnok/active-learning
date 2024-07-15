@@ -97,7 +97,7 @@
             <path fill="none" stroke="black" stroke-dasharray="1,5"
                   d="M216.69,-325C216.69,-325 235.26,-340.57 252.07,-354.67"/>
             <polygon fill="black" stroke="black" points="250.18,-357.65 260.09,-361.4 254.68,-352.29 250.18,-357.65"/>
-            <text text-anchor="middle" x="190.69" y="-328.8" font-family="Times,serif" font-size="14.00">psm.py</text>
+            <text text-anchor="middle" x="195.69" y="-328.8" font-family="Times,serif" font-size="14.00">*.psm</text>
         </g>
         <!-- creator.py&#45;&gt;remote_bhpc.py -->
         <g id="edge11" class="edge">
@@ -105,7 +105,7 @@
             <path fill="none" stroke="black" stroke-dasharray="1,5"
                   d="M216.69,-325C216.69,-325 189.4,-341.31 165.39,-355.67"/>
             <polygon fill="black" stroke="black" points="163.53,-352.7 156.74,-360.83 167.12,-358.71 163.53,-352.7"/>
-            <text text-anchor="middle" x="242.69" y="-328.8" font-family="Times,serif" font-size="14.00">psm.py</text>
+            <text text-anchor="middle" x="237.69" y="-328.8" font-family="Times,serif" font-size="14.00">*.psm</text>
         </g>
         <!-- summarize.py -->
         <g id="node6" class="node">

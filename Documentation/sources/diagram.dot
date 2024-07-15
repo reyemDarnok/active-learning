@@ -45,7 +45,7 @@ edge [sametail = "caller", samehead = "callee", style = dashed]
 
 subgraph data_transfer_edges {
 edge [sametail = "creator", samehead = "receiver", style =dotted]
-"creator.py" -> {"local.py", "remote_bhpc.py"} [taillabel = "psm.py"]
+"creator.py" -> {"local.py", "remote_bhpc.py"} [taillabel = "*.psm"]
 "Pelmo" -> "summarize.py" [taillabel ="*.PLM"]
 "summarize.py" -> {"JSON Output", "CSV Output"} [taillabel = "Output"]
 }
