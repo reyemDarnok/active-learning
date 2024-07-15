@@ -5,6 +5,7 @@ import logging
 import sys
 from collections import UserDict, UserList
 from dataclasses import asdict, is_dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, Generator, Iterable, List, Sequence, Tuple, Type, Union
 
@@ -61,6 +62,9 @@ def flatten_to_tuples(o: Any, prefix=None) -> Generator[Tuple[str, str], None, N
     elif is_dataclass(o):
         for key, value in flatten_to_tuples(asdict(o), prefix):
             yield key, value
+    elif type(o) == timedelta:
+        yield ".".join(prefix + ['seconds']), o.total_seconds()
+        yield ".".join(prefix + ['microseconds']), o.microseconds
     else:
         yield ".".join(prefix), str(o)
 
