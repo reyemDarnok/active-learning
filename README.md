@@ -44,6 +44,12 @@ other automations, they are primarily intended for invocation by the other three
 
 This project uses several file format that users should be aware of. They will be listed in this section
 
+### File Naming
+
+Many parts of this workflow generate files. Some only generate a single file of a given type with changing contents
+and name the file for the function, e.g. `pelmo.sub`, but most generate large number of files that have no suitable
+human understandable name. These files will be universally named along the schema `<hash of contents>.<type of file>`.
+
 ### JSON Input
 
 Several of the inputs are json files. These follow the following, nested schema
