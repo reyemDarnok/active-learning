@@ -4,6 +4,7 @@ import json
 import logging
 import math
 from argparse import ArgumentParser, Namespace
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from dataclasses import replace
 from os import cpu_count
@@ -20,6 +21,7 @@ from focusStepsPelmo.pelmo.remote_bhpc import run_bhpc
 from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
 from focusStepsPelmo.util.datastructures import correct_type
+from focusStepsPelmo.util.iterable_helper import repeat_n_times
 
 
 def main():
@@ -33,7 +35,11 @@ def main():
     scenarios = args.scenario
     with args.input_file.open() as input_file:
         if args.input_format == 'json':
-            create_samples_in_dirs(definition=json.load(input_file), output_dir=combination_dir,
+            input_dict = json.load(input_file)
+            if args.template_gap:
+                gap = next(GAP.from_file(args.template_gap))
+                input_dict = {"gap": gap.asdict(), "compound": input_dict}
+            create_samples_in_dirs(definition=input_dict, output_dir=combination_dir,
                                    sample_size=args.sample_size, make_test_set=args.make_test_set,
                                    test_set_path=args.use_test_set, test_set_buffer=args.test_set_buffer)
         elif args.input_format == 'csv':
@@ -110,22 +116,34 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     if make_test_set:
         test_set = set(definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
                        for c in itertools.islice(samples, test_set_size))
+        logger.info('Generated test set')
     elif test_set_path:
         test_set = set(definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
                        for c in load_test_set(test_set_path))
+        logger.info('Loaded test set')
     else:
         test_set = set()
-    collected_samples = 0
-    total_attempts = 0
-    while collected_samples < sample_size:
-        total_attempts += 1
-        combination = next(samples)
-        current_vector = definition.make_vector(json.loads(json.dumps(combination, cls=EnhancedJSONEncoder)))
+    pool = ThreadPoolExecutor(max_workers=cpu_count() - 1)
+    logger.info('Initialized Thread Pool')
+    pool.map(make_single_sample,
+             repeat_n_times(definition, sample_size),
+             repeat_n_times(test_set, sample_size),
+             repeat_n_times(output_dir, sample_size),
+             repeat_n_times(test_set_buffer, sample_size))
+    logger.info('Registered all sample creation functions')
+    pool.shutdown()
+
+
+def make_single_sample(definition: Definition, test_set: Set[Tuple[float, ...]], output_dir: Path,
+                       test_set_buffer: float):
+    while True:
+        combination_dict = definition.make_sample()
+        current_vector = definition.make_vector(combination_dict)
         if not test_set or _shortest_distance_to_set(current_vector, test_set) > test_set_buffer:
+            combination = Combination(**combination_dict)
             with (output_dir / f"{hash(combination)}.json").open('w') as fp:
                 json.dump(combination, fp, cls=EnhancedJSONEncoder)
-            collected_samples += 1
-    logger.info("Created %s samples after %s attempts", sample_size, total_attempts)
+            break
 
 
 def load_test_set(location: Path) -> Generator[Combination, None, None]:

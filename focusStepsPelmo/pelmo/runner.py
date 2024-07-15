@@ -11,7 +11,7 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copytree, rmtree
 from threading import current_thread
-from typing import Generator, Iterable, Optional, Tuple, TypeVar, Union, Dict
+from typing import Generator, Iterable, Optional, Tuple, Union, Dict
 from zipfile import ZipFile
 
 from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
@@ -23,6 +23,7 @@ from focusStepsPelmo.pelmo.summarize import rebuild_output_to_file
 from focusStepsPelmo.util import conversions
 from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util.datastructures import correct_type
+from focusStepsPelmo.util.iterable_helper import repeat_infinite
 
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
@@ -79,12 +80,8 @@ def _make_runs(psm_files: Iterable[Union[Path, str]], crops: Iterable[FOCUSCrop]
                 yield psm_file, crop, scenario
 
 
-T = TypeVar('T')
 
 
-def repeat_infinite(value: T) -> Generator[T, None, None]:
-    while True:
-        yield value
 
 
 def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path,
