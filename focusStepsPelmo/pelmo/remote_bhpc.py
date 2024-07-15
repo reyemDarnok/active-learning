@@ -4,7 +4,9 @@ import os
 import shutil
 import zipfile
 from argparse import ArgumentParser, Namespace
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
+from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import rmtree
 from typing import Generator, Iterable, Optional, TypeVar, List
@@ -20,6 +22,7 @@ from focusStepsPelmo.pelmo.creator import generate_psm_files
 from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
 from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util.datastructures import correct_type
+from focusStepsPelmo.util.iterable_helper import repeat_infinite
 
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
@@ -180,16 +183,32 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
     logger.info('Splitting psm_files into batches')
     batches = split_into_batches(psm_file_data, batch_size)
     logger.info('Split psm_files into batches')
-    for i, batch in enumerate(batches):
-        batch_name = f"psm{i}.d"
-        logger.info('Adding psm files for batch %s', i)
-        with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
-            for psm_file in batch:
-                if psm_file is not None:
-                    zip_file.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
-        logger.info('Created batch %s', i)
-        yield batch_name
+    pool = ThreadPoolExecutor(max_workers=cpu_count() - 1)
+    logger.info('Initialized Thread Pool')
+    yield from pool.map(make_batch,
+                        count_up(),
+                        batches,
+                        repeat_infinite(target_dir))
+    logger.info('Registered all batch creation functions')
+    pool.shutdown()
 
+
+def count_up(start: int = 0) -> Generator[int, None, None]:
+    while True:
+        yield start
+        start += 1
+
+
+def make_batch(index: int, batch: Iterable[str], target_dir: Path) -> str:
+    logger = logging.getLogger()
+    batch_name = f"psm{index}.d"
+    logger.info('Adding psm files for batch %s', index)
+    with ZipFile(target_dir / f"{batch_name}.zip", 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for psm_file in batch:
+            if psm_file is not None:
+                zip_file.writestr(str(Path(batch_name, f"{hash(psm_file)}.psm")), psm_file)
+    logger.info('Created batch %s', index)
+    return batch_name
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
