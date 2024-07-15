@@ -36,9 +36,18 @@ def main():
     with args.input_file.open() as input_file:
         if args.input_format == 'json':
             input_dict = json.load(input_file)
+            gap = None
             if args.template_gap:
                 gap = next(GAP.from_file(args.template_gap))
-                input_dict = {"gap": gap.asdict(), "compound": input_dict}
+            compound = None
+            if args.template_compound:
+                compound = next(Compound.from_file(args.template_compound))
+            if 'compound' in input_dict.keys():
+                pass
+            elif 'molarMass' in input_dict.keys():
+                input_dict = {'gap': gap, 'compound': input_dict}
+            elif 'rate' in input_dict.keys():
+                input_dict = {'gap': input_dict, 'compound': compound}
             create_samples_in_dirs(definition=input_dict, output_dir=combination_dir,
                                    sample_size=args.sample_size, make_test_set=args.make_test_set,
                                    test_set_path=args.use_test_set, test_set_buffer=args.test_set_buffer)
