@@ -1,0 +1,41 @@
+{
+  "gap": {
+  "type": "multi", // Was bedeutet multi?
+  "arguments": { // Notwendig zu verschachteln?
+    "modelCrop": "WC", // Ich schätze wir müssen wohl mit diesen Kürzeln leben.
+    "number": 2, // rename: number_of_applications
+    "interval": 14,
+    "rate": 10000,
+    "period_between_applications": 2,  // Was ist das? Nicht das selbe wie Interval?
+    "timings": [
+      {
+        "type": "relative",  // Hast du ein Beispiel für absolute?
+        "arguments": {
+          "bbch": 10
+        }
+      }
+    ]
+  }
+  },
+  "compound": {
+    "metabolites": [],  //Hier bitte direkt A1 hinzufügen
+    "molarMass": 300,
+    "volatility": { // nicht verschachteln
+      "water_solubility": 90.0, 
+      "vaporization_pressure": 1e-4,  //rename: vapor_pressure
+      "reference_temperature": 20
+    },
+    "sorption": {  //würde ich auch nicht verschachteln
+      "koc": 300,
+        "freundlich": 0.9
+    },
+    "plant_uptake": 0.5,
+    "degradation": {  //würde ich auch nicht verschachteln
+      "system": 6,  //rename: dt50_system
+      "soil": 100,  //rename: dt50_soil  (als ersten Eintrag)
+      "surfaceWater": 6, //rename: dt50_surfaceWater
+      "sediment": 6 //rename: dt50_sediment
+      // Sollten wir hier GW und SW mischen? Für unsere Zwecke ok. Für regulatory ist es komplexer.
+    }
+  }
+}
