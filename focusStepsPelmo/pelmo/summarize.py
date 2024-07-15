@@ -56,7 +56,7 @@ def flatten_to_tuples(o: Any, prefix=None) -> Generator[Tuple[str, str], None, N
     elif isinstance(o, (list, UserList, tuple)):
         yield from flatten_list_to_tuples(o, prefix)
     elif hasattr(o, 'asdict'):
-        for key, value in flatten_to_tuples(o.asdict, prefix):
+        for key, value in flatten_to_tuples(o.asdict(), prefix):
             yield key, value
     elif is_dataclass(o):
         for key, value in flatten_to_tuples(asdict(o), prefix):
