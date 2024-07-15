@@ -389,6 +389,7 @@ class GAP(ABC, TypeCorrecting):
         elif file.suffix == '.gap':
             yield from GAP.from_gap_machine(file)
 
+    # noinspection SpellCheckingInspection
     @staticmethod
     def from_gap_machine(file: Path) -> Generator['GAP', None, None]:
         """Parse the Bayer GAP machine output into GAPs
@@ -469,7 +470,7 @@ class GAP(ABC, TypeCorrecting):
 class MultiGAP(GAP):
     """A Container GAP that unifies multiple GAPs that all combine into one.
     Values common to all GAP classes can be specified directly in the MultiGAP definition
-    and can then be omitted in the definitions of the individual GAPs or overriden there"""
+    and can then be omitted in the definitions of the individual GAPs or overridden there"""
     timings: Tuple[GAP, ...] = field(default_factory=tuple)
     """The other GAPs that this GAP combines"""
 
@@ -612,7 +613,7 @@ class AbsoluteDayOfYearGAP(AbsoluteConstantGAP):
 class AbsoluteScenarioGAP(GAP):
     """A GAP for specifying the day of the year to apply for each GAP individually.
     Behaves similar to the MultiGAP, replacing its List with a Dict[Scenario, GAP] that elides the type determination
-    and fixes the type to AbsoluteContantGAP"""
+    and fixes the type to AbsoluteConstantGAP"""
     scenarios: Dict[Scenario, Dict] = field(
         default_factory=lambda: {}, hash=False)
 

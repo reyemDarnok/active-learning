@@ -16,7 +16,7 @@ The full workflow is as follows:
 
 ### scan.py
 
-[scan.py](focusStepsPelmo%2Fpelmo%2Fscan.py) is intended to cover parameter matrixes and takes as input a template input
+[scan.py](focusStepsPelmo%2Fpelmo%2Fscan.py) is intended to cover parameter matrices and takes as input a template input
 and which range it should use for
 different parameters. Each part of this matrix can then either be simply written out or directly be calculated on the
 local machine or the BHPC.
@@ -233,7 +233,7 @@ Pelmos output files are all written in the current working directory and end in 
 PLM is a mixture of a space separated tables, typically the interesting data, with one such table per year of simulation
 and key value pairs, which differ in formatting from file to file slightly. While these segments sadly do not have a
 delimiter between them, they all start with a heading followed by a line of dashes, which can be used to split the PLM
-files in parsable chunks. One thing to keep in mind however, is that the seperation of columns sadly is not perfect in
+files in parsable chunks. One thing to keep in mind however, is that the separation of columns sadly is not perfect in
 these files. Some Columns are paired as value (variation_of_value) and depending on the value, that space before the
 bracket may or may not be there, which has to be taken into consideration when parsing.
 

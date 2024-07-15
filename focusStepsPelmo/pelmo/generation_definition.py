@@ -40,8 +40,9 @@ class Definition(ABC):
     @property
     @abstractmethod
     def is_static(self) -> bool:
+        # noinspection GrazieInspection
         """Whether two invocations of make_sample will differ
-        :return: True if make_sample can be cached, False if it cannot"""
+                :return: True if make_sample can be cached, False if it cannot"""
         pass
 
     @abstractmethod
@@ -250,8 +251,9 @@ class ChoicesDefinition(TemplateDefinition):
 
 
 class StepsDefinition(TemplateDefinition):
+    # noinspection GrazieInspection
     """A definition for the steps template. It takes a range definition and a scale factor as arguments and generates
-    a random value from these when making a sample."""
+        a random value from these when making a sample."""
 
     def __init__(self, start: int, stop: int, step: int = 1, scale_factor: float = 1):
         """

@@ -8,6 +8,7 @@ from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
+# noinspection SpellCheckingInspection
 def lookup_crop_file_name(crop) -> str:
     """A lookup that translates FOCUSCrops to their names in the Pelmo file structure
     :param crop: The crop to use

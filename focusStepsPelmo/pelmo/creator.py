@@ -27,7 +27,7 @@ def write_psm_files(output_dir: Path,
                     compounds: Iterable[Union[Path, Compound]] = None,
                     gaps: Iterable[Union[Path, Compound]] = None,
                     combinations: Iterable[Union[Path, Compound]] = None) -> int:
-    """Writes psm files to the output_dir. psm files are named after the hash of their content, which as string hashs
+    """Writes psm files to the output_dir. psm files are named after the hash of their content, which as string hashes
     are not stable due to security considerations in python that do not matter for this script.
     Set the env var PYTHONHASHSEED for stable hashes.
     :param output_dir: Where to write the psm files to
