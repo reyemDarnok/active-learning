@@ -4,7 +4,7 @@ This Repository aims to automate interacting with FOCUS PELMO
 
 ## Components
 
-The scripts of this project call each other in a chain, with each script adding a additional automation.
+The scripts of this project call each other in a chain, with each script adding an automation.
 If a user already has the requirements for a lower level of automation, for example they don't want to scan a parameter
 matrix using [scan.py](focusStepsPelmo%2Fpelmo%2Fscan.py)
 but want to simply run a single run with [local.py](focusStepsPelmo%2Fpelmo%2Flocal.py), they can directly call the

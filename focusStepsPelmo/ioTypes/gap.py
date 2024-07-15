@@ -348,7 +348,7 @@ class GAP(ABC, TypeCorrecting):
 
     @staticmethod
     def from_excel(excel_file: Path) -> Generator['GAP', None, None]:
-        """Parse all GAPS from an excel file
+        """Parse all GAPS from an Excel file
         :param excel_file: The file to parse
         :return: All gaps defined in the file"""
         gaps = pandas.read_excel(io=excel_file, sheet_name="GAP Properties")
@@ -594,7 +594,7 @@ class AbsoluteConstantGAP(GAP):
 
 @dataclass(frozen=True)
 class AbsoluteDayOfYearGAP(AbsoluteConstantGAP):
-    """A GAP to describe a absolute application date by a day of the year instead of date.
+    """A GAP to describe an absolute application date by a day of the year instead of date.
     This class is not registered in the GAP.parse logic,
     but can be directly instantiated and then used without issues"""
     day_of_year: int = 0
