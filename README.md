@@ -56,7 +56,7 @@ Several of the inputs are json files. These follow the following, nested schema
 
 #### Combined
 
-```
+```json
 {
     "gap": GAP,
     "compound": Compound
@@ -65,7 +65,7 @@ Several of the inputs are json files. These follow the following, nested schema
 
 #### Compound
 
-```
+```json
 {
     "molarMass": float,
     "volatility": Volatility,
@@ -80,7 +80,7 @@ Several of the inputs are json files. These follow the following, nested schema
 
 #### GAP
 
-```
+```json
 {
     "type": str,
     "arguments": Union[MultiGAP, RelativeGAP, AbsoluteConstantGAP, AbsoluteScenarioGAP]
@@ -102,14 +102,16 @@ used as both a gap and a compound specification.
 
 ### JSON Output
 
-```
-[{
+```json
+[
+  {
     "compound": Compound,
     "gap": GAP,
     "scenario": Scenario,
     "crop": FOCUSCrop,
     "pec": Dict[str, float]
-}]
+  }
+]
 ```
 ### CSV Output
 
@@ -120,7 +122,7 @@ by their index in their column headings.
 
 #### Volatility
 
-```
+```json
 {
     "water_solubility": float,
     "vaporization_pressure": float,
@@ -130,7 +132,7 @@ by their index in their column headings.
 
 #### Sorption
 
-```
+```json
 {
     "koc": float,
     "freundlich": float
@@ -139,7 +141,7 @@ by their index in their column headings.
 
 #### Degradation
 
-```
+```json
 {
     "system": float,
     "soil": float,
@@ -150,7 +152,7 @@ by their index in their column headings.
 
 #### MetaboliteDescription
 
-```
+```json
 {
     "formation_fraction": float,
     "metabolite": Compound
@@ -159,7 +161,7 @@ by their index in their column headings.
 
 #### MultiGAP
 
-```
+```json
 {
     **GAPcommonargs,
     "timings": List[GAP]
@@ -168,7 +170,7 @@ by their index in their column headings.
 
 #### RelativeGAP
 
-```
+```json
 {
     **GAPcommonargs,
     "bbch": int,
@@ -178,7 +180,7 @@ by their index in their column headings.
 
 #### AbsoluteConstantGAP
 
-```
+```json
 {
     **GAPcommonargs,
     "time_in_year": Union[datetime, str]
@@ -187,7 +189,7 @@ by their index in their column headings.
 
 #### AbsoluteScenarioGAP
 
-```
+```json
 {
     **GAPcommonargs,
     "scenarios": Dict[Scenario, AbsoluteConstantGAP]
@@ -196,7 +198,7 @@ by their index in their column headings.
 
 #### GAPcommonargs
 
-```
+```json
 {
     "modelCrop": FOCUSCrop,
     "rate": float,
@@ -223,11 +225,17 @@ In terms of actual content, each line without leading whitespace is a new sectio
 
 ### PELMO Output
 
-Pelmos outputfiles are all written in the current working directory and end in `.PLM`. Taken together they are about 2.5 MB in size, which is why this project deletes them after extracting the interesting information from them.
+Pelmos output files are all written in the current working directory and end in `.PLM`. Taken together they are about
+2.5 MB in size, which is why this project deletes them after extracting the interesting information from them.
 
 #### PLM format
 
-PLM is a mixture of a space seperated tables, typically the interesting data, with one such table per year of simulation and key value pairs, which differ in formatting from file to file slightly. While these segments sadly do not have a delimiter between them, they all start with a heading followed by a line of dashes, which can be used to split the PLM files in parsable chunks. One thing to keep in mind however, is that the seperation of columns sadly is not perfect in these files. Some Columns are paired as value (variation_of_value) and depending on the value, that space before the bracket may or may not be there, which has to be taken into consideration when parsing.
+PLM is a mixture of a space separated tables, typically the interesting data, with one such table per year of simulation
+and key value pairs, which differ in formatting from file to file slightly. While these segments sadly do not have a
+delimiter between them, they all start with a heading followed by a line of dashes, which can be used to split the PLM
+files in parsable chunks. One thing to keep in mind however, is that the seperation of columns sadly is not perfect in
+these files. Some Columns are paired as value (variation_of_value) and depending on the value, that space before the
+bracket may or may not be there, which has to be taken into consideration when parsing.
 
 #### Finding the PEC
 
