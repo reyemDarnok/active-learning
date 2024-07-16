@@ -455,7 +455,8 @@ class GAP(ABC, TypeCorrecting):
             # dates are in Lotus123 (and Excel) reckoning, meaning days since 30.12.1899
             scenarios = {}
             if not numpy.isnan(row["Appl. dates, 1st veg. period Chateaudun"]):
-                scenarios[Scenario.C] = excel_date_to_datetime(row['Appl. dates, 1st veg. period Chateaudun'])
+                scenarios[Scenario.C] = {
+                    "time_in_year": excel_date_to_datetime(row['Appl. dates, 1st veg. period Chateaudun'])}
             for scenario in Scenario:
                 if scenario == Scenario.C:
                     continue
