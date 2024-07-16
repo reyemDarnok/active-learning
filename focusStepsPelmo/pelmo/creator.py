@@ -4,13 +4,13 @@ import logging
 from argparse import ArgumentParser, Namespace
 from dataclasses import replace
 from pathlib import Path
-from typing import Generator, Iterable, Type, TypeVar, Union
+from typing import Generator, Iterable, Type, TypeVar, Union, Tuple, Set
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
-from focusStepsPelmo.ioTypes.gap import GAP
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
 from focusStepsPelmo.pelmo.psm_file import PsmFile
 from focusStepsPelmo.util import jsonLogger as jsonLogger
 
@@ -45,7 +45,7 @@ def write_psm_files(output_dir: Path,
     total = 0
     for psm_file in generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations):
         total += 1
-        (output_dir / f"{hash(psm_file)}.psm").write_text(psm_file)
+        (output_dir / f"{hash(psm_file)}.psm").write_text(psm_file[0])
     return total
 
 
@@ -82,12 +82,18 @@ def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
 
 
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
-                       combinations: Iterable[Combination] = None) -> Generator[str, None, None]:
+                       crops: Set[FOCUSCrop] = None, scenarios: Set[Scenario] = None,
+                       combinations: Iterable[Combination] = None) -> Generator[
+    Tuple[str, Set[FOCUSCrop], Set[Scenario]], None, None]:
     """Create the contents of psm files
     :param compounds: The compounds to combine with gaps to make psm files
     :param gaps: The gaps to combine with compounds to make psm files
     :param combinations: The combinations to turn into psm files
     :return: The contents of the psm files"""
+    if scenarios is None:
+        scenarios = set(Scenario)
+    if crops is None:
+        crops = set(FOCUSCrop)
     assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
     if combinations:
         for combination in combinations:
@@ -97,8 +103,10 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
         gaps = list(gaps)
         for compound in compounds:
             for gap in gaps:
+                psm_file_crops = crops.intersection(gap.modelCrops)
+                psm_file_scenarios = scenarios.intersection(gap.defined_scenarios)
                 comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
-                yield _generate_psm_contents(compound, gap, comment)
+                yield _generate_psm_contents(compound, gap, comment), psm_file_crops, psm_file_scenarios
 
 
 def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:

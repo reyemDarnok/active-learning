@@ -287,7 +287,7 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
 class GAP(ABC, TypeCorrecting):
     """An abstract superclass for different ways to create GAPs.
     Most users will want to create GAP Objects with GAP.parse"""
-    modelCrop: FOCUSCrop
+    modelCrops: List[FOCUSCrop]
     """The crop that the field is modelled after"""
     rate: float
     """How much compound will be applied in g/ha"""
