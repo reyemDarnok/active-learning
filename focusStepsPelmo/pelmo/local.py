@@ -79,7 +79,7 @@ def parse_args() -> Namespace:
     parser.add_argument('-o', '--output-file', default=Path('output.json'), type=Path,
                         help='The name of the output file, the extension will be replaced based on the output format. '
                              'Defaults to "output.json"')
-    parser.add_argument('--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.from_acronym,
+    parser.add_argument('--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.parse,
                         help="Which crops to run. Defaults to all crops")
     parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1,
                         help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")

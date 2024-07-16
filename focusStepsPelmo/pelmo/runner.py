@@ -262,7 +262,7 @@ def parse_args() -> Namespace:
                              "This should point to the CLI EXE, usually named PELMO500.EXE "
                              "NOT to the GUI EXE usually named wpelmo.exe.")
     parser.add_argument('-c', '--crop', nargs='*',
-                        type=gap.FOCUSCrop.from_acronym, default=list(gap.FOCUSCrop),
+                        type=gap.FOCUSCrop.parse, default=list(gap.FOCUSCrop),
                         help="The crops to simulate. Can be specified multiple times. "
                              "Should be listed as a two letter acronym. "
                              "The selected crops have to be present in the FOCUS zip, "

@@ -65,7 +65,7 @@ class FOCUSCropMixin(NamedTuple):
     """Mapping bbch states to interception values"""
     bbch_application_name: List[str]
     """The category in the bbch_application data this crop belongs to"""
-    alternative_names: List[str] = field(default_factory=list)
+    alternative_names: List[str] = []
 
 
 _s = PrincipalStage
@@ -239,13 +239,15 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
         :return: The FOCUS Crop of that name
         >>> test_crop = FOCUSCrop.from_name("Vines")
         >>> test_crop.name == 'VI'
-        True"""
+        True
+        >>> FOCUSCrop.from_name("VNes").name
+        'VI'"""
         best_crop = FOCUSCrop.AP
         best_ratio = 0
         for crop in FOCUSCrop:
-            ratio = SequenceMatcher(None, name.casefold(), crop.focus_name.casefold).ratio()
-            for alt_name in crop.alternate_names:
-                alt_ratio = SequenceMatcher(None, name.casefold(), alt_name.casefold).ratio()
+            ratio = SequenceMatcher(None, name.casefold(), crop.focus_name.casefold()).ratio()
+            for alt_name in crop.alternative_names:
+                alt_ratio = SequenceMatcher(None, name.casefold(), alt_name.casefold()).ratio()
                 if alt_ratio > ratio:
                     ratio = alt_ratio
             if ratio > best_ratio:
@@ -258,7 +260,7 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
         if len(parsable) <= 2:
             return FOCUSCrop.from_acronym(parsable)
         else:
-            return FOCUSCrop.from_name(parasable)
+            return FOCUSCrop.from_name(parsable)
 
     def get_interception(self, bbch: int) -> float:
         """Gets the interception of this plant for a given development stadium.
@@ -438,7 +440,7 @@ class GAP(ABC, TypeCorrecting):
         gap_df = pandas.read_csv(file, skiprows=4, sep='|', skip_blank_lines=True, names=filtered_header,
                                  memory_map=True, usecols=[*range(35), 43, 44])
         for _, row in gap_df.iterrows():
-            model_crop = FOCUSCrop.from_name(row['FOCUS Crop used'])
+            model_crop = FOCUSCrop.parse(row['FOCUS Crop used'])
             model_data = {'gap_machine': {'PMT ID': row['PMT ID']}}
             rate = row['Rate per treatment: ']
             if row['Repeat-Mode'] == "every 3 years":

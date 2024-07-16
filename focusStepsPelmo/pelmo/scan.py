@@ -351,7 +351,7 @@ def parse_args() -> Namespace:
                         help="The input file for the scanning parameters")
     parser.add_argument('-s', '--sample-size', type=int, default=1000,
                         help="If given an json input, how many random samples to take")
-    parser.add_argument('--crop', nargs='*', type=FOCUSCrop.from_acronym, default=list(FOCUSCrop),
+    parser.add_argument('--crop', nargs='*', type=FOCUSCrop.parse, default=list(FOCUSCrop),
                         help="The crops to simulate. Can be specified multiple times. "
                              "Should be listed as a two letter acronym. "
                              "The selected crops have to be present in the FOCUS zip, "
