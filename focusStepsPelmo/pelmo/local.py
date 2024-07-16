@@ -76,9 +76,9 @@ def parse_args() -> Namespace:
     parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path,
                         help='The directory in which files for Pelmo will be created. '
                              'Defaults to the current directory')
-    parser.add_argument('-o', '--output-file', default=Path('output.ext'), type=Path,
+    parser.add_argument('-o', '--output-file', default=Path('output.json'), type=Path,
                         help='The name of the output file, the extension will be replaced based on the output format. '
-                             'Defaults to "output.ext"')
+                             'Defaults to "output.json"')
     parser.add_argument('--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.from_acronym,
                         help="Which crops to run. Defaults to all crops")
     parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1,
