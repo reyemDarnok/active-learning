@@ -98,6 +98,21 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
                             return (correct_type(input_value, type_args[0]),)
                     else:
                         return (input_value,)
+            elif origin == set:
+                if not input_value:
+                    return set()
+                try:
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
+                        type_args = t.__args__
+                        return {correct_type(x, type_args[0]) for x in input_value}
+                    else:
+                        return set(input_value)
+                except TypeError:
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
+                        type_args = t.__args__
+                        return {correct_type(input_value, type_args[0])}
+                    else:
+                        return {input_value}
             elif origin == list:
                 if not input_value:
                     return list()
