@@ -316,7 +316,7 @@ class GAP(ABC, TypeCorrecting):
     def _get_common_dict(self) -> Dict[str, Any]:
         """Returns a dict containing the parameters of this GAP that are common to all GAPS"""
         return {
-            "modelCrop": [c.name for c in self.modelCrops] if hasattr(self.modelCrops, 'name') else self.modelCrops,
+            "modelCrops": [c.name for c in self.modelCrops] if hasattr(self.modelCrops, 'name') else self.modelCrops,
             "rate": self.rate,
             "apply_every_n_years": self.apply_every_n_years,
             "number_of_applications": self.number_of_applications,
