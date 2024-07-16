@@ -287,7 +287,7 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
 class GAP(ABC, TypeCorrecting):
     """An abstract superclass for different ways to create GAPs.
     Most users will want to create GAP Objects with GAP.parse"""
-    modelCrops: List[FOCUSCrop]
+    modelCrops: FrozenSet[FOCUSCrop]
     """The crop that the field is modelled after"""
     rate: float
     """How much compound will be applied in g/ha"""
@@ -316,7 +316,7 @@ class GAP(ABC, TypeCorrecting):
     def _get_common_dict(self) -> Dict[str, Any]:
         """Returns a dict containing the parameters of this GAP that are common to all GAPS"""
         return {
-            "modelCrop": self.modelCrop.name if hasattr(self.modelCrop, 'name') else self.modelCrop,
+            "modelCrop": [c.name for c in self.modelCrops] if hasattr(self.modelCrops, 'name') else self.modelCrops,
             "rate": self.rate,
             "apply_every_n_years": self.apply_every_n_years,
             "number_of_applications": self.number_of_applications,
@@ -327,7 +327,7 @@ class GAP(ABC, TypeCorrecting):
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
         """Which scenarios this GAP is defined for"""
-        return self.modelCrop.defined_scenarios
+        return next(iter(self.modelCrops)).defined_scenarios.intersection(c.defined_scenarios for c in self.modelCrops)
 
     @property
     def rate_in_kg(self):
@@ -345,7 +345,7 @@ class GAP(ABC, TypeCorrecting):
         }
 
     @abstractmethod
-    def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
+    def application_data(self, crop: FOCUSCrop, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         """Generates the application specific data for every defined application
         :param scenario: The scenario in which the application happens
         :return: A Generator of tuples in the form (year, month, day, interception)"""
@@ -376,7 +376,7 @@ class GAP(ABC, TypeCorrecting):
         gaps = pandas.read_excel(io=excel_file, sheet_name="GAP Properties")
         for _, row in gaps.iterrows():
             yield RelativeGAP(
-                modelCrop=row['Model Crop'],
+                modelCrops=row['Model Crop'],
                 rate=row['Rate'],
                 number_of_applications=row['Number'],
                 interval=row['Interval'],
@@ -463,7 +463,8 @@ class GAP(ABC, TypeCorrecting):
                 scenario_name = scenario.replace('ü', 'u')
                 if not numpy.isnan(row[scenario_name]):
                     scenarios[Scenario(scenario)] = {"time_in_year": excel_date_to_datetime(row[scenario_name])}
-            first_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
+            first_gap = AbsoluteScenarioGAP(modelCrops=frozenset([model_crop]), model_specific_data=model_data,
+                                            rate=rate,
                                             number_of_applications=number,
                                             apply_every_n_years=period_between_applications,
                                             interval=interval,
@@ -478,12 +479,13 @@ class GAP(ABC, TypeCorrecting):
                 if not numpy.isnan(row[scenario_name]):
                     scenarios[Scenario(scenario)] = excel_date_to_datetime(row[scenario_name])
             if second_scenarios:
-                second_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
+                second_gap = AbsoluteScenarioGAP(modelCrops=frozenset([model_crop]), model_specific_data=model_data,
+                                                 rate=rate,
                                                  number_of_applications=number,
                                                  apply_every_n_years=period_between_applications,
                                                  interval=interval,
                                                  scenarios=second_scenarios)
-                yield MultiGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
+                yield MultiGAP(modelCrops=frozenset([model_crop]), model_specific_data=model_data, rate=rate,
                                number_of_applications=number, apply_every_n_years=period_between_applications,
                                interval=interval,
                                timings=(first_gap, second_gap))
@@ -520,9 +522,9 @@ class MultiGAP(GAP):
         # noinspection PyTypeChecker
         return result
 
-    def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
+    def application_data(self, crop: FOCUSCrop, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         for timing in self.timings:
-            yield from timing.application_data(scenario)
+            yield from timing.application_data(crop=crop, scenario=scenario)
 
     def __post_init__(self):
         init_dict = self._get_common_dict()
@@ -560,14 +562,14 @@ class RelativeGAP(GAP):
     def _dict_args(self) -> Dict[str, Any]:
         return {"bbch": self.bbch, "season": self.season}
 
-    def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
+    def application_data(self, crop: FOCUSCrop, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         application_line = bbch_to_data_row(self.bbch, scenario,
-                                            self.modelCrop.bbch_application_name[self.season])
+                                            crop.bbch_application_name[self.season])
         time_in_year = application_line['Recommended Application date']
         time_and_interception = tuple()
         for index in range(self.number_of_applications):
             application_time = time_in_year + self.interval * index
-            application_line = date_to_data_row(application_time, scenario, self.modelCrop.bbch_application_name[0])
+            application_line = date_to_data_row(application_time, scenario, crop.bbch_application_name[0])
             interception = application_line['Crop Interception(%)']
             time_and_interception += tuple([tuple([application_time, interception])])
         for year in range(1, 6 + 20 * self.apply_every_n_years + 1, self.apply_every_n_years):
@@ -591,14 +593,14 @@ class AbsoluteConstantGAP(GAP):
     def _dict_args(self) -> Dict[str, Any]:
         return {"time_in_year": self.time_in_year.isoformat()}
 
-    def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
+    def application_data(self, crop: FOCUSCrop, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         time_and_interception: Tuple[Tuple[datetime, float]] = tuple()
         for index in range(self.number_of_applications):
             application_time = self.time_in_year + self.interval * index
             try:
-                application_line = date_to_data_row(application_time, scenario, self.modelCrop.bbch_application_name[0])
+                application_line = date_to_data_row(application_time, scenario, crop.bbch_application_name[0])
             except IndexError:
-                application_line = date_to_data_row(application_time, scenario, self.modelCrop.bbch_application_name[1])
+                application_line = date_to_data_row(application_time, scenario, crop.bbch_application_name[1])
             interception = application_line['Crop Interception(%)']
             time_and_interception += tuple([tuple([application_time, interception])])
         for year in range(1, 6 + 20 * self.apply_every_n_years + 1, self.apply_every_n_years):
@@ -665,8 +667,8 @@ class AbsoluteScenarioGAP(GAP):
     def defined_scenarios(self) -> FrozenSet[Scenario]:
         return super().defined_scenarios.intersection(self._scenario_gaps.keys())
 
-    def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
-        yield from self._scenario_gaps[scenario].application_data(scenario)
+    def application_data(self, crop: FOCUSCrop, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
+        yield from self._scenario_gaps[scenario].application_data(crop=crop, scenario=scenario)
 
     def __hash__(self) -> int:
         init_dict = self._get_common_dict()
@@ -675,7 +677,7 @@ class AbsoluteScenarioGAP(GAP):
                            tuple([tuple([key, value]) for key, value in self._scenario_gaps.items()])]))
 
     def __post_init__(self):
-        object.__setattr__(self, 'modelCrop', correct_type(self.modelCrop, FOCUSCrop))
+        object.__setattr__(self, 'modelCrop', correct_type(self.modelCrops, FrozenSet[FOCUSCrop]))
         init_dict = self._get_common_dict()
         corrected_scenarios = {}
         for scenario, scenario_data in self.scenarios.items():
