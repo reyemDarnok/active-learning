@@ -10,8 +10,8 @@ from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
 @dataclass(frozen=True)
-class Degradation(TypeCorrecting):
-    """General Degradation information"""
+class DT50(TypeCorrecting):
+    """General DT50 information"""
     system: float
     """Total System DT50"""
     soil: float
@@ -26,7 +26,7 @@ class Degradation(TypeCorrecting):
 class MetaboliteDescription(TypeCorrecting):
     """A structure describing a decay to a metabolite"""
     formation_fraction: float
-    """How much of all degradation forms this metabolite"""
+    """How much of all dt50 forms this metabolite"""
     metabolite: 'Compound'
     """The Compound that forms"""
 
@@ -44,8 +44,8 @@ class Compound(TypeCorrecting):
     """The temperature the other values have been measured at in °C"""
     koc: float
     freundlich: float
-    degradation: Degradation
-    """Degradation behaviours"""
+    dt50: DT50
+    """DT50 behaviours"""
     plant_uptake: float = 0
     """Fraction of plant uptake"""
     name: Optional[str] = field(hash=False, default='')  # str hash is not stable
@@ -81,15 +81,15 @@ class Compound(TypeCorrecting):
         metabolite_relationships = pandas.read_excel(io=excel_file, sheet_name="Metabolite Relationships")
         compound_list = [
             Compound(name=row['Name'], molarMass=row['Molar Mass'],
-                     volatility=Volatility(water_solubility=row['Water Solubility'],
-                                           vaporization_pressure=row['Vaporization Pressure'],
-                                           reference_temperature=row['Temperature']),
-                     sorption=Sorption(koc=row['Koc'], freundlich=row['Freundlich']),
+                     water_solubility=row['Water Solubility'],
+                     vaporization_pressure=row['Vaporization Pressure'],
+                     reference_temperature=row['Temperature'],
+                     koc=row['Koc'], freundlich=row['Freundlich'],
                      plant_uptake=row['Plant Uptake'],
-                     degradation=Degradation(system=row['DT50 System'],
-                                             soil=row['DT50 Soil'],
-                                             sediment=row['DT50 Sediment'],
-                                             surfaceWater=row['DT50 Surface Water']),
+                     dt50=DT50(system=row['DT50 System'],
+                               soil=row['DT50 Soil'],
+                               sediment=row['DT50 Sediment'],
+                               surfaceWater=row['DT50 Surface Water']),
                      model_specific_data={'pelmo': {'position': row['Pelmo Position'] if row['Pelmo Position'] else None
                                                     }
                                           }

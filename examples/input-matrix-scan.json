@@ -59,7 +59,7 @@
             }
           },
           "plant_uptake": 0.5,
-          "degradation": {
+          "dt50": {
             "system": 6,
             "soil": {
               "type": "random",
@@ -95,7 +95,7 @@
       }
     },
     "plant_uptake": 0.5,
-    "degradation": {
+    "dt50": {
       "system": 6,
       "soil": {
         "type": "random",

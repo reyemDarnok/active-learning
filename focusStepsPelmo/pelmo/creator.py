@@ -2,6 +2,7 @@
 import json
 import logging
 from argparse import ArgumentParser, Namespace
+from dataclasses import replace
 from pathlib import Path
 from typing import Generator, Iterable, Type, TypeVar, Union
 
@@ -108,7 +109,7 @@ def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
     :return: The contents of the psm file"""
 
     psm_file = PsmFile.from_input(compound=compound, gap=gap)
-    psm_file.comment = comment
+    psm_file = replace(psm_file, comment=comment)
     return psm_file.render()
 
 
