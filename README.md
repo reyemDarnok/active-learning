@@ -9,29 +9,29 @@ Most of the command line arguments used here also have short forms and/or useful
 command may be significantly shorter.
 
 ```commandline
-python -m focusStepsPelmo.pelmo.scan --template-compound examples/compound.json --template-gap examples/gap.json\
-                                     --work-dir test/scan --output test/out.csv --input-file examples/input-matrix-scan.json\
-                                     --sample-size 10000 --crop MZ --scenario C --test-set-size 1000 --test-set-buffer 0.1\
+python -m focusStepsPelmo.pelmo.scan --template-compound examples/compound.json --template-gap examples/gap.json
+                                     --work-dir test/scan --output test/out.csv --input-file examples/input-matrix-scan.json
+                                     --sample-size 10000 --crop MZ --scenario C --test-set-size 1000 --test-set-buffer 0.1
                                      --make-test-set local
 ```
 
 ```commandline
-python -m focusStepsPelmo.pelmo.scan --template-compound examples/compound.json --template-gap examples/gap.json\
-                                     --work-dir test/scan --output test/out.csv --input-file examples/input-matrix-scan.json\
-                                     --sample-size 10000 --crop MZ --scenario C --test-set-size 1000 --test-set-buffer 0.1\
+python -m focusStepsPelmo.pelmo.scan --template-compound examples/compound.json --template-gap examples/gap.json
+                                     --work-dir test/scan --output test/out.csv --input-file examples/input-matrix-scan.json
+                                     --sample-size 10000 --crop MZ --scenario C --test-set-size 1000 --test-set-buffer 0.1
                                      --make-test-set bhpc --notification-email 'your.email@bayer.com'
 ```
 
 ```commandline
-python -m focusStepsPelmo.pelmo.remote_bhpc --compound-file examples/compound.json --gap-file examples/gap.json\
-                                            --combined examples/combined.json --submit test/remote_bhpc/submit\
-                                            --output test/remote_bhpc/output.csv --crop MZ --scenario C --run\
+python -m focusStepsPelmo.pelmo.remote_bhpc --compound-file examples/compound.json --gap-file examples/gap.json
+                                            --combined examples/combined.json --submit test/remote_bhpc/submit
+                                            --output test/remote_bhpc/output.csv --crop MZ --scenario C --run
                                             --notification-email 'your.email@bayer.com' --session-timeout 6
 ```
 
 ```commandline
-python -m focusStepsPelmo.pelmo.local --compound-file examples/compound.json --gap-file examples/gap.json --combined examples/combined.json\
-                                      --work-dir test/local --output-file test/local/output.json --crop MZ --scenario C\
+python -m focusStepsPelmo.pelmo.local --compound-file examples/compound.json --gap-file examples/gap.json --combined examples/combined.json
+                                      --work-dir test/local --output-file test/local/output.json --crop MZ --scenario C
                                       --threads 3
 ```
 
