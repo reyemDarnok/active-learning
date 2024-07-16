@@ -649,12 +649,16 @@ class AbsoluteScenarioGAP(GAP):
 
     @property
     def _dict_args(self) -> Dict[str, Any]:
-        return {"scenarios": {scenario:
-                                  {key: value
-                                   for key, value in self._scenario_gaps[scenario].asdict().items()
-                                   if
-                                   key not in self._get_common_dict().keys() or self._get_common_dict()[key] != value}
-                              for scenario, gap in self._scenario_gaps.items()}}
+        return {
+            "scenarios": {
+                scenario: {
+                    key: value
+                    for key, value in self._scenario_gaps[scenario].asdict().items()
+                    if key not in self._get_common_dict().keys() or self._get_common_dict()[key] != value
+                }
+                for scenario, gap in self._scenario_gaps.items()
+            }
+        }
 
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:

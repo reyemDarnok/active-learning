@@ -33,7 +33,7 @@
     },
     "sorption": {
       "koc": 300,
-        "freundlich": 0.9
+      "freundlich": 0.9
     },
     "plant_uptake": 0.5,
     "degradation": {

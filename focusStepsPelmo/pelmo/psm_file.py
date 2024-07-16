@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
-from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, Volatility, Sorption, Degradation
+from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, DT50
 from focusStepsPelmo.ioTypes.gap import GAP
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
@@ -99,7 +99,7 @@ class PsmDegradation(TypeCorrecting):
     to_disregard: DegradationData
     metabolites: Optional[Tuple['PsmDegradation', ...]] = field(default_factory=tuple)
 
-    # None if it is degradation to BR/CO2
+    # None if it is dt50 to BR/CO2
 
     def __post_init__(self):
         if self.metabolites is not None:
@@ -140,8 +140,8 @@ class PsmCompound:
 
     @staticmethod
     def from_compound(compound: Compound) -> 'PsmCompound':
-        if compound.degradation.soil > 0:
-            full_rate = math.log(2) / compound.degradation.soil
+        if compound.dt50.soil > 0:
+            full_rate = math.log(2) / compound.dt50.soil
         else:
             full_rate = 0
         remaining_degradation_fraction = 1.0
@@ -156,19 +156,19 @@ class PsmCompound:
 
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
         degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction)]
-        volatizations = (Volatization(henry=3.33E-04, solubility=compound.volatility.water_solubility,
-                                      vaporization_pressure=compound.volatility.vaporization_pressure,
-                                      temperature=compound.volatility.reference_temperature),
-                         Volatization(henry=3.33E-04 * 2, solubility=compound.volatility.water_solubility,
-                                      vaporization_pressure=compound.volatility.vaporization_pressure * 4,
-                                      temperature=compound.volatility.reference_temperature + 10))
+        volatizations = (Volatization(henry=3.33E-04, solubility=compound.water_solubility,
+                                      vaporization_pressure=compound.vaporization_pressure,
+                                      temperature=compound.reference_temperature),
+                         Volatization(henry=3.33E-04 * 2, solubility=compound.water_solubility,
+                                      vaporization_pressure=compound.vaporization_pressure * 4,
+                                      temperature=compound.reference_temperature + 10))
         if 'pelmo' in compound.model_specific_data.keys():
             position = compound.model_specific_data['pelmo']['position']
         else:
             position = None
         return PsmCompound(molar_mass=compound.molarMass,
                            adsorptions=tuple(
-                               [PsmAdsorption(koc=compound.sorption.koc, freundlich=compound.sorption.freundlich)]),
+                               [PsmAdsorption(koc=compound.koc, freundlich=compound.freundlich)]),
                            plant_uptake=compound.plant_uptake, degradations=degradations, name=compound.name,
                            volatizations=volatizations,
                            position=position)
@@ -270,18 +270,16 @@ class PsmFile(TypeCorrecting):
     def to_input(self) -> Tuple[Compound, GAP]:
         """Convert this psmFile to ioTypes input data.
         WARNING: This is lossy, as psmFiles do not use all data from the input files"""
-        volatility = Volatility(water_solubility=self.compound.volatizations[0].solubility,
-                                vaporization_pressure=self.compound.volatizations[0].vaporization_pressure,
-                                reference_temperature=(self.compound.volatizations[0].temperature +
-                                                       self.compound.volatizations[1].temperature) / 2)
         compound = Compound(molarMass=self.compound.molar_mass,
-                            volatility=volatility,
-                            sorption=Sorption(koc=self.compound.adsorptions[0].koc,
-                                              freundlich=self.compound.adsorptions[0].freundlich),
-                            degradation=Degradation(system=math.log(2) / self.compound.degradations[0].rate,
-                                                    soil=math.log(2) / self.compound.degradations[0].rate,
-                                                    surfaceWater=math.log(2) / self.compound.degradations[0].rate,
-                                                    sediment=math.log(2) / self.compound.degradations[0].rate),
+                            water_solubility=self.compound.volatizations[0].solubility,
+                            vaporization_pressure=self.compound.volatizations[0].vaporization_pressure,
+                            reference_temperature=self.compound.volatizations[0].temperature,
+                            koc=self.compound.adsorptions[0].koc,
+                            freundlich=self.compound.adsorptions[0].freundlich,
+                            dt50=DT50(system=math.log(2) / self.compound.degradations[0].rate,
+                                      soil=math.log(2) / self.compound.degradations[0].rate,
+                                      surfaceWater=math.log(2) / self.compound.degradations[0].rate,
+                                      sediment=math.log(2) / self.compound.degradations[0].rate),
                             plant_uptake=self.compound.plant_uptake
                             )
         return compound, self.gap
