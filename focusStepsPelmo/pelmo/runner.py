@@ -11,7 +11,7 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copytree, rmtree
 from threading import current_thread
-from typing import Generator, Iterable, Optional, Tuple, Union, Dict, Set, List
+from typing import Generator, Iterable, Optional, Tuple, Union, Dict, List, FrozenSet
 from zipfile import ZipFile
 
 from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
@@ -49,14 +49,15 @@ def main():
     logger.debug(args)
     files: List[Path] = list(args.psm_files.glob('*.psm') if args.psm_files.is_dir() else [args.psm_files])
     logging.info('Running for the following psm files: %s', files)
-    crops: Set[FOCUSCrop] = set(args.crop)
-    scenarios: Set[Scenario] = set(args.scenario)
+    crops: FrozenSet[FOCUSCrop] = frozenset(args.crop)
+    scenarios: FrozenSet[Scenario] = frozenset(args.scenario)
     run_data = [(file, crops, scenarios) for file in files]
     write_psm_results(output_file=args.output, run_data=run_data, input_directories=None, working_dir=args.working_dir,
                       max_workers=args.threads)
 
 
-def write_psm_results(output_file: Path, run_data: Iterable[Tuple[Union[Path, str], Set[FOCUSCrop], Set[Scenario]]],
+def write_psm_results(output_file: Path,
+                      run_data: Iterable[Tuple[Union[Path, str], FrozenSet[FOCUSCrop], FrozenSet[Scenario]]],
                       input_directories: Optional[Tuple[Path]] = None, working_dir: Path = Path.cwd() / 'pelmo',
                       max_workers: int = cpu_count() - 1):
     results = run_psms(run_data=run_data, working_dir=working_dir,
@@ -72,7 +73,7 @@ def write_psm_results(output_file: Path, run_data: Iterable[Tuple[Union[Path, st
                 writer.writerows((result.psm_comment, result.crop, result.scenario, result.pec) for result in results)
 
 
-def _make_runs(run_data: Iterable[Tuple[Union[Path, str], Set[FOCUSCrop], Set[Scenario]]]) -> \
+def _make_runs(run_data: Iterable[Tuple[Union[Path, str], FrozenSet[FOCUSCrop], FrozenSet[Scenario]]]) -> \
         Generator[Tuple[Union[Union[Path, str], FOCUSCrop, Scenario]], None, None]:
     for run in run_data:
         for crop in run[1]:
@@ -80,7 +81,7 @@ def _make_runs(run_data: Iterable[Tuple[Union[Path, str], Set[FOCUSCrop], Set[Sc
                 yield run[0], crop, scenario
 
 
-def run_psms(run_data: Iterable[Tuple[Union[Path, str], Set[FOCUSCrop], Set[Scenario]]], working_dir: Path,
+def run_psms(run_data: Iterable[Tuple[Union[Path, str], FrozenSet[FOCUSCrop], FrozenSet[Scenario]]], working_dir: Path,
              max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
     """Run all given psm_files using working_dir as scratch space.
     When given scenarios that are not defined for some given crops, they are silently ignored for those crops only

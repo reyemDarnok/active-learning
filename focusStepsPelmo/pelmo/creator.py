@@ -4,7 +4,7 @@ import logging
 from argparse import ArgumentParser, Namespace
 from dataclasses import replace
 from pathlib import Path
-from typing import Generator, Iterable, Type, TypeVar, Union, Tuple, Set
+from typing import Generator, Iterable, Type, TypeVar, Union, Tuple, FrozenSet
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
@@ -82,9 +82,9 @@ def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
 
 
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
-                       crops: Set[FOCUSCrop] = None, scenarios: Set[Scenario] = None,
+                       crops: FrozenSet[FOCUSCrop] = None, scenarios: FrozenSet[Scenario] = None,
                        combinations: Iterable[Combination] = None) -> Generator[
-    Tuple[str, Set[FOCUSCrop], Set[Scenario]], None, None]:
+    Tuple[str, FrozenSet[FOCUSCrop], FrozenSet[Scenario]], None, None]:
     """Create the contents of psm files
     :param compounds: The compounds to combine with gaps to make psm files
     :param gaps: The gaps to combine with compounds to make psm files

@@ -5,7 +5,7 @@ from contextlib import suppress
 from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import rmtree
-from typing import Set
+from typing import FrozenSet
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
@@ -24,12 +24,12 @@ def main():
     logger.debug(args)
     run_local(work_dir=args.work_dir, compound_files=args.compound_file, gap_files=args.gap_file,
               output_file=args.output_file, combination_dir=args.combined,
-              crops=set(args.crop), scenarios=set(args.scenario), threads=args.threads)
+              crops=frozenset(args.crop), scenarios=frozenset(args.scenario), threads=args.threads)
 
 
 def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None,
               combination_dir: Path = None,
-              crops: Set[FOCUSCrop] = FOCUSCrop, scenarios: Set[Scenario] = Scenario,
+              crops: FrozenSet[FOCUSCrop] = FOCUSCrop, scenarios: FrozenSet[Scenario] = Scenario,
               threads: int = cpu_count() - 1):
     """Run Pelmo locally
     :param work_dir: The directory to use for Pelmos file structure
