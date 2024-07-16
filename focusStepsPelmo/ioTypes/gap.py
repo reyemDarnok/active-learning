@@ -4,9 +4,10 @@ from abc import ABC, abstractmethod
 from collections import UserList
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from difflib import SequenceMatcher
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, Optional, FrozenSet, Set
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet, Set
 
 import numpy
 import pandas
@@ -64,6 +65,7 @@ class FOCUSCropMixin(NamedTuple):
     """Mapping bbch states to interception values"""
     bbch_application_name: List[str]
     """The category in the bbch_application data this crop belongs to"""
+    alternative_names: List[str] = field(default_factory=list)
 
 
 _s = PrincipalStage
@@ -116,6 +118,7 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
                             {_s.Germination: 0, _s.Leaf: 30, _s.Tillering: 60, _s.Flowering: 75, _s.Senescence: 90})
                         , bbch_application_name=["cotton"])
     GA = FOCUSCropMixin(focus_name="Grass and alfalfa",
+                        alternative_names=['Grass', 'Alfalfa'],
                         defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N,
                                                      Scenario.P, Scenario.O, Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
@@ -167,6 +170,7 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
                             {_s.Germination: 0, _s.Leaf: 20, _s.Tillering: 70, _s.Flowering: 90, _s.Senescence: 90}),
                         bbch_application_name=["sugar beet"])
     SC = FOCUSCropMixin(focus_name="Spring cereals",
+                        alternative_names=['Cereals, Spring'],
                         defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.K, Scenario.N,
                                                      Scenario.O}),
                         interception=HashableRSDict(
@@ -206,6 +210,7 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
                              _s.Germination: 40}),
                         bbch_application_name=["vines"])
     WC = FOCUSCropMixin(focus_name="Winter cereals",
+                        alternative_names=['Cereals, Winter'],
                         defined_scenarios=frozenset({Scenario.C, Scenario.H, Scenario.J, Scenario.N, Scenario.P,
                                                      Scenario.O}),
                         interception=HashableRSDict(
@@ -228,17 +233,32 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
         return FOCUSCrop[acronym]
 
     @staticmethod
-    def from_name(name: str) -> Optional['FOCUSCrop']:
+    def from_name(name: str) -> 'FOCUSCrop':
         """Fetches a FOCUSCrop by its full name, case-insensitive
         :param name: The full name of the crop
         :return: The FOCUS Crop of that name
         >>> test_crop = FOCUSCrop.from_name("Vines")
         >>> test_crop.name == 'VI'
         True"""
+        best_crop = FOCUSCrop.AP
+        best_ratio = 0
         for crop in FOCUSCrop:
-            if crop.focus_name.casefold() == name.casefold():
-                return crop
-        return None
+            ratio = SequenceMatcher(None, name.casefold(), crop.focus_name.casefold).ratio()
+            for alt_name in crop.alternate_names:
+                alt_ratio = SequenceMatcher(None, name.casefold(), alt_name.casefold).ratio()
+                if alt_ratio > ratio:
+                    ratio = alt_ratio
+            if ratio > best_ratio:
+                best_crop = crop
+                best_ratio = ratio
+        return best_crop
+
+    @staticmethod
+    def parse(parsable: str) -> 'FOCUSCrop':
+        if len(parsable) <= 2:
+            return FOCUSCrop.from_acronym(parsable)
+        else:
+            return FOCUSCrop.from_name(parasable)
 
     def get_interception(self, bbch: int) -> float:
         """Gets the interception of this plant for a given development stadium.
