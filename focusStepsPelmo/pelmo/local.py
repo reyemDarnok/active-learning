@@ -5,7 +5,7 @@ from contextlib import suppress
 from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import rmtree
-from typing import Sequence
+from typing import Set
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
@@ -24,12 +24,12 @@ def main():
     logger.debug(args)
     run_local(work_dir=args.work_dir, compound_files=args.compound_file, gap_files=args.gap_file,
               output_file=args.output_file, combination_dir=args.combined,
-              crops=args.crop, scenarios=args.scenario, threads=args.threads)
+              crops=set(args.crop), scenarios=set(args.scenario), threads=args.threads)
 
 
 def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None,
               combination_dir: Path = None,
-              crops: Sequence[FOCUSCrop] = FOCUSCrop, scenarios: Sequence[Scenario] = Scenario,
+              crops: Set[FOCUSCrop] = FOCUSCrop, scenarios: Set[Scenario] = Scenario,
               threads: int = cpu_count() - 1):
     """Run Pelmo locally
     :param work_dir: The directory to use for Pelmos file structure
@@ -50,9 +50,10 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
     compounds = Compound.from_path(compound_files) if compound_files else None
     gaps = GAP.from_path(gap_files) if gap_files else None
     combinations = Combination.from_path(combination_dir) if combination_dir else None
-    psm_files = generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations)
+    psm_files = generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations, crops=crops,
+                                   scenarios=scenarios)
     logger.info('Starting to run Pelmo')
-    results = run_psms(psm_files=psm_files, working_dir=focus_dir, crops=crops, scenarios=scenarios,
+    results = run_psms(run_data=psm_files, working_dir=focus_dir,
                        max_workers=threads)
 
     logger.info('Dumping results of Pelmo runs to %s', output_file)
