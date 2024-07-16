@@ -11,7 +11,7 @@
           ]
         }
       },
-      "number": {
+      "number_of_applications": {
         "type": "steps",
         "parameters": {
           "start": 1,
@@ -29,7 +29,8 @@
           "log_random": false
         }
       },
-      "bbch": 0
+      "bbch": 0,
+      "apply_every_n_years": 1
     }
   },
   "compound": {
@@ -39,26 +40,22 @@
         "metabolite": {
           "metabolites": [],
           "molarMass": 300,
-          "volatility": {
-            "water_solubility": 90.0,
-            "vaporization_pressure": 1e-4,
-            "reference_temperature": 20
+          "water_solubility": 90.0,
+          "vaporization_pressure": 1e-4,
+          "reference_temperature": 20,
+          "koc": {
+            "type": "random",
+            "parameters": {
+              "lower_bound": 10,
+              "upper_bound": 5000,
+              "log_random": true
+            }
           },
-          "sorption": {
-            "koc": {
-              "type": "random",
-              "parameters": {
-                "lower_bound": 10,
-                "upper_bound": 5000,
-                "log_random": true
-              }
-            },
-            "freundlich": {
-              "type": "random",
-              "parameters": {
-                "lower_bound": 0.7,
-                "upper_bound": 1.2
-              }
+          "freundlich": {
+            "type": "random",
+            "parameters": {
+              "lower_bound": 0.7,
+              "upper_bound": 1.2
             }
           },
           "plant_uptake": 0.5,
@@ -79,26 +76,22 @@
       }
     ],
     "molarMass": 300,
-    "volatility": {
-      "water_solubility": 90.0,
-      "vaporization_pressure": 1e-4,
-      "reference_temperature": 20
+    "water_solubility": 90.0,
+    "vaporization_pressure": 1e-4,
+    "reference_temperature": 20,
+    "koc": {
+      "type": "random",
+      "parameters": {
+        "lower_bound": 10,
+        "upper_bound": 5000,
+        "log_random": true
+      }
     },
-    "sorption": {
-      "koc": {
-        "type": "random",
-        "parameters": {
-          "lower_bound": 10,
-          "upper_bound": 5000,
-          "log_random": true
-        }
-      },
-      "freundlich": {
-        "type": "random",
-        "parameters": {
-          "lower_bound": 0.7,
-          "upper_bound": 1.2
-        }
+    "freundlich": {
+      "type": "random",
+      "parameters": {
+        "lower_bound": 0.7,
+        "upper_bound": 1.2
       }
     },
     "plant_uptake": 0.5,

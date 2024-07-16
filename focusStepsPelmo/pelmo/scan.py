@@ -36,9 +36,18 @@ def main():
     with args.input_file.open() as input_file:
         if args.input_format == 'json':
             input_dict = json.load(input_file)
+            gap = None
             if args.template_gap:
                 gap = next(GAP.from_file(args.template_gap))
-                input_dict = {"gap": gap.asdict(), "compound": input_dict}
+            compound = None
+            if args.template_compound:
+                compound = next(Compound.from_file(args.template_compound))
+            if 'compound' in input_dict.keys():
+                pass
+            elif 'molarMass' in input_dict.keys():
+                input_dict = {'gap': gap, 'compound': input_dict}
+            elif 'rate' in input_dict.keys():
+                input_dict = {'gap': input_dict, 'compound': compound}
             create_samples_in_dirs(definition=input_dict, output_dir=combination_dir,
                                    sample_size=args.sample_size, make_test_set=args.make_test_set,
                                    test_set_path=args.use_test_set, test_set_buffer=args.test_set_buffer)
@@ -161,14 +170,14 @@ def create_samples(definition: Definition) -> Generator[Combination, None, None]
     """Create Combinations according to a definition
         :param definition: Defines the space of possibilities for the Combination
         :return: A Generator that will infinitely generate more Combinations according to the definition
-        >>> test_definition = {"gap":{"modelCrop":{"type":"choices","parameters":{"options":["MZ","AP"]}},"application":{"number":{"type":"steps","parameters":{"start":1,"stop":4,"step":1,"scale_factor":1}},"interval":14,"rate":{"type":"random","parameters":{"lower_bound":1,"upper_bound":10000}},"timing":{"bbch_state":{"type":"choices","parameters":{"options":[-1,10,40,80,90]}}}}},"compound":{"metabolites":{"type":"copies","parameters":{"minimum":0,"maximum":4,"value":{"formation_fraction":0.2,"metabolite":{"metabolites":None,"molarMass":300,"volatility":{"water_solubility":90.0,"vaporization_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"degradation":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}}},"molarMass":300,"volatility":{"water_solubility":90.0,"vaporization_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"degradation":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}
+        >>> test_definition = {"gap":{"modelCrop":{"type":"choices","parameters":{"options":["MZ","AP"]}},"application":{"number_of_applications":{"type":"steps","parameters":{"start":1,"stop":4,"step":1,"scale_factor":1}},"interval":14,"rate":{"type":"random","parameters":{"lower_bound":1,"upper_bound":10000}},"timing":{"bbch_state":{"type":"choices","parameters":{"options":[-1,10,40,80,90]}}}}},"compound":{"metabolites":{"type":"copies","parameters":{"minimum":0,"maximum":4,"value":{"formation_fraction":0.2,"metabolite":{"metabolites":None,"molarMass":300,"volatility":{"water_solubility":90.0,"vaporization_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"degradation":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}}},"molarMass":300,"volatility":{"water_solubility":90.0,"vaporization_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"degradation":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}
         >>> import random
         >>> random.seed(42)
         >>> sample_generator = create_samples(Definition.parse(test_definition))
         >>> next(sample_generator)
-        Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(focus_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=7415.7634470985695, timing=GAP(bbch_state=10), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=296.4339328696138, freundlich=0.9952462562245198), degradation=Degradation(system=6.0, soil=1.1987525689363516, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=(MetaboliteDescription(formation_fraction=0.2, metabolite=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=23.80173872410029, freundlich=0.7512475880857536), degradation=Degradation(system=6.0, soil=68.3476855994171, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=None)),)))
+        Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(focus_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=7415.7634470985695, timing=GAP(bbch_state=10), number_of_applications=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=296.4339328696138, freundlich=0.9952462562245198), degradation=Degradation(system=6.0, soil=1.1987525689363516, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=(MetaboliteDescription(formation_fraction=0.2, metabolite=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=23.80173872410029, freundlich=0.7512475880857536), degradation=Degradation(system=6.0, soil=68.3476855994171, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=None)),)))
         >>> next(sample_generator)
-        Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(focus_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=2327.376273014005, timing=GAP(bbch_state=90), number=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=327.1776208099365, freundlich=1.0580098064612016), degradation=Degradation(system=6.0, soil=54.60934890188404, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=()))
+        Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(focus_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=2327.376273014005, timing=GAP(bbch_state=90), number_of_applications=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vaporization_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=327.1776208099365, freundlich=1.0580098064612016), degradation=Degradation(system=6.0, soil=54.60934890188404, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=()))
     """
     while True:
         d = definition.make_sample()
@@ -256,8 +265,9 @@ def span_bbch(gaps: Iterable[GAP], bbchs: Sequence[int]) -> Generator[GAP, None,
     for gap in gaps:
         for bbch in bbchs:
             new_gap = RelativeGAP(modelCrop=gap.modelCrop, rate=gap.rate,
-                                  period_between_applications=gap.period_between_applications,
-                                  number=gap.number, interval=gap.interval, model_specific_data=gap.model_specific_data,
+                                  apply_every_n_years=gap.apply_every_n_years,
+                                  number_of_applications=gap.number_of_applications, interval=gap.interval,
+                                  model_specific_data=gap.model_specific_data,
                                   bbch=bbch)
             yield new_gap
 
@@ -341,7 +351,7 @@ def parse_args() -> Namespace:
                         help="The input file for the scanning parameters")
     parser.add_argument('-s', '--sample-size', type=int, default=1000,
                         help="If given an json input, how many random samples to take")
-    parser.add_argument('--crop', nargs='*', type=FOCUSCrop.from_acronym, default=list(FOCUSCrop),
+    parser.add_argument('--crop', nargs='*', type=FOCUSCrop.parse, default=list(FOCUSCrop),
                         help="The crops to simulate. Can be specified multiple times. "
                              "Should be listed as a two letter acronym. "
                              "The selected crops have to be present in the FOCUS zip, "
@@ -366,7 +376,7 @@ def parse_args() -> Namespace:
                                                 "but not run anything if this is not specified")
     local_parser = run_subparsers.add_parser("local", help="Run Pelmo locally")
     local_parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1,
-                              help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
+                              help="The maximum number_of_applications of threads for Pelmo. Defaults to cpu_count - 1")
     bhpc_parser = run_subparsers.add_parser("bhpc", help="Run Pelmo on the bhpc")
     bhpc_parser.add_argument('--notification-email', type=str, default=None,
                              help="The email address which will be notified if the bhpc run finishes")

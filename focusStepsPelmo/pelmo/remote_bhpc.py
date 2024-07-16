@@ -222,7 +222,7 @@ def parse_args() -> Namespace:
                         help='Where to output the submit file and its dependencies. Defaults to "submit"')
     parser.add_argument('-o', '--output', default=Path('output'), type=Path,
                         help='Where to output the final results. Defaults to output')
-    parser.add_argument('--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.from_acronym,
+    parser.add_argument('--crop', nargs='*', default=FOCUSCrop, type=FOCUSCrop.parse,
                         help="Which crops to run. Defaults to all crops")
     parser.add_argument('--scenario', nargs='*', type=lambda x: correct_type(x, Scenario),
                         default=list(Scenario),
