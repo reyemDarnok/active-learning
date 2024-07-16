@@ -49,7 +49,8 @@ def main():
     logger.debug(args)
     files = list(args.psm_files.glob('*.psm') if args.psm_files.is_dir() else [args.psm_files])
     logging.info('Running for the following psm files: %s', files)
-    write_psm_results(args.output, files, None, working_dir=args.working_dir, crops=args.crop, scenarios=args.scenario,
+    write_psm_results(output_file=args.output, psm_files=files, input_directories=None, working_dir=args.working_dir,
+                      crops=args.crop, scenarios=args.scenario,
                       max_workers=args.threads)
 
 
