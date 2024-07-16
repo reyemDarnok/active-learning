@@ -75,7 +75,6 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
         rmtree(submit)
     logger.info('Generating sub files for bhpc')
     batch_number = make_sub_file(psm_file_data=psm_file_data, target_dir=submit,
-                                 crops=crops, scenarios=scenarios,
                                  batch_size=1000)
     if run:
         logger.info('Starting Pelmo run')
@@ -147,13 +146,10 @@ def zip_directory(directory: Path, zip_name: str):
 
 
 def make_sub_file(psm_file_data: Iterable[Tuple[str, FrozenSet[FOCUSCrop], FrozenSet[Scenario]]], target_dir: Path,
-                  crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
                   batch_size: int = 1000) -> int:
     """Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_file_data: The contents of the psm files to be included in the submit file
     :param target_dir: The directory to write the sub file to
-    :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
-    :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
     :param batch_size: How large a batch of psm files should be, each can be run in parallel
     :return: The number of jobs in the sub file"""
     logger = logging.getLogger()
@@ -173,7 +169,7 @@ def make_sub_file(psm_file_data: Iterable[Tuple[str, FrozenSet[FOCUSCrop], Froze
         )
     )
     logger.info('Finished creating files')
-    return len(batch_info)
+    return len(batch_infos)
 
 
 def make_batches(psm_file_data: Iterable[Tuple[str, FrozenSet[FOCUSCrop], FrozenSet[Scenario]]],

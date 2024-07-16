@@ -264,7 +264,7 @@ def span_bbch(gaps: Iterable[GAP], bbchs: Sequence[int]) -> Generator[GAP, None,
     :return: A generator for every gap/bbch combination"""
     for gap in gaps:
         for bbch in bbchs:
-            new_gap = RelativeGAP(modelCrop=gap.modelCrop, rate=gap.rate,
+            new_gap = RelativeGAP(modelCrops=frozenset(gap.modelCrops), rate=gap.rate,
                                   apply_every_n_years=gap.apply_every_n_years,
                                   number_of_applications=gap.number_of_applications, interval=gap.interval,
                                   model_specific_data=gap.model_specific_data,

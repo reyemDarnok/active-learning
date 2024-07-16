@@ -10,6 +10,8 @@ from subprocess import PIPE
 from sys import stdin
 from typing import Generator, Optional, Dict
 
+bhpc_dir = Path("C:\\_AWS", 'actualVersion')
+bhpc_exe = bhpc_dir / 'bhpc.exe'
 
 class BHPC:
     def __init__(self, bhpc_exe: Path = Path("C:\\_AWS", 'actualVersion', 'bhpc.exe'), auth_data=Dict[str, str]):

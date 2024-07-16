@@ -85,10 +85,7 @@ def run_psms(run_data: Iterable[Tuple[Union[Path, str], FrozenSet[FOCUSCrop], Fr
              max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
     """Run all given psm_files using working_dir as scratch space.
     When given scenarios that are not defined for some given crops, they are silently ignored for those crops only
-    :param psm_files: The files to run
     :param working_dir: Where to run them
-    :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
-    :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
     :param max_workers: How many worker threads to use at most
     :return: A Generator of the results of the calculations. Makes new results available as their calculations finish.
                 No particular ordering is guaranteed but the calculations are started in order of
