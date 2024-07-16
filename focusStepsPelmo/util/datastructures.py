@@ -75,28 +75,42 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
             elif origin == tuple:
                 if not input_value:
                     return tuple()
-                if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                    type_args = t.__args__
-                    result = tuple()
-                    last_type = type_args[-2] if len(type_args) > 1 else type_args[1]
-                    for value, value_type in itertools.zip_longest(input_value, type_args, fillvalue=last_type):
-                        if value_type != Ellipsis:
-                            result += (correct_type(value, value_type),)
-                        else:
-                            if value == last_type:
-                                break  # Ellipsis is not taken, i.e. a tuple of one or more ints has one int
+                try:
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
+                        type_args = t.__args__
+                        result = tuple()
+                        last_type = type_args[-2] if len(type_args) > 1 else type_args[1]
+                        for value, value_type in itertools.zip_longest(input_value, type_args, fillvalue=last_type):
+                            if value_type != Ellipsis:
+                                result += (correct_type(value, value_type),)
                             else:
-                                result += (correct_type(value, last_type),)
-                    return result
-                else:
-                    return tuple(input_value)
+                                if value == last_type:
+                                    break  # Ellipsis is not taken, i.e. a tuple of one or more ints has one int
+                                else:
+                                    result += (correct_type(value, last_type),)
+                        return result
+                    else:
+                        return tuple(input_value)
+                except TypeError:  # input_value is not iterable
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
+                        type_args = t.__args__
+                        if len(type_args) == 1 or (len(type_args) == 2 and type_args[1] == Ellipsis):
+                            return (correct_type(input_value, type_args[0]),)
+                    else:
+                        return (input_value,)
             elif origin == list:
                 if not input_value:
                     return list()
-                if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                    return [correct_type(x, t.__args__[0]) for x in input_value]
-                else:
-                    return list(input_value)
+                try:
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
+                        return [correct_type(x, t.__args__[0]) for x in input_value]
+                    else:
+                        return list(input_value)
+                except TypeError:  # input_value is not iterable
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
+                        return [correct_type(input_value, t.__args__[0])]
+                    else:
+                        return [input_value]
             elif origin == dict:
                 if not input_value:
                     return {}
