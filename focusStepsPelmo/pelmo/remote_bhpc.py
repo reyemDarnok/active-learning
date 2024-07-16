@@ -81,9 +81,15 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
                                  batch_size=1000)
     if run:
         logger.info('Starting Pelmo run')
+        if batch_number > 10:
+            cores = 96
+        elif batch_number > 2:
+            cores = 16
+        else:
+            cores = 8
         session = commands.start_submit_file(submit_folder=submit, session_name_prefix='Pelmo',
                                              submit_file_regex='pelmo\\.sub',
-                                             machines=max(1, batch_number // 10), cores=96, multithreading=True,
+                                             machines=max(1, batch_number // 10), cores=cores, multithreading=True,
                                              notification_email=notification_email, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         commands.download(session)
