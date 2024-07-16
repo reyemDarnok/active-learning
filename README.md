@@ -77,6 +77,39 @@ other automations, they are primarily intended for invocation by the other three
 
 This project uses several file format that users should be aware of. They will be listed in this section
 
+### Crop Naming
+
+Given that there is no unified spelling for all crops, this project uses two letter abbreviations for them.
+Given that there is no unified version of these either, here are the abbreviations and their meanings:
+
+```
+AP = "Apples"
+BB = "Bush berries"
+BF = "Beans (field)"
+BV = "Beans (vegetables)"
+CA = "Carrots"
+CB = "Cabbage"
+CI = "Citrus"
+CO = "Cotton"
+GA = "Grass and alfalfa"
+LS = "Linseed"
+MZ = "Maize"
+ON = "Onions"
+OS = "Oilseed rape (summer)"
+OW = "Oilseed rape (winter)"
+PE = "Peas (animals)"
+PO = "Potatoes"
+SB = "Sugar beets"
+SC = "Spring cereals"
+SF = "Sunflower"
+SO = "Soybeans"
+SW = "Strawberries"
+TB = "Tobacco"
+TM = "Tomatoes"
+VI = "Vines"
+WC = "Winter cereals"
+```
+
 ### File Naming
 
 Many parts of this workflow generate files. Some only generate a single file of a given type with changing contents
