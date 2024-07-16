@@ -62,7 +62,7 @@ class DegradationType(int, Enum):
     INDIVIDUAL_LIQUID_PHASE = auto()
 
 
-@dataclass
+@dataclass(frozen=True)
 class Volatization:
     """Used by Pelmo"""
     henry: float = 3.33E-04
@@ -74,7 +74,7 @@ class Volatization:
     temperature: float = 20
 
 
-@dataclass
+@dataclass(frozen=True)
 class Moisture:
     """Used by Pelmo"""
     absolute: float = 0
@@ -82,7 +82,7 @@ class Moisture:
     exp: float = 0.7
 
 
-@dataclass
+@dataclass(frozen=True)
 class DegradationData(TypeCorrecting):
     rate: float
     temperature: float = 20
@@ -94,7 +94,7 @@ class DegradationData(TypeCorrecting):
     i_ref: float = 100
 
 
-@dataclass
+@dataclass(frozen=True)
 class PsmDegradation(TypeCorrecting):
     to_disregard: DegradationData
     metabolites: Optional[Tuple['PsmDegradation', ...]] = field(default_factory=tuple)
@@ -110,7 +110,7 @@ class PsmDegradation(TypeCorrecting):
             object.__setattr__(self, 'metabolites', tuple())
 
 
-@dataclass
+@dataclass(frozen=True)
 class PsmAdsorption:
     """Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values"""
     koc: float
@@ -127,7 +127,7 @@ class PsmAdsorption:
     kdes: float = 0
 
 
-@dataclass
+@dataclass(frozen=True)
 class PsmCompound:
     molar_mass: float
     adsorptions: Tuple[PsmAdsorption, ...]
@@ -178,7 +178,7 @@ PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(k
                                 volatizations=(Volatization(), Volatization()))
 
 
-@dataclass
+@dataclass(frozen=True)
 class PsmFile(TypeCorrecting):
     application: PsmApplication
     gap: GAP
