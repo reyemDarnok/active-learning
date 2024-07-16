@@ -23,24 +23,6 @@ class Degradation(TypeCorrecting):
 
 
 @dataclass(frozen=True)
-class Sorption(TypeCorrecting):
-    """Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values"""
-    koc: float
-    freundlich: float
-
-
-@dataclass(frozen=True)
-class Volatility(TypeCorrecting):
-    """A structure describing the volatilization of a compound"""
-    water_solubility: float
-    """The water solubility in mg/L"""
-    vaporization_pressure: float
-    """The vaporization pressure in Pa"""
-    reference_temperature: float
-    """The temperature the other values have been measured at in °C"""
-
-
-@dataclass(frozen=True)
 class MetaboliteDescription(TypeCorrecting):
     """A structure describing a decay to a metabolite"""
     formation_fraction: float
@@ -54,10 +36,14 @@ class Compound(TypeCorrecting):
     """A Compound definition"""
     molarMass: float
     """molar mass in g/mol"""
-    volatility: Volatility
-    """Volatilization behaviour"""
-    sorption: Sorption
-    """A sorption behaviour"""
+    water_solubility: float
+    """The water solubility in mg/L"""
+    vaporization_pressure: float
+    """The vaporization pressure in Pa"""
+    reference_temperature: float
+    """The temperature the other values have been measured at in °C"""
+    koc: float
+    freundlich: float
     degradation: Degradation
     """Degradation behaviours"""
     plant_uptake: float = 0

@@ -269,9 +269,9 @@ class GAP(ABC, TypeCorrecting):
     """The crop that the field is modelled after"""
     rate: float
     """How much compound will be applied in g/ha"""
-    period_between_applications: int = 1
+    apply_every_n_years: int = 1
     """The time between applications in years. Use this to indicate years without applications"""
-    number: int = 1
+    number_of_applications: int = 1
     """How often will be applied"""
     interval: timedelta = 1
     """What is the minimum interval between applications"""
@@ -296,8 +296,8 @@ class GAP(ABC, TypeCorrecting):
         return {
             "modelCrop": self.modelCrop.name if hasattr(self.modelCrop, 'name') else self.modelCrop,
             "rate": self.rate,
-            "period_between_applications": self.period_between_applications,
-            "number": self.number,
+            "apply_every_n_years": self.apply_every_n_years,
+            "number_of_applications": self.number_of_applications,
             "interval": self.interval,
             "model_specific_data": self.model_specific_data
         }
@@ -356,7 +356,7 @@ class GAP(ABC, TypeCorrecting):
             yield RelativeGAP(
                 modelCrop=row['Model Crop'],
                 rate=row['Rate'],
-                number=row['Number'],
+                number_of_applications=row['Number'],
                 interval=row['Interval'],
                 bbch=row['BBCH']
             )
@@ -441,7 +441,8 @@ class GAP(ABC, TypeCorrecting):
                 if not numpy.isnan(row[scenario_name]):
                     scenarios[Scenario(scenario)] = {"time_in_year": excel_date_to_datetime(row[scenario_name])}
             first_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
-                                            number=number, period_between_applications=period_between_applications,
+                                            number_of_applications=number,
+                                            apply_every_n_years=period_between_applications,
                                             interval=interval,
                                             scenarios=scenarios)
             second_scenarios = {}
@@ -455,11 +456,12 @@ class GAP(ABC, TypeCorrecting):
                     scenarios[Scenario(scenario)] = excel_date_to_datetime(row[scenario_name])
             if second_scenarios:
                 second_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
-                                                 number=number, period_between_applications=period_between_applications,
+                                                 number_of_applications=number,
+                                                 apply_every_n_years=period_between_applications,
                                                  interval=interval,
                                                  scenarios=second_scenarios)
                 yield MultiGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
-                               number=number, period_between_applications=period_between_applications,
+                               number_of_applications=number, apply_every_n_years=period_between_applications,
                                interval=interval,
                                timings=(first_gap, second_gap))
             else:
@@ -540,12 +542,12 @@ class RelativeGAP(GAP):
                                             self.modelCrop.bbch_application_name[self.season])
         time_in_year = application_line['Recommended Application date']
         time_and_interception = tuple()
-        for index in range(self.number):
+        for index in range(self.number_of_applications):
             application_time = time_in_year + self.interval * index
             application_line = date_to_data_row(application_time, scenario, self.modelCrop.bbch_application_name[0])
             interception = application_line['Crop Interception(%)']
             time_and_interception += tuple([tuple([application_time, interception])])
-        for year in range(1, 6 + 20 * self.period_between_applications + 1, self.period_between_applications):
+        for year in range(1, 6 + 20 * self.apply_every_n_years + 1, self.apply_every_n_years):
             for appl_date, interception in time_and_interception:
                 appl_date = datetime(year=year, month=appl_date.month, day=appl_date.day)
                 yield appl_date, interception
@@ -568,7 +570,7 @@ class AbsoluteConstantGAP(GAP):
 
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         time_and_interception: Tuple[Tuple[datetime, float]] = tuple()
-        for index in range(self.number):
+        for index in range(self.number_of_applications):
             application_time = self.time_in_year + self.interval * index
             try:
                 application_line = date_to_data_row(application_time, scenario, self.modelCrop.bbch_application_name[0])
@@ -576,7 +578,7 @@ class AbsoluteConstantGAP(GAP):
                 application_line = date_to_data_row(application_time, scenario, self.modelCrop.bbch_application_name[1])
             interception = application_line['Crop Interception(%)']
             time_and_interception += tuple([tuple([application_time, interception])])
-        for year in range(1, 6 + 20 * self.period_between_applications + 1, self.period_between_applications):
+        for year in range(1, 6 + 20 * self.apply_every_n_years + 1, self.apply_every_n_years):
             for appl_date, interception in time_and_interception:
                 appl_date = datetime(year=year, month=appl_date.month, day=appl_date.day)
                 yield appl_date.replace(year=year), interception
