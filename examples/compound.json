@@ -6,11 +6,11 @@
   "reference_temperature": 20,
   "koc": 60,
   "freundlich": 0.9,
-    "plant_uptake": 0.5,
-    "degradation": {
-      "system": 6,
-      "soil": 5,
-      "surfaceWater": 6,
-      "sediment": 6
-    }
+  "plant_uptake": 0.5,
+  "dt50": {
+    "system": 6,
+    "soil": 5,
+    "surfaceWater": 6,
+    "sediment": 6
+  }
 }
