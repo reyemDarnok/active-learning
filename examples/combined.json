@@ -3,7 +3,7 @@
   "type": "multi",
   "arguments": {
     "modelCrop": "WC",
-    "number": 2,
+    "number_of_applications": 2,
     "interval": 14,
     "rate": 10000,
     "apply_every_n_years": 2,
@@ -26,17 +26,13 @@
   "compound": {
     "metabolites": [],
     "molarMass": 300,
-    "volatility": {
-      "water_solubility": 90.0,
-      "vaporization_pressure": 1e-4,
-      "reference_temperature": 20
-    },
-    "sorption": {
-      "koc": 300,
-      "freundlich": 0.9
-    },
+    "water_solubility": 90.0,
+    "vaporization_pressure": 1e-4,
+    "reference_temperature": 20,
+    "koc": 300,
+    "freundlich": 0.9,
     "plant_uptake": 0.5,
-    "degradation": {
+    "dt50": {
       "system": 6,
       "soil": 100,
       "surfaceWater": 6,

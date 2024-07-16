@@ -1,15 +1,11 @@
 {
   "metabolites": [],
     "molarMass": 300,
-    "volatility": {
-      "water_solubility": 90.0,
-      "vaporization_pressure": 1e-4,
-      "reference_temperature": 20
-    },
-    "sorption": {
-        "koc": 60,
-        "freundlich": 0.9
-    },
+  "water_solubility": 90.0,
+  "vaporization_pressure": 1e-4,
+  "reference_temperature": 20,
+  "koc": 60,
+  "freundlich": 0.9,
     "plant_uptake": 0.5,
     "degradation": {
       "system": 6,
