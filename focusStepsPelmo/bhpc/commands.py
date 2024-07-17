@@ -192,6 +192,9 @@ class BHPC:
     def remove(self, session: str, kill: bool = True):
         logger = logging.getLogger()
         logger.info('Running remove command for session %s', session)
+        self._execute_bhpc_command(["remove", session], 'yes' if kill else 'no')
+
+
 
     def _execute_bhpc_command(self, arguments: List[str], stdin: str = "") -> Tuple[str, str]:
         argv = [str(self.bhpc_exe.absolute()), *arguments]
@@ -208,26 +211,6 @@ class BHPC:
             return self._execute_bhpc_command(arguments)
         else:
             return stdout, stderr
-
-def remove(session: str, kill: bool = True):
-    """Remove a session from the bhpc
-    :param session: The session to remove
-    :param kill: Whether to also kill the session"""
-    logger = logging.getLogger()
-    with pushd(bhpc_dir):
-        logger.info('Running remove command')
-        p = subprocess.Popen([
-            str(bhpc_exe.absolute()), "remove", session],
-            stdin=PIPE, stdout=PIPE, text=True)
-        if kill:
-            remove_stdout, _ = p.communicate("yes")
-        else:
-            remove_stdout, _ = p.communicate("no")
-        logger.debug(remove_stdout)
-
-        if is_auth_message(remove_stdout):
-            request_auth_data()
-            remove(session, kill)
 
 
 def bhpc_job_finished(session: str) -> bool:
