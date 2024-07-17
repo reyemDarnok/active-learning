@@ -7,7 +7,7 @@ from argparse import ArgumentParser, Namespace
 from contextlib import suppress
 from pathlib import Path
 from shutil import rmtree
-from typing import Generator, Iterable, Optional, TypeVar, List, Tuple, FrozenSet, Dict
+from typing import Generator, Iterable, Optional, TypeVar, List, Tuple, FrozenSet, Dict, Set
 from zipfile import ZipFile
 
 from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
@@ -145,7 +145,7 @@ def zip_directory(directory: Path, zip_name: str):
                 zip_file.write(root / file, name_in_archive)
 
 
-def make_sub_file(psm_file_data: Iterable[Tuple[str, FrozenSet[FOCUSCrop], FrozenSet[Scenario]]], target_dir: Path,
+def make_sub_file(psm_file_data: Iterable[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]], target_dir: Path,
                   batch_size: int = 1000) -> int:
     """Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_file_data: The contents of the psm files to be included in the submit file
@@ -172,9 +172,9 @@ def make_sub_file(psm_file_data: Iterable[Tuple[str, FrozenSet[FOCUSCrop], Froze
     return len(batch_infos)
 
 
-def make_batches(psm_file_data: Iterable[Tuple[str, FrozenSet[FOCUSCrop], FrozenSet[Scenario]]],
+def make_batches(psm_file_data: Iterable[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]],
                  target_dir: Path, batch_size: int = 1000) -> Generator[
-    Tuple[str, FrozenSet[FOCUSCrop], FrozenSet[Scenario]], None, None]:
+    Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
     """Create the directories for the batches and fill them
     :param psm_file_data: The psm files to batch.
     :param target_dir: The parent directory for the batch directories
@@ -182,14 +182,14 @@ def make_batches(psm_file_data: Iterable[Tuple[str, FrozenSet[FOCUSCrop], Frozen
     :return: The names of the created batches"""
     logger = logging.getLogger()
     logger.info('Splitting psm_files into batches')
-    groupings: Dict[Tuple[FrozenSet[FOCUSCrop], FrozenSet[Scenario]], List[str]] = {}
+    groupings: Dict[Tuple[FOCUSCrop, FrozenSet[Scenario]], Set[str]] = {}
     batch_index = 0
     for run_data in psm_file_data:
         group_key = (run_data[1], run_data[2])
         if group_key not in groupings.keys():
-            groupings[group_key] = []
+            groupings[group_key] = set()
         group = groupings[group_key]
-        group.append(run_data[0])
+        group.add(run_data[0])
         if len(group) >= batch_size:
             yield make_batch(batch_index, group, target_dir), run_data[1], run_data[2]
             batch_index += 1

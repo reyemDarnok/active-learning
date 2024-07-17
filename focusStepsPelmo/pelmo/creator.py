@@ -84,7 +84,7 @@ def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
                        crops: FrozenSet[FOCUSCrop] = None, scenarios: FrozenSet[Scenario] = None,
                        combinations: Iterable[Combination] = None) -> Generator[
-    Tuple[str, FrozenSet[FOCUSCrop], FrozenSet[Scenario]], None, None]:
+    Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
     """Create the contents of psm files
     :param compounds: The compounds to combine with gaps to make psm files
     :param gaps: The gaps to combine with compounds to make psm files
@@ -100,13 +100,13 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
             comment = json.dumps({"combination": hash(combination)})
             yield _generate_psm_contents(compound=combination.compound, gap=combination.gap, comment=comment)
     if compounds and gaps:
-        gaps = list(gaps)
-        for compound in compounds:
-            for gap in gaps:
-                psm_file_crops = crops.intersection(gap.modelCrops)
-                psm_file_scenarios = scenarios.intersection(gap.defined_scenarios)
-                comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
-                yield _generate_psm_contents(compound, gap, comment), psm_file_crops, psm_file_scenarios
+        compounds = list(compounds)
+        for gap in gaps:
+            if gap.modelCrop in crops:
+                for compound in compounds:
+                    psm_file_scenarios = scenarios.intersection(gap.defined_scenarios)
+                    comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
+                    yield _generate_psm_contents(compound, gap, comment), gap.modelCrop, psm_file_scenarios
 
 
 def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
