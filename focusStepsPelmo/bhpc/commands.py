@@ -8,10 +8,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from subprocess import PIPE
 from sys import stdin
-from typing import Generator, Optional
+from typing import Generator, Optional, Dict
 
-bhpc_dir = Path('C:\\_AWS', 'actualVersion')
+bhpc_dir = Path("C:\\_AWS", 'actualVersion')
 bhpc_exe = bhpc_dir / 'bhpc.exe'
+
+class BHPC:
+    def __init__(self, bhpc_exe: Path = Path("C:\\_AWS", 'actualVersion', 'bhpc.exe'), auth_data=Dict[str, str]):
+        self.bhpc_exe = bhpc_exe
+        assert self._verify_auth_data(auth_data)
+        self.auth_data = auth_data
+
+    @staticmethod
+    def _verify_auth_data(auth_data):
+        return True
+
+    def change_auth_data(self, new_auth_data: Dict):
+        self.auth_data = new_auth_data
 
 
 @contextlib.contextmanager

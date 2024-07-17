@@ -4,12 +4,10 @@ import os
 import shutil
 import zipfile
 from argparse import ArgumentParser, Namespace
-from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
-from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import rmtree
-from typing import Generator, Iterable, Optional, TypeVar, List
+from typing import Generator, Iterable, Optional, TypeVar, List, Tuple, FrozenSet, Dict, Set
 from zipfile import ZipFile
 
 from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
@@ -22,7 +20,7 @@ from focusStepsPelmo.pelmo.creator import generate_psm_files
 from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
 from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util.datastructures import correct_type
-from focusStepsPelmo.util.iterable_helper import repeat_infinite, count_up
+from focusStepsPelmo.util.iterable_helper import count_up
 
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
@@ -77,7 +75,6 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
         rmtree(submit)
     logger.info('Generating sub files for bhpc')
     batch_number = make_sub_file(psm_file_data=psm_file_data, target_dir=submit,
-                                 crops=crops, scenarios=scenarios,
                                  batch_size=1000)
     if run:
         logger.info('Starting Pelmo run')
@@ -148,14 +145,11 @@ def zip_directory(directory: Path, zip_name: str):
                 zip_file.write(root / file, name_in_archive)
 
 
-def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
-                  crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
+def make_sub_file(psm_file_data: Iterable[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]], target_dir: Path,
                   batch_size: int = 1000) -> int:
     """Creates a BHPC Submit file for the Pelmo runs. WARNING: Moves the psm files to target_dir while working
     :param psm_file_data: The contents of the psm files to be included in the submit file
     :param target_dir: The directory to write the sub file to
-    :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
-    :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
     :param batch_size: How large a batch of psm files should be, each can be run in parallel
     :return: The number of jobs in the sub file"""
     logger = logging.getLogger()
@@ -165,21 +159,22 @@ def make_sub_file(psm_file_data: Iterable[str], target_dir: Path,
     zip_common_directories(target=target_dir)
 
     logger.info('Making batches')
-    batch_directory_names = make_batches(psm_file_data, target_dir, batch_size)
-    batch_directory_names = list(batch_directory_names)
+    batch_infos = list(make_batches(psm_file_data, target_dir, batch_size))
     logger.info('Writing sub file')
     sub_template = jinja_env.get_template('commit.sub.j2')
     submit_file = target_dir / "pelmo.sub"
-    submit_file.write_text(sub_template.render(
-        batches=batch_directory_names,
-        crops=crops,
-        scenarios=scenarios,
-    ))
+    submit_file.write_text(
+        sub_template.render(
+            batches=batch_infos,
+        )
+    )
     logger.info('Finished creating files')
-    return len(batch_directory_names)
+    return len(batch_infos)
 
 
-def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int = 1000) -> Generator[str, None, None]:
+def make_batches(psm_file_data: Iterable[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]],
+                 target_dir: Path, batch_size: int = 1000) -> Generator[
+    Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
     """Create the directories for the batches and fill them
     :param psm_file_data: The psm files to batch.
     :param target_dir: The parent directory for the batch directories
@@ -187,16 +182,21 @@ def make_batches(psm_file_data: Iterable[str], target_dir: Path, batch_size: int
     :return: The names of the created batches"""
     logger = logging.getLogger()
     logger.info('Splitting psm_files into batches')
-    batches = split_into_batches(psm_file_data, batch_size)
-    logger.info('Split psm_files into batches')
-    pool = ThreadPoolExecutor(max_workers=cpu_count() - 1)
-    logger.info('Initialized Thread Pool')
-    yield from pool.map(make_batch,
-                        count_up(),
-                        batches,
-                        repeat_infinite(target_dir))
-    logger.info('Registered all batch creation functions')
-    pool.shutdown()
+    groupings: Dict[Tuple[FOCUSCrop, FrozenSet[Scenario]], Set[str]] = {}
+    batch_index = 0
+    for run_data in psm_file_data:
+        group_key = (run_data[1], run_data[2])
+        if group_key not in groupings.keys():
+            groupings[group_key] = set()
+        group = groupings[group_key]
+        group.add(run_data[0])
+        if len(group) >= batch_size:
+            yield make_batch(batch_index, group, target_dir), run_data[1], run_data[2]
+            batch_index += 1
+            del groupings[group_key]
+    for group_key, group in groupings.items():
+        yield make_batch(batch_index, group, target_dir), group_key[0], group_key[1]
+        batch_index += 1
 
 
 def make_batch(index: int, batch: Iterable[str], target_dir: Path) -> str:

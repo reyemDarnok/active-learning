@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet, Set
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet
 
 import numpy
 import pandas
@@ -463,7 +463,8 @@ class GAP(ABC, TypeCorrecting):
                 scenario_name = scenario.replace('ü', 'u')
                 if not numpy.isnan(row[scenario_name]):
                     scenarios[Scenario(scenario)] = {"time_in_year": excel_date_to_datetime(row[scenario_name])}
-            first_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
+            first_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data,
+                                            rate=rate,
                                             number_of_applications=number,
                                             apply_every_n_years=period_between_applications,
                                             interval=interval,
@@ -478,7 +479,8 @@ class GAP(ABC, TypeCorrecting):
                 if not numpy.isnan(row[scenario_name]):
                     scenarios[Scenario(scenario)] = excel_date_to_datetime(row[scenario_name])
             if second_scenarios:
-                second_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
+                second_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data,
+                                                 rate=rate,
                                                  number_of_applications=number,
                                                  apply_every_n_years=period_between_applications,
                                                  interval=interval,
@@ -513,16 +515,12 @@ class MultiGAP(GAP):
                             for timing in self.timings]}
 
     @property
-    def defined_scenarios(self) -> Set[Scenario]:
-        result = super().defined_scenarios
-        for timing in self.timings:
-            result = result.intersection(timing.defined_scenarios)
-        # noinspection PyTypeChecker
-        return result
+    def defined_scenarios(self) -> FrozenSet[Scenario]:
+        return super().defined_scenarios.intersection(*(timing.defined_scenarios for timing in self.timings))
 
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         for timing in self.timings:
-            yield from timing.application_data(scenario)
+            yield from timing.application_data(scenario=scenario)
 
     def __post_init__(self):
         init_dict = self._get_common_dict()
@@ -666,7 +664,7 @@ class AbsoluteScenarioGAP(GAP):
         return super().defined_scenarios.intersection(self._scenario_gaps.keys())
 
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
-        yield from self._scenario_gaps[scenario].application_data(scenario)
+        yield from self._scenario_gaps[scenario].application_data(scenario=scenario)
 
     def __hash__(self) -> int:
         init_dict = self._get_common_dict()
