@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet, Set
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet
 
 import numpy
 import pandas
@@ -327,7 +327,8 @@ class GAP(ABC, TypeCorrecting):
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
         """Which scenarios this GAP is defined for"""
-        return next(iter(self.modelCrops)).defined_scenarios.intersection(c.defined_scenarios for c in self.modelCrops)
+        return next(iter(self.modelCrops)).defined_scenarios.intersection(
+            *(c.defined_scenarios for c in self.modelCrops))
 
     @property
     def rate_in_kg(self):
@@ -515,12 +516,9 @@ class MultiGAP(GAP):
                             for timing in self.timings]}
 
     @property
-    def defined_scenarios(self) -> Set[Scenario]:
-        result = super().defined_scenarios
-        for timing in self.timings:
-            result = result.intersection(timing.defined_scenarios)
-        # noinspection PyTypeChecker
-        return result
+    def defined_scenarios(self) -> FrozenSet[Scenario]:
+        return super().defined_scenarios.intersection(*(timing.defined_scenarios for timing in self.timings))
+
 
     def application_data(self, crop: FOCUSCrop, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         for timing in self.timings:
