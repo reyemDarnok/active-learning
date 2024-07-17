@@ -133,10 +133,13 @@ class BHPC:
                 session
             ]
         )
+        # TODO Error handling session already exists
+        # TODO Error handling no submit files found
 
     def run(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
             notification_email: str = None, session_timeout: int = 6):
         assert cores in (2, 4, 8, 16, 96), f"Invalid core number {cores}. Only 2,4,8,16 or 96 are permitted"
+        assert machines > 0, "The number of machines must be a positive number or the job will stall"
         command_args = ['run',
                         '-force',
                         '-cores', str(cores),
