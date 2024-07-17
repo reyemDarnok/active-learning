@@ -77,7 +77,7 @@ other automations, they are primarily intended for invocation by the other three
 
 This project uses several file format that users should be aware of. They will be listed in this section
 
-### Crop Naming
+### Crop Names
 
 Given that there is no unified spelling for all crops, this project uses two letter abbreviations for them.
 Given that there is no unified version of these either, here are the abbreviations and their meanings:
@@ -108,6 +108,23 @@ TB = "Tobacco"
 TM = "Tomatoes"
 VI = "Vines"
 WC = "Winter cereals"
+```
+
+### Scenario Names
+
+While the single letter abbreviations for the FOCUS scenarios are more standardised than the crop abbreviations,
+there is still value in repeating the associations that this project uses here in its README
+
+```
+C = "Châteaudun"
+H = "Hamburg"
+J = "Jokioinen"
+K = "Kremsmünster"
+N = "Okehampton"
+P = "Piacenza"
+O = "Porto"
+S = "Sevilla"
+T = "Thiva"
 ```
 
 ### File Naming
