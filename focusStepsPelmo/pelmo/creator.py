@@ -97,8 +97,10 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
     assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
     if combinations:
         for combination in combinations:
+            psm_file_scenarios = scenarios.intersection(combination.gap.defined_scenarios)
             comment = json.dumps({"combination": hash(combination)})
-            yield _generate_psm_contents(compound=combination.compound, gap=combination.gap, comment=comment)
+            yield _generate_psm_contents(compound=combination.compound, gap=combination.gap,
+                                         comment=comment), combination.gap.modelCrop, psm_file_scenarios
     if compounds and gaps:
         compounds = list(compounds)
         for gap in gaps:

@@ -1,7 +1,7 @@
 {
   "type": "multi",
   "arguments": {
-    "modelCrops": "CA",
+    "modelCrop": "CA",
     "number_of_applications": 2,
     "interval": 14,
     "rate": 1000,
