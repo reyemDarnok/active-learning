@@ -5,6 +5,7 @@ import random
 import subprocess
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from subprocess import PIPE
 from sys import stdin
@@ -104,7 +105,8 @@ class BHPC:
             logger.info("Received BHPC Credentials from user")
         else:
             logger.warning("BHPC Credentials by user were not valid")
-            if input("Unfortunately there were missing fields in the Credentials. Try again? [Y/n]") != 'n':
+            if input(
+                    "Unfortunately there were missing fields in the Credentials. Try again? [Y/n]").strip().casefold() != 'n'.strip().casefold():
                 logger.debug("Retrying BHPC Credentials request")
                 self.request_auth_data()
 
@@ -170,36 +172,35 @@ class BHPC:
         else:
             return bhpc_process
 
+    def download(self, session: str, wait_until_finished: bool = True,
+                 retry_interval: timedelta = timedelta(seconds=60)) -> bool:
+        logger = logging.getLogger()
+        try:
+            if wait_until_finished:
+                before_last_check = datetime.now()
+                while not self.bhpc_job_finished(session):
+                    after_last_check = datetime.now()
+                    sleep_interval = retry_interval - (after_last_check - before_last_check)
+                    logger.debug('Sleeping for %s before the next check of session status', sleep_interval)
+                    time.sleep(sleep_interval.total_seconds() + sleep_interval.microseconds / 1_000_000)
+                    before_last_check = datetime.now()
+                logger.info('Finished wait for the completion of %s', session)
+                self._execute_bhpc_command(['download', session])
+                return True
+                # TODO report missing files if not waiting
+        except KeyboardInterrupt as e:
+            if wait_until_finished:
+                logger.warning("Download wait interrupted by interactive user")
+                answer = input(
+                    f"Stopping monitoring session {session}. Should the session also be removed and killed? y/N:")
+                if answer.strip().casefold() == 'y'.casefold():
+                    print("Removing session")
+                    logger.warning(f"Removing session {session} on request of interactive user")
+                    self.remove(session, True)
+                raise e
+            else:
+                raise e
 
-
-def download(session: str, wait_until_finished: bool = True, retry_interval: float = 60) -> bool:
-    logger = logging.getLogger()
-    try:
-        if wait_until_finished:
-            while not bhpc_job_finished(session):
-                time.sleep(retry_interval)
-        with pushd(bhpc_dir):
-            logger.info('Running download command')
-            download_process = subprocess.run([
-                str(bhpc_exe.absolute()), 'download', session
-            ], text=True, capture_output=True)
-            logger.debug(download_process.stdout)
-            if is_auth_message(download_process.stderr):
-                request_auth_data()
-                return download(session, wait_until_finished, retry_interval)
-            return True
-    except KeyboardInterrupt as e:
-        if wait_until_finished:
-            logger.warning(f"Download wait interrupted by interactive user")
-            answer = input(
-                f"Stopping monitoring session {session}. Should the session also be removed and killed? y/N:")
-            if answer.strip().casefold() == "y".casefold():
-                print("Removing session")
-                logger.warning(f"Removing session {session} on request of interactive user")
-                remove(session, True)
-            raise e
-        else:
-            raise e
 
 
 def remove(session: str, kill: bool = True):
