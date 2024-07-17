@@ -6,15 +6,20 @@ import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from subprocess import PIPE
 from sys import stdin
-from typing import Generator, Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional
 
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
 class BHPCStateError(Exception):
+    pass
+
+
+class BHPCAccessError(Exception):
     pass
 
 
@@ -41,7 +46,20 @@ class SessionStatus(TypeCorrecting):
 
     @staticmethod
     def from_bhpc_message(bhpc_message: str) -> 'SessionStatus':
-        raise NotImplementedError()
+        lines = bhpc_message.splitlines()
+        lines = lines[3:]  # remove headings
+        submit_files = []
+        for line in lines:
+            if line.startswith('-'):
+                break
+            initial, started, done, path = line.split(maxsplit=3)
+            initial = int(initial)
+            started = int(started)
+            done = int(done)
+            path = Path(path)
+            submit_files.append(SubmitFileStatus(initial, started, done, path))
+        return SessionStatus(submit_files)
+    # TODO other run information in last section of show
 
 
 @contextlib.contextmanager
@@ -79,26 +97,43 @@ class SessionSummary(TypeCorrecting):
             self.started = None
         if self.finished in ('N/A', '-'):
             self.finished = None
-        if self.elapsed_time:
+        if self.elapsed_time and type(self.elapsed_time) == str:
             parts = self.elapsed_time.split(':')
             self.elapsed_time = timedelta(hours=parts[0], minutes=parts[1], seconds=parts[2])
 
 
+class BHPCListSections(int, Enum):
+    PREAMBLE = 0
+    TABLE_HEADLINE = 1
+    TABLE_ENTRIES = 2
+    ACTIVE_SESSION_COUNT = 3
 @dataclass(frozen=True)
 class BHPCState(TypeCorrecting):
     sessions: List[SessionSummary]
     active_sessions: int
 
-    @staticmethod
-    def from_bhpc_message(bhpc_message: str):
-        section = 0
+    @classmethod
+    def from_bhpc_message(cls, bhpc_message: str) -> 'BHPCState':
+        section = BHPCListSections.PREAMBLE
+        sessions = []
         for line in bhpc_message.splitlines():
-            if section == 0:
+            if section == BHPCListSections.PREAMBLE:
                 if line.startswith('|'):
-                    section = 1
-            elif section == 1:
-                section = 2
-            elif section
+                    section = BHPCListSections.TABLE_HEADLINE
+            elif section == BHPCListSections.TABLE_HEADLINE:
+                section = BHPCListSections.TABLE_ENTRIES
+            elif section == BHPCListSections.TABLE_ENTRIES:
+                if line.startswith('|'):
+                    parts = line.split('|')
+                    sessions.append(SessionSummary(*parts[1:-1]))
+                else:
+                    section = BHPCListSections.ACTIVE_SESSION_COUNT
+            elif section == BHPCListSections.ACTIVE_SESSION_COUNT:
+                if line:
+                    return cls(sessions, int(line.split()[0]))
+        raise ValueError("BHPC Message was malformed. Was the input taken from the BHPC list command?")
+
+
 
 class BHPC:
     def __init__(self, request_auth_data_when_missing: bool = True, request_auth_data_when_invalid: bool = True,
@@ -157,7 +192,7 @@ class BHPC:
                 return False
         return True
 
-    def request_auth_data(self):
+    def request_auth_data(self) -> bool:
         logger = logging.getLogger()
         logger.info("Requesting BHPC Credentials from user")
         print("To authorize this script against the BHPC, please copy the CLI Credentials from http://go/bhpc-prod")
@@ -172,12 +207,15 @@ class BHPC:
         if self.validate_auth_data(check_online=False):
             print("Thank you for providing the Credentials. Calls to the bhpc are now possible")
             logger.info("Received BHPC Credentials from user")
+            return True
         else:
             logger.warning("BHPC Credentials by user were not valid")
             if input(
                     "Unfortunately there were missing fields in the Credentials. Try again? [Y/n]").strip().casefold() != 'n'.strip().casefold():
                 logger.debug("Retrying BHPC Credentials request")
-                self.request_auth_data()
+                return self.request_auth_data()
+            else:
+                return False
 
     def start_session(self, submit_folder: Path, submit_file_regex=r'.+\.sub',
                       session_name_prefix: str = "Unknown session", session_name_suffix: str = None,
@@ -295,35 +333,17 @@ class BHPC:
         else:
             return stdout, stderr
 
-
-def get_bhpc_job_status(session: str) -> Generator[SubmitFileStatus, None, None]:
-    """Checks the status of a BHPC job
-    KNOWN ISSUE: Paths with whitespace other than single spaces will have their whitespace reduced to single spaces
-    :param session: The session to check
-    :return: The statuses of each submit file in the order BHPC show presents them"""
-    logger = logging.getLogger()
-    with pushd(bhpc_dir):
-        logging.info('Running show command for session %s', session)
-        p = subprocess.run([
-            str(bhpc_exe.absolute()), 'show', session], text=True, capture_output=True)
-    if is_auth_message(p.stdout):
-        request_auth_data()
-        yield from get_bhpc_job_status(session)
-    logger.debug("%s", p.stdout)
-    lines = p.stdout.splitlines()
-    lines = lines[3:]
-    for line in lines:
-        if line.startswith('-'):
-            return
-        initial, started, done, *path = line.split()
-        initial = int(initial)
-        started = int(started)
-        done = int(done)
-        # attempt to repair path with spaces - only works if the only whitespace in path is single spaces, but that's
-        # the most common case and this will most likely be used for reporting, not accessing the submit file
-        path = Path(" ".join(path))
-        logger.debug("%s %s %s %s", initial, started, done, path)
-        yield SubmitFileStatus(initial, started, done, path)
+    def _handle_auth(self):
+        if (
+                self.session_token is None or self.key is None or self.key_id is None) and self.request_auth_data_when_missing:
+            if not self.request_auth_data():
+                raise BHPCAccessError("Failed when requesting credentials after initialising without them")
+        elif self.request_auth_data_when_invalid:
+            if not self.request_auth_data():
+                raise BHPCAccessError("Failed when requesting credentials after the old credentials became invalid"
+                                      "or were never provided")
+        else:
+            raise BHPCAccessError("Could not obtain valid credentials for the bhpc")
 
 
 def is_auth_message(response: str) -> bool:
