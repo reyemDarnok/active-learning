@@ -9,7 +9,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from subprocess import PIPE
 from sys import stdin
-from typing import Generator, Dict, List
+from typing import Generator, Dict, List, Tuple
 
 
 class BHPCStateError(Exception):
@@ -155,22 +155,10 @@ class BHPC:
             command_args += ['-longRun']
 
         run_process = self._execute_bhpc_command(command_args)
-        if run_process.stdout.startswith('Session ') and run_process.stdout.endswith(' is not initialized.'):
+        if run_process[0].startswith('Session ') and run_process[0].endswith(' is not initialized.'):
             raise BHPCStateError(f"Session {session} could not be run because it was not initialized. "
                                  f"Initialize that session with the upload command first")
 
-    def _execute_bhpc_command(self, arguments: List[str]) -> subprocess.CompletedProcess[str]:
-        argv = [str(self.bhpc_exe.absolute()), *arguments]
-        logger = logging.getLogger()
-        logger.debug({"action": "Starting BHPC command", "arguments": argv})
-        bhpc_process = subprocess.run(argv, text=True, capture_output=True, cwd=self.bhpc_exe.parent,
-                                      encoding="windows-1252")
-        if is_auth_message(bhpc_process.stdout):
-            logger.info("BHPC rejected credentials, retrying after requesting new ones")
-            self._handle_auth()
-            return self._execute_bhpc_command(arguments)
-        else:
-            return bhpc_process
 
     def download(self, session: str, wait_until_finished: bool = True,
                  retry_interval: timedelta = timedelta(seconds=60)) -> bool:
@@ -201,7 +189,25 @@ class BHPC:
             else:
                 raise e
 
+    def remove(self, session: str, kill: bool = True):
+        logger = logging.getLogger()
+        logger.info('Running remove command for session %s', session)
 
+    def _execute_bhpc_command(self, arguments: List[str], stdin: str = "") -> Tuple[str, str]:
+        argv = [str(self.bhpc_exe.absolute()), *arguments]
+        env = os.environ.copy()
+
+        logger = logging.getLogger()
+        logger.debug({"action": "Starting BHPC command", "arguments": argv})
+        bhpc_process = subprocess.Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=self.bhpc_exe.parent, env=env,
+                                        text=True, encoding="windows-1252")
+        stdout, stderr = bhpc_process.communicate(input=stdin)
+        if is_auth_message(stdout):
+            logger.info("BHPC rejected credentials, retrying after requesting new ones")
+            self._handle_auth()
+            return self._execute_bhpc_command(arguments)
+        else:
+            return stdout, stderr
 
 def remove(session: str, kill: bool = True):
     """Remove a session from the bhpc
