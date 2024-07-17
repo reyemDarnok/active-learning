@@ -9,11 +9,39 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from subprocess import PIPE
 from sys import stdin
-from typing import Generator, Dict, List, Tuple
+from typing import Generator, Dict, List, Tuple, Optional
+
+from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
 class BHPCStateError(Exception):
     pass
+
+
+@dataclass(frozen=True)
+class SubmitFileStatus(TypeCorrecting):
+    """A dataclass representing the status of a BHPC submit file"""
+    initial: int
+    """How many jobs are initialised, that is defined and uploaded but not yet running"""
+    started: int
+    """How many jobs are currently running"""
+    done: int
+    """How many jobs have already finished running"""
+    submit_file: Path
+    """The path of the submit file defining the jobs. 
+    Any downloads from this job will be saved in the same directory as this file"""
+
+    def is_finished(self):
+        return self.initial == 0 and self.started == 0
+
+
+@dataclass(frozen=True)
+class SessionStatus(TypeCorrecting):
+    submit_files: List[SubmitFileStatus]
+
+    @staticmethod
+    def from_bhpc_message(bhpc_message: str) -> 'SessionStatus':
+        raise NotImplementedError()
 
 
 @contextlib.contextmanager
@@ -30,6 +58,47 @@ def pushd(new_dir):
     finally:
         os.chdir(previous_dir)
 
+
+@dataclass
+class SessionSummary(TypeCorrecting):
+    session_id: str
+    cwid: Optional[str]
+    status: str  # TODO make Enum
+    instance_type: Optional[str]  # TODO make Enum
+    vCPUs: Optional[int]
+    creation_time: Optional[datetime]
+    elapsed_time: Optional[timedelta]
+    initialized: Optional[int]
+    started: Optional[int]
+    finished: Optional[int]
+
+    def __post_init__(self):
+        if self.initialized in ('N/A', '-'):
+            self.initialized = None
+        if self.started in ('N/A', '-'):
+            self.started = None
+        if self.finished in ('N/A', '-'):
+            self.finished = None
+        if self.elapsed_time:
+            parts = self.elapsed_time.split(':')
+            self.elapsed_time = timedelta(hours=parts[0], minutes=parts[1], seconds=parts[2])
+
+
+@dataclass(frozen=True)
+class BHPCState(TypeCorrecting):
+    sessions: List[SessionSummary]
+    active_sessions: int
+
+    @staticmethod
+    def from_bhpc_message(bhpc_message: str):
+        section = 0
+        for line in bhpc_message.splitlines():
+            if section == 0:
+                if line.startswith('|'):
+                    section = 1
+            elif section == 1:
+                section = 2
+            elif section
 
 class BHPC:
     def __init__(self, request_auth_data_when_missing: bool = True, request_auth_data_when_invalid: bool = True,
@@ -166,7 +235,7 @@ class BHPC:
         try:
             if wait_until_finished:
                 before_last_check = datetime.now()
-                while not self.bhpc_job_finished(session):
+                while not self.is_session_finished(session):
                     after_last_check = datetime.now()
                     sleep_interval = retry_interval - (after_last_check - before_last_check)
                     logger.debug('Sleeping for %s before the next check of session status', sleep_interval)
@@ -194,7 +263,21 @@ class BHPC:
         logger.info('Running remove command for session %s', session)
         self._execute_bhpc_command(["remove", session], 'yes' if kill else 'no')
 
+    def list(self) -> BHPCState:
+        raise NotImplementedError()
 
+    def show(self, session) -> SessionStatus:
+        return self.get_session_status(session)
+
+    def is_session_finished(self, session: str):
+        for status in self.get_session_status(session).submit_files:
+            if not status.is_finished:
+                return False
+        return True
+
+    def get_session_status(self, session) -> SessionStatus:
+        stdout, _ = self._execute_bhpc_command(["show", session])
+        return SessionStatus.from_bhpc_message(stdout)
 
     def _execute_bhpc_command(self, arguments: List[str], stdin: str = "") -> Tuple[str, str]:
         argv = [str(self.bhpc_exe.absolute()), *arguments]
@@ -213,34 +296,7 @@ class BHPC:
             return stdout, stderr
 
 
-def bhpc_job_finished(session: str) -> bool:
-    """Checks whether the status message is a finished bhpc session
-    :param session: The sessionID to check
-    :return: True if all jobs in the session have finished status, False otherwise"""
-    for status in get_bhpc_job_status(session):
-        if not status.is_finished():
-            return False
-    return True
-
-
-@dataclass
-class Status:
-    """A dataclass representing the status of a BHPC submit file"""
-    initial: int
-    """How many jobs are initialised, that is defined and uploaded but not yet running"""
-    started: int
-    """How many jobs are currently running"""
-    done: int
-    """How many jobs have already finished running"""
-    submit_file: Path
-    """The path of the submit file defining the jobs. 
-    Any downloads from this job will be saved in the same directory as this file"""
-
-    def is_finished(self):
-        return self.initial == 0 and self.started == 0
-
-
-def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
+def get_bhpc_job_status(session: str) -> Generator[SubmitFileStatus, None, None]:
     """Checks the status of a BHPC job
     KNOWN ISSUE: Paths with whitespace other than single spaces will have their whitespace reduced to single spaces
     :param session: The session to check
@@ -267,7 +323,7 @@ def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
         # the most common case and this will most likely be used for reporting, not accessing the submit file
         path = Path(" ".join(path))
         logger.debug("%s %s %s %s", initial, started, done, path)
-        yield Status(initial, started, done, path)
+        yield SubmitFileStatus(initial, started, done, path)
 
 
 def is_auth_message(response: str) -> bool:
