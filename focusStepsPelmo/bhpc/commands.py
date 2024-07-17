@@ -179,6 +179,16 @@ class BHPC:
         if "AWS_CA_BUNDLE" in d.keys():
             self.ca_bundle = Path(d["AWS_DEFAULT_REGION"])
 
+    def _get_bhpc_env(self) -> Dict[str, str]:
+        return {
+            "AWS_ACCESS_KEY_ID": self.key_id,
+            "AWS_SECRET_ACCESS_KEY": self.key,
+            "AWS_SESSION_TOKEN": self.session_token,
+            "HTTPS_PROXY": self.proxy,
+            "NO_PROXY": self.no_proxy,
+            "AWS_DEFAULT_REGION": self.default_region,
+            "AWS_CA_BUNDLE": self.ca_bundle
+        }
     def validate_auth_data(self, check_online: bool = True) -> bool:
         if self.key_id is None or self.key is None \
                 or self.session_token is None \
@@ -302,7 +312,8 @@ class BHPC:
         self._execute_bhpc_command(["remove", session], 'yes' if kill else 'no')
 
     def list(self) -> BHPCState:
-        raise NotImplementedError()
+        stdout, _ = self._execute_bhpc_command(['list'])
+        return BHPCState.from_bhpc_message(stdout)
 
     def show(self, session) -> SessionStatus:
         return self.get_session_status(session)
@@ -320,7 +331,7 @@ class BHPC:
     def _execute_bhpc_command(self, arguments: List[str], stdin: str = "") -> Tuple[str, str]:
         argv = [str(self.bhpc_exe.absolute()), *arguments]
         env = os.environ.copy()
-
+        env.update(self._get_bhpc_env())
         logger = logging.getLogger()
         logger.debug({"action": "Starting BHPC command", "arguments": argv})
         bhpc_process = subprocess.Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=self.bhpc_exe.parent, env=env,
@@ -329,7 +340,7 @@ class BHPC:
         if is_auth_message(stdout):
             logger.info("BHPC rejected credentials, retrying after requesting new ones")
             self._handle_auth()
-            return self._execute_bhpc_command(arguments)
+            return self._execute_bhpc_command(arguments, stdin)
         else:
             return stdout, stderr
 
