@@ -99,7 +99,7 @@ class SessionSummary(TypeCorrecting):
             self.finished = None
         if self.elapsed_time and type(self.elapsed_time) == str:
             parts = self.elapsed_time.split(':')
-            self.elapsed_time = timedelta(hours=parts[0], minutes=parts[1], seconds=parts[2])
+            self.elapsed_time = timedelta(hours=int(parts[0]), minutes=int(parts[1]), seconds=int(parts[2]))
 
 
 class BHPCListSections(int, Enum):
@@ -124,7 +124,7 @@ class BHPCState(TypeCorrecting):
                 section = BHPCListSections.TABLE_ENTRIES
             elif section == BHPCListSections.TABLE_ENTRIES:
                 if line.startswith('|'):
-                    parts = line.split('|')
+                    parts = [x.strip() for x in line.split('|')]
                     sessions.append(SessionSummary(*parts[1:-1]))
                 else:
                     section = BHPCListSections.ACTIVE_SESSION_COUNT
@@ -142,25 +142,28 @@ class BHPC:
         self.default_region: str = "eu-central-1"
         self.no_proxy: str = ".bayer.biz"
         self.proxy: str = "http://MVHNG:jA54QWMy@10.185.190.10:8080"
-        self.session_token: str = None
-        self.key: str = None
-        self.key_id: str = None
+        self.session_token: Optional[str] = None
+        self.key: Optional[str] = None
+        self.key_id: Optional[str] = None
         self.request_auth_data_when_missing = request_auth_data_when_missing
         self.request_auth_data_when_invalid = request_auth_data_when_invalid
         self.bhpc_exe = bhpc_exe
         self.read_auth_data_dict(auth_data)
 
     def read_auth_data_powershell(self, copy_paste: str):
+        logger = logging.getLogger()
         lines = copy_paste.splitlines()
         variables = {}
         for line in lines:
-            if line.startswith("$ENV:"):
-                kv_string = line[5]
-                key = kv_string.split('=')[0]
-                value = ''.join(kv_string.split('=')[1:])
+            logger.debug({"status": "listing lines", "line": line})
+            if line.startswith("$Env:"):
+                kv_string = line.split(':', maxsplit=1)[1]
+                key = kv_string.split('=')[0].strip()
+                value = ''.join(kv_string.split('=')[1:]).strip()
                 if value.startswith(("'", '"')) and value.endswith(("'", '"')):
                     value = value[1:-1]
                 variables[key] = value
+        logger.debug({"status": "read env vars from user in powershell format", "vars": variables})
         self.read_auth_data_dict(variables)
 
     def read_auth_data_dict(self, d: Dict[str, str]):
@@ -177,18 +180,22 @@ class BHPC:
         if "AWS_DEFAULT_REGION" in d.keys():
             self.default_region = d["AWS_DEFAULT_REGION"]
         if "AWS_CA_BUNDLE" in d.keys():
-            self.ca_bundle = Path(d["AWS_DEFAULT_REGION"])
+            self.ca_bundle = Path(d["AWS_CA_BUNDLE"])
 
     def _get_bhpc_env(self) -> Dict[str, str]:
-        return {
-            "AWS_ACCESS_KEY_ID": self.key_id,
-            "AWS_SECRET_ACCESS_KEY": self.key,
-            "AWS_SESSION_TOKEN": self.session_token,
+        env = {
             "HTTPS_PROXY": self.proxy,
             "NO_PROXY": self.no_proxy,
             "AWS_DEFAULT_REGION": self.default_region,
-            "AWS_CA_BUNDLE": self.ca_bundle
+            "AWS_CA_BUNDLE": str(self.ca_bundle)
         }
+        if self.key_id:
+            env["AWS_ACCESS_KEY_ID"] = self.key_id
+        if self.key:
+            env["AWS_SECRET_ACCESS_KEY"] = self.key
+        if self.session_token:
+            env["AWS_SESSION_TOKEN"] = self.session_token
+        return env
     def validate_auth_data(self, check_online: bool = True) -> bool:
         if self.key_id is None or self.key is None \
                 or self.session_token is None \
@@ -328,19 +335,20 @@ class BHPC:
         stdout, _ = self._execute_bhpc_command(["show", session])
         return SessionStatus.from_bhpc_message(stdout)
 
-    def _execute_bhpc_command(self, arguments: List[str], stdin: str = "") -> Tuple[str, str]:
+    def _execute_bhpc_command(self, arguments: List[str], command_input: str = "") -> Tuple[str, str]:
         argv = [str(self.bhpc_exe.absolute()), *arguments]
         env = os.environ.copy()
         env.update(self._get_bhpc_env())
+        # env = sort_dict(env)
         logger = logging.getLogger()
         logger.debug({"action": "Starting BHPC command", "arguments": argv})
         bhpc_process = subprocess.Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=self.bhpc_exe.parent, env=env,
                                         text=True, encoding="windows-1252")
-        stdout, stderr = bhpc_process.communicate(input=stdin)
+        stdout, stderr = bhpc_process.communicate(input=command_input)
         if is_auth_message(stdout):
             logger.info("BHPC rejected credentials, retrying after requesting new ones")
             self._handle_auth()
-            return self._execute_bhpc_command(arguments, stdin)
+            return self._execute_bhpc_command(arguments, command_input)
         else:
             return stdout, stderr
 
@@ -361,8 +369,4 @@ def is_auth_message(response: str) -> bool:
     """Returns True if response is the BHPC error message for missing authorization
     :param response: The response from the BHPC executable
     :return: True if response is the error response, False for all other values"""
-    auth_message = ("--> Authorization environment variables not set. "
-                    "Check if you have file with certificates in the same folder as the executable. "
-                    "You will be redirected to http://go/bhpc-prod. "
-                    "Please get variables and .crt File to use the bhpc cli <--\n")
-    return auth_message == response
+    return 'Authorization environment variables not set' in response
