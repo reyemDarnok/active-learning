@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet, Optional
 
 import numpy
 import pandas
@@ -299,6 +299,8 @@ class GAP(ABC, TypeCorrecting):
     """What is the minimum interval between applications"""
     model_specific_data: Dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
     """Any data that only specific models care about will be stored here"""
+    name: Optional[str] = field(hash=False, default='')  # str hash is not stable
+    """The gaps name. Used only for labelling purposes"""
 
     @property
     @abstractmethod
@@ -316,6 +318,7 @@ class GAP(ABC, TypeCorrecting):
     def _get_common_dict(self) -> Dict[str, Any]:
         """Returns a dict containing the parameters of this GAP that are common to all GAPS"""
         return {
+            "name": self.name,
             "modelCrop": self.modelCrop.name if hasattr(self.modelCrop, 'name') else self.modelCrop,
             "rate": self.rate,
             "apply_every_n_years": self.apply_every_n_years,
@@ -323,6 +326,12 @@ class GAP(ABC, TypeCorrecting):
             "interval": self.interval.days if type(self.interval) == timedelta else self.interval,
             "model_specific_data": self.model_specific_data
         }
+
+    def __post_init__(self):
+        super().__post_init__()
+        # To ensure a stable, unique name for a compound that has no name given
+        if self.name == '':
+            object.__setattr__(self, 'name', f"GAP {hash(self)}")
 
     @property
     def defined_scenarios(self) -> FrozenSet[Scenario]:
@@ -376,6 +385,7 @@ class GAP(ABC, TypeCorrecting):
         gaps = pandas.read_excel(io=excel_file, sheet_name="GAP Properties")
         for _, row in gaps.iterrows():
             yield RelativeGAP(
+                name=row['Example GAP'],
                 modelCrop=row['Model Crop'],
                 rate=row['Rate'],
                 number_of_applications=row['Number'],
@@ -438,10 +448,10 @@ class GAP(ABC, TypeCorrecting):
                         filtered_header.append(f"{h}.{candidate_num}")
                         seen.add(f"{h}.{candidate_num}")
         gap_df = pandas.read_csv(file, skiprows=4, sep='|', skip_blank_lines=True, names=filtered_header,
-                                 memory_map=True, usecols=[*range(35), 43, 44])
+                                 usecols=[*range(35), 43, 44])
         for _, row in gap_df.iterrows():
             model_crop = FOCUSCrop.parse(row['FOCUS Crop used'])
-            model_data = {'gap_machine': {'PMT ID': row['PMT ID']}}
+            gap_name = row['PMT ID']
             rate = row['Rate per treatment: ']
             if row['Repeat-Mode'] == "every 3 years":
                 period_between_applications = 3
@@ -463,7 +473,7 @@ class GAP(ABC, TypeCorrecting):
                 scenario_name = scenario.replace('ü', 'u')
                 if not numpy.isnan(row[scenario_name]):
                     scenarios[Scenario(scenario)] = {"time_in_year": excel_date_to_datetime(row[scenario_name])}
-            first_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data,
+            first_gap = AbsoluteScenarioGAP(modelCrop=model_crop, name=gap_name,
                                             rate=rate,
                                             number_of_applications=number,
                                             apply_every_n_years=period_between_applications,
@@ -479,13 +489,13 @@ class GAP(ABC, TypeCorrecting):
                 if not numpy.isnan(row[scenario_name]):
                     scenarios[Scenario(scenario)] = excel_date_to_datetime(row[scenario_name])
             if second_scenarios:
-                second_gap = AbsoluteScenarioGAP(modelCrop=model_crop, model_specific_data=model_data,
+                second_gap = AbsoluteScenarioGAP(modelCrop=model_crop, name=gap_name,
                                                  rate=rate,
                                                  number_of_applications=number,
                                                  apply_every_n_years=period_between_applications,
                                                  interval=interval,
                                                  scenarios=second_scenarios)
-                yield MultiGAP(modelCrop=model_crop, model_specific_data=model_data, rate=rate,
+                yield MultiGAP(modelCrop=model_crop, name=gap_name, rate=rate,
                                number_of_applications=number, apply_every_n_years=period_between_applications,
                                interval=interval,
                                timings=(first_gap, second_gap))
