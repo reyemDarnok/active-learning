@@ -320,7 +320,7 @@ class GAP(ABC, TypeCorrecting):
             "rate": self.rate,
             "apply_every_n_years": self.apply_every_n_years,
             "number_of_applications": self.number_of_applications,
-            "interval": self.interval,
+            "interval": self.interval.days if type(self.interval) == timedelta else self.interval,
             "model_specific_data": self.model_specific_data
         }
 
@@ -615,6 +615,13 @@ class AbsoluteConstantGAP(GAP):
         if date is not None:
             object.__setattr__(self, 'time_in_year', date)
         super().__post_init__()
+
+    @classmethod
+    def from_gap(cls, source: GAP, scenario: Scenario) -> 'AbsoluteConstantGAP':
+        args = source._get_common_dict()
+        args['time_in_year'] = next(source.application_data(scenario))[0]
+        return cls(**args)
+
 
 
 @dataclass(frozen=True)
