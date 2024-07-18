@@ -35,6 +35,15 @@ python -m focusStepsPelmo.pelmo.local --compound-file examples/compound.json --g
                                       --threads 3
 ```
 
+### BHPC
+
+Commands involving the BHPC (`remote_bhpc` and `scan` with the bhpc argument) need credentials for their connection.
+These can be received from the [BHPC page](https://main.d2ajjmmximlv1g.amplifyapp.com/)
+and if you are using Powershell you can simply copy-paste the credentials into the shell before invoking the script.
+If you do not do so or the provided Credentials are invalid or expire during execution,
+the script will request them on the command line. There you can then copy-paste the credentials,
+even if you are not using Powershell, and the script will use these during its further execution.
+
 ## Components
 
 The scripts of this project call each other in a chain, with each script adding an automation.
