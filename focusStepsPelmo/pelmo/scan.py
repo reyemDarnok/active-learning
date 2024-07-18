@@ -11,6 +11,7 @@ from pathlib import Path
 from shutil import rmtree
 from typing import Dict, Generator, Iterable, Optional, Set, Tuple, Union, Sequence
 
+from focusStepsPelmo.bhpc.commands import BHPC
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, RelativeGAP
@@ -73,18 +74,21 @@ def main():
 
     logger.info("Finished generating compounds")
     if args.run == 'bhpc':
+        bhpc = BHPC()
         logger.info("Starting deployment to BHPC")
         if args.run_test_set:
             run_bhpc(combination_dir=test_set_location,
                      submit=args.work_dir / 'remote' / "test_data",
                      output=args.output_dir / f"test_data.{args.output_format}",
                      crops=crops, scenarios=scenarios,
-                     notification_email=args.notification_email, session_timeout=args.session_timeout, run=True)
+                     notification_email=args.notification_email, session_timeout=args.session_timeout, run=True,
+                     bhpc=bhpc)
         run_bhpc(compound_file=compound_dir, gap_file=gap_dir,
                  combination_dir=combination_dir,
                  submit=args.work_dir / 'remote' / "samples", output=args.output_dir / f"samples.{args.output_format}",
                  crops=crops, scenarios=scenarios,
-                 notification_email=args.notification_email, session_timeout=args.session_timeout, run=True)
+                 notification_email=args.notification_email, session_timeout=args.session_timeout, run=True,
+                 bhpc=bhpc)
     elif args.run == 'local':
         logger.info("Starting local calculation")
         if args.run_test_set:
