@@ -1,5 +1,4 @@
 import csv
-import itertools
 import json
 import logging
 import math
@@ -31,8 +30,9 @@ def main():
     compound_dir = args.work_dir / 'compounds'
     gap_dir = args.work_dir / 'gaps'
     combination_dir = args.work_dir / 'combination'
-    crops = args.crop
-    scenarios = args.scenario
+    test_set_location = args.test_set_location if args.test_set_location else args.work_dir / 'test_data'
+    crops = set(args.crop)
+    scenarios = set(args.scenario)
     with args.input_file.open() as input_file:
         if args.input_format == 'json':
             input_dict = json.load(input_file)
@@ -48,9 +48,12 @@ def main():
                 input_dict = {'gap': gap, 'compound': input_dict}
             elif 'rate' in input_dict.keys():
                 input_dict = {'gap': input_dict, 'compound': compound}
+            if args.make_test_set:
+                create_samples_in_dirs(definition=input_dict, output_dir=test_set_location,
+                                       sample_size=args.test_set_size)
             create_samples_in_dirs(definition=input_dict, output_dir=combination_dir,
-                                   sample_size=args.sample_size, make_test_set=args.make_test_set,
-                                   test_set_path=args.use_test_set, test_set_buffer=args.test_set_buffer)
+                                   sample_size=args.sample_size,
+                                   test_set_path=test_set_location, test_set_buffer=args.test_set_buffer)
         elif args.input_format == 'csv':
             with args.template_gap.open() as gap_file:
                 template_gap = GAP(**json.load(gap_file))
@@ -71,16 +74,27 @@ def main():
     logger.info("Finished generating compounds")
     if args.run == 'bhpc':
         logger.info("Starting deployment to BHPC")
+        if args.run_test_set:
+            run_bhpc(combination_dir=test_set_location,
+                     submit=args.work_dir / 'remote' / "test_data",
+                     output=args.output_dir / f"test_data.{args.output_format}",
+                     crops=crops, scenarios=scenarios,
+                     notification_email=args.notification_email, session_timeout=args.session_timeout, run=True)
         run_bhpc(compound_file=compound_dir, gap_file=gap_dir,
                  combination_dir=combination_dir,
-                 submit=args.work_dir / 'submit', output=args.output, crops=crops,
-                 scenarios=scenarios,
+                 submit=args.work_dir / 'remote' / "samples", output=args.output_dir / f"samples.{args.output_format}",
+                 crops=crops, scenarios=scenarios,
                  notification_email=args.notification_email, session_timeout=args.session_timeout, run=True)
     elif args.run == 'local':
         logger.info("Starting local calculation")
-        run_local(work_dir=args.work_dir / 'local', compound_files=compound_dir, gap_files=gap_dir,
+        if args.run_test_set:
+            run_local(work_dir=args.work_dir / 'local' / "test_data",
+                      combination_dir=test_set_location,
+                      output_file=args.output_dir / f"test_data.{args.output_format}", crops=crops, scenarios=scenarios,
+                      threads=args.threads)
+        run_local(work_dir=args.work_dir / 'local' / "samples", compound_files=compound_dir, gap_files=gap_dir,
                   combination_dir=combination_dir,
-                  output_file=args.output, crops=crops, scenarios=scenarios,
+                  output_file=args.output_dir / f"samples.{args.output_format}", crops=crops, scenarios=scenarios,
                   threads=args.threads)
 
 
@@ -102,7 +116,6 @@ def _shortest_distance_to_set(point: Tuple[float, ...], test_set: Set[Tuple[floa
 
 
 def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
-                           test_set_size: int = 10000, make_test_set: bool = False,
                            test_set_path: Optional[Path] = None,
                            test_set_buffer: float = 0.1):
     """
@@ -111,7 +124,6 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     :param output_dir: The path to write the samples to
     :param sample_size: How many samples to generate
     :param test_set_size: How large a test set to generate
-    :param make_test_set: Whether to make a test set
     :param test_set_path: Where to load an existing test set from. Don't load a test set if this is None
     :param test_set_buffer: How far any point in the sample has to be from the test set
     (Euclidean distance between features normalised to [-1,1] range)
@@ -121,12 +133,7 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
         rmtree(output_dir)
     output_dir.mkdir(parents=True)
     definition = Definition.parse(definition)
-    samples = create_samples(definition)
-    if make_test_set:
-        test_set = set(definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
-                       for c in itertools.islice(samples, test_set_size))
-        logger.info('Generated test set')
-    elif test_set_path:
+    if test_set_path:
         test_set = set(definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
                        for c in load_test_set(test_set_path))
         logger.info('Loaded test set')
@@ -155,7 +162,7 @@ def make_single_sample(definition: Definition, test_set: Set[Tuple[float, ...]],
             break
 
 
-def load_test_set(location: Path) -> Generator[Combination, None, None]:
+def load_test_set(location: Path) -> Generator[Dict, None, None]:
     """Loads Combinations from the given Path
     :param location: The directory containing the Combinations as jsons
     :return: A generator yielding combinations in location.
@@ -339,8 +346,10 @@ def parse_args() -> Namespace:
                         help="The gap to use as a template for unchanging parameters when scanning")
     parser.add_argument('-w', '--work-dir', type=Path, default=Path('scan') / 'work',
                         help="A directory to use as scratch space")
-    parser.add_argument('-o', '--output', type=Path, default='output.csv',
+    parser.add_argument('-o', '--output-dir', type=Path, default='output',
                         help="Where to write the results to")
+    parser.add_argument('--output-format', type=str, choices=('csv', 'json'), default="json",
+                        help="The format for the output files")
     parser.add_argument('--input-format', type=str, choices=('csv', 'json'), default=None,
                         help="The format of the input file. Defaults to guessing from the filename. "
                              "CSV Files start every line with a parameter name "
@@ -366,8 +375,10 @@ def parse_args() -> Namespace:
     test_set = test_set_group.add_mutually_exclusive_group()
     test_set.add_argument('--make-test-set', action="store_true", default=False,
                           help="Generate a test set of a given size")
-    test_set.add_argument('--use-test-set', type=Path, default=None,
-                          help="Use a preexisting test set (should be a directory)")
+    test_set.add_argument('--no-run-test-set', action="store_false", default=True, dest="run_test_set",
+                          help="Don't run the test set")
+    test_set.add_argument('--test-set-location', type=Path, default=None,
+                          help="Where to find the test set. Defaults to colocating with the generated samples in work dir")
 
     run_subparsers = parser.add_subparsers(dest="run",
                                            help="Where to run Pelmo. The script will only generate files "
@@ -387,7 +398,7 @@ def parse_args() -> Namespace:
         args.input_format = args.input_file.suffix[1:]
 
     assert args.input_format != 'csv' or (
-            args.template_compound and args.template_gap), "CSV input requires gap and compound templates"
+                args.template_compound and args.template_gap), "CSV input requires gap and compound templates"
     logger = logging.getLogger()
     jsonLogger.configure_logger_from_argparse(logger, args)
     return args
