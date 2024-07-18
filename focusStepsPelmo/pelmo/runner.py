@@ -11,7 +11,7 @@ from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copytree, rmtree
 from threading import current_thread
-from typing import Generator, Iterable, Optional, Tuple, Union, Dict
+from typing import Generator, Iterable, Optional, Tuple, Union, Dict, FrozenSet
 from zipfile import ZipFile
 
 from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
@@ -47,19 +47,21 @@ def main():
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
-    files = list(args.psm_files.glob('*.psm') if args.psm_files.is_dir() else [args.psm_files])
+    files: Iterable[Path] = args.psm_files.glob('*.psm') if args.psm_files.is_dir() else [args.psm_files]
     logging.info('Running for the following psm files: %s', files)
-    write_psm_results(output_file=args.output, psm_files=files, input_directories=None, working_dir=args.working_dir,
-                      crops=args.crop, scenarios=args.scenario,
+    crops: FrozenSet[FOCUSCrop] = frozenset(args.crop)
+    scenarios: FrozenSet[Scenario] = frozenset(args.scenario)
+    run_data = [(file, crop, scenarios) for file in files for crop in crops]
+    write_psm_results(output_file=args.output, run_data=run_data, input_directories=None, working_dir=args.working_dir,
                       max_workers=args.threads)
 
 
-def write_psm_results(output_file: Path, psm_files: Iterable[Union[Path, str]],
+def write_psm_results(output_file: Path,
+                      run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]],
                       input_directories: Optional[Tuple[Path]] = None, working_dir: Path = Path.cwd() / 'pelmo',
-                      crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
                       max_workers: int = cpu_count() - 1):
-    results = run_psms(psm_files=psm_files, working_dir=working_dir,
-                       crops=crops, scenarios=scenarios, max_workers=max_workers)
+    results = run_psms(run_data=run_data, working_dir=working_dir,
+                       max_workers=max_workers)
     if input_directories:
         rebuild_output_to_file(file=output_file, results=results, input_directories=input_directories)
     else:
@@ -71,25 +73,18 @@ def write_psm_results(output_file: Path, psm_files: Iterable[Union[Path, str]],
                 writer.writerows((result.psm_comment, result.crop, result.scenario, result.pec) for result in results)
 
 
-def _make_runs(psm_files: Iterable[Union[Path, str]], crops: Iterable[FOCUSCrop], scenarios: Iterable[Scenario]) -> \
+def _make_runs(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]]) -> \
         Generator[Tuple[Union[Union[Path, str], FOCUSCrop, Scenario]], None, None]:
-    crops = list(crops)
-    scenarios = list(scenarios)
-    for psm_file in psm_files:
-        for crop in crops:
-            for scenario in scenarios:
-                yield psm_file, crop, scenario
+    for run in run_data:
+        for scenario in run[2]:
+            yield run[0], run[1], scenario
 
 
-def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path,
-             crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
+def run_psms(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]], working_dir: Path,
              max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
-    """Run all given psm_files using working_dir as scratch space. 
+    """Run all given psm_files using working_dir as scratch space.
     When given scenarios that are not defined for some given crops, they are silently ignored for those crops only
-    :param psm_files: The files to run
     :param working_dir: Where to run them
-    :param crops: The crops to run. Crop / scenario combinations that are not defined are silently skipped
-    :param scenarios: The scenarios to run. Scenario / crop combinations that are not defined are silently skipped
     :param max_workers: How many worker threads to use at most
     :return: A Generator of the results of the calculations. Makes new results available as their calculations finish.
                 No particular ordering is guaranteed but the calculations are started in order of
@@ -98,7 +93,7 @@ def run_psms(psm_files: Iterable[Union[Path, str]], working_dir: Path,
         rmtree(working_dir)
     extract_zip(working_dir / 'sample', Path(__file__).parent / 'data' / 'FOCUS.zip')
     pool = ThreadPoolExecutor(max_workers=max_workers, initializer=_init_thread, initargs=(working_dir,))
-    yield from pool.map(single_pelmo_run, _make_runs(psm_files=psm_files, crops=crops, scenarios=scenarios),
+    yield from pool.map(single_pelmo_run, _make_runs(run_data=run_data),
                         repeat_infinite(working_dir))
     pool.shutdown()
 

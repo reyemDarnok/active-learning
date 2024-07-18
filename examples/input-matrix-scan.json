@@ -40,8 +40,20 @@
         "metabolite": {
           "metabolites": [],
           "molarMass": 300,
-          "water_solubility": 90.0,
-          "vaporization_pressure": 1e-4,
+          "water_solubility": {
+            "type": "log_normal",
+            "parameters": {
+              "mu": -2,
+              "sigma": 1
+            }
+          },
+          "vaporization_pressure": {
+            "type": "log_normal",
+            "parameters": {
+              "mu": -5,
+              "sigma": 1.5
+            }
+          },
           "reference_temperature": 20,
           "koc": {
             "type": "random",
@@ -76,8 +88,20 @@
       }
     ],
     "molarMass": 300,
-    "water_solubility": 90.0,
-    "vaporization_pressure": 1e-4,
+    "water_solubility": {
+      "type": "log_normal",
+      "parameters": {
+        "mu": -2,
+        "sigma": 1
+      }
+    },
+    "vaporization_pressure": {
+      "type": "log_normal",
+      "parameters": {
+        "mu": -5,
+        "sigma": 1.5
+      }
+    },
     "reference_temperature": 20,
     "koc": {
       "type": "random",
