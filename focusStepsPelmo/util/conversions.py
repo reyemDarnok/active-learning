@@ -1,10 +1,10 @@
-import dataclasses
 import re
-from collections import OrderedDict, UserDict
+from collections import OrderedDict, UserDict, UserList
+from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from json import JSONEncoder
-from typing import Any, Generator, Iterable, List, TypeVar, Union, Dict
+from typing import Any, Generator, Iterable, List, TypeVar, Union, Dict, Tuple
 
 T = TypeVar('T')
 
@@ -39,8 +39,8 @@ class EnhancedJSONEncoder(JSONEncoder):
             return {"seconds": o.total_seconds()}
         if isinstance(o, frozenset):
             return list(o)
-        if dataclasses.is_dataclass(o):
-            return dataclasses.asdict(o)
+        if is_dataclass(o):
+            return asdict(o)
         if isinstance(o, UserDict):
             return o.data
         return super().default(o)
@@ -55,7 +55,7 @@ def flatten_to_csv(to_flatten: Iterable[Dict[str, Any]]) -> Generator[str, None,
         yield flatten(f"{row}\n")
 
 
-def flatten(to_flatten: Union[List, Dict, Any]) -> str:
+def flatten(to_flatten: Union[List, Dict, Tuple, timedelta, Any]) -> Generator[str, None, None]:
     """Flatten a given structure to a csv row. 
     Calls str on anything that is not one of the following special cases
     
@@ -86,3 +86,40 @@ def flatten(to_flatten: Union[List, Dict, Any]) -> str:
 def excel_date_to_datetime(excel_date: int) -> datetime:
     base_date = datetime(year=1899, month=12, day=30)
     return base_date + timedelta(excel_date)
+
+
+def flatten_to_keys(o: Any, prefix=None) -> Generator[str, None, None]:
+    if prefix is None:
+        prefix = []
+    if isinstance(o, (dict, UserDict)):
+        ordered = OrderedDict(sorted(o.items(), key=lambda x: x[0]))
+        yield from flatten_dict_to_keys(ordered, prefix)
+    elif isinstance(o, (list, UserList, tuple)):
+        yield from flatten_list_to_keys(o, prefix)
+    elif hasattr(o, 'asdict'):
+        for key in flatten_to_keys(o.asdict(), prefix):
+            yield key
+    elif is_dataclass(o):
+        for key in flatten_to_keys(asdict(o), prefix):
+            yield key
+    elif type(o) == timedelta:
+        yield ".".join(prefix + ['seconds'])
+        yield ".".join(prefix + ['microseconds'])
+    else:
+        yield ".".join(prefix)
+
+
+def flatten_dict_to_keys(d: Dict, prefix=None) -> Generator[str, None, None]:
+    if prefix is None:
+        prefix = []
+    for key, value in d.items():
+        for k in flatten_to_keys(value, prefix=prefix + [str(key)]):
+            yield k
+
+
+def flatten_list_to_keys(to_flatten: List, prefix=None) -> Generator[str, None, None]:
+    if prefix is None:
+        prefix = []
+    for index, value in enumerate(to_flatten):
+        for k in flatten_to_keys(value, prefix=prefix + [str(index)]):
+            yield k
