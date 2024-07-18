@@ -38,7 +38,7 @@ class Compound(TypeCorrecting):
     """molar mass in g/mol"""
     water_solubility: float
     """The water solubility in mg/L"""
-    vaporization_pressure: float
+    vapor_pressure: float
     """The vaporization pressure in Pa"""
     reference_temperature: float
     """The temperature the other values have been measured at in °C"""
@@ -82,7 +82,7 @@ class Compound(TypeCorrecting):
         compound_list = [
             Compound(name=row['Name'], molarMass=row['Molar Mass'],
                      water_solubility=row['Water Solubility'],
-                     vaporization_pressure=row['Vaporization Pressure'],
+                     vapor_pressure=row['Vapor Pressure'],
                      reference_temperature=row['Temperature'],
                      koc=row['Koc'], freundlich=row['Freundlich'],
                      plant_uptake=row['Plant Uptake'],

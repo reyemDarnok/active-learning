@@ -5,26 +5,61 @@ import random
 import subprocess
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from subprocess import PIPE
 from sys import stdin
-from typing import Generator, Optional, Dict
+from typing import Dict, List, Tuple, Optional
 
-bhpc_dir = Path("C:\\_AWS", 'actualVersion')
-bhpc_exe = bhpc_dir / 'bhpc.exe'
+from focusStepsPelmo.util.datastructures import TypeCorrecting
 
-class BHPC:
-    def __init__(self, bhpc_exe: Path = Path("C:\\_AWS", 'actualVersion', 'bhpc.exe'), auth_data=Dict[str, str]):
-        self.bhpc_exe = bhpc_exe
-        assert self._verify_auth_data(auth_data)
-        self.auth_data = auth_data
+
+class BHPCStateError(Exception):
+    pass
+
+
+class BHPCAccessError(Exception):
+    pass
+
+
+@dataclass(frozen=True)
+class SubmitFileStatus(TypeCorrecting):
+    """A dataclass representing the status of a BHPC submit file"""
+    initial: int
+    """How many jobs are initialised, that is defined and uploaded but not yet running"""
+    started: int
+    """How many jobs are currently running"""
+    done: int
+    """How many jobs have already finished running"""
+    submit_file: Path
+    """The path of the submit file defining the jobs. 
+    Any downloads from this job will be saved in the same directory as this file"""
+
+    def is_finished(self):
+        return self.initial == 0 and self.started == 0
+
+
+@dataclass(frozen=True)
+class SessionStatus(TypeCorrecting):
+    submit_files: List[SubmitFileStatus]
 
     @staticmethod
-    def _verify_auth_data(auth_data):
-        return True
-
-    def change_auth_data(self, new_auth_data: Dict):
-        self.auth_data = new_auth_data
+    def from_bhpc_message(bhpc_message: str) -> 'SessionStatus':
+        lines = bhpc_message.splitlines()
+        lines = lines[3:]  # remove headings
+        submit_files = []
+        for line in lines:
+            if line.startswith('-'):
+                break
+            initial, started, done, path = line.split(maxsplit=3)
+            initial = int(initial)
+            started = int(started)
+            done = int(done)
+            path = Path(path)
+            submit_files.append(SubmitFileStatus(initial, started, done, path))
+        return SessionStatus(submit_files)
+    # TODO other run information in last section of show
 
 
 @contextlib.contextmanager
@@ -42,264 +77,296 @@ def pushd(new_dir):
         os.chdir(previous_dir)
 
 
-def request_auth_data():
-    """Prompts the user for the credentials for the BHPC and adds them to the environment if supplied"""
-    logger = logging.getLogger()
-    logger.debug("Asking user for credentials")
-    print("To authorize against the BHPC, please copy the CLI Credentials from http://go/bhpc-prod")
-    auth_data = []
-    for line in stdin:
-        logger.debug({"credentials_line": line})
-        line = line.strip()
-        if line:
-            auth_data += [line]
-        elif line == 'cls':
-            auth_data += [line]
-            break
+@dataclass
+class SessionSummary(TypeCorrecting):
+    session_id: str
+    cwid: Optional[str]
+    status: str  # TODO make Enum
+    instance_type: Optional[str]  # TODO make Enum
+    vCPUs: Optional[int]
+    creation_time: Optional[datetime]
+    elapsed_time: Optional[timedelta]
+    initialized: Optional[int]
+    started: Optional[int]
+    finished: Optional[int]
+
+    def __post_init__(self):
+        if self.initialized in ('N/A', '-'):
+            self.initialized = None
+        if self.started in ('N/A', '-'):
+            self.started = None
+        if self.finished in ('N/A', '-'):
+            self.finished = None
+        if self.elapsed_time and type(self.elapsed_time) == str:
+            parts = self.elapsed_time.split(':')
+            self.elapsed_time = timedelta(hours=int(parts[0]), minutes=int(parts[1]), seconds=int(parts[2]))
+
+
+class BHPCListSections(int, Enum):
+    PREAMBLE = 0
+    TABLE_HEADLINE = 1
+    TABLE_ENTRIES = 2
+    ACTIVE_SESSION_COUNT = 3
+@dataclass(frozen=True)
+class BHPCState(TypeCorrecting):
+    sessions: List[SessionSummary]
+    active_sessions: int
+
+    @classmethod
+    def from_bhpc_message(cls, bhpc_message: str) -> 'BHPCState':
+        section = BHPCListSections.PREAMBLE
+        sessions = []
+        for line in bhpc_message.splitlines():
+            if section == BHPCListSections.PREAMBLE:
+                if line.startswith('|'):
+                    section = BHPCListSections.TABLE_HEADLINE
+            elif section == BHPCListSections.TABLE_HEADLINE:
+                section = BHPCListSections.TABLE_ENTRIES
+            elif section == BHPCListSections.TABLE_ENTRIES:
+                if line.startswith('|'):
+                    parts = [x.strip() for x in line.split('|')]
+                    sessions.append(SessionSummary(*parts[1:-1]))
+                else:
+                    section = BHPCListSections.ACTIVE_SESSION_COUNT
+            elif section == BHPCListSections.ACTIVE_SESSION_COUNT:
+                if line:
+                    return cls(sessions, int(line.split()[0]))
+        raise ValueError("BHPC Message was malformed. Was the input taken from the BHPC list command?")
+
+
+
+class BHPC:
+    def __init__(self, request_auth_data_when_missing: bool = True, request_auth_data_when_invalid: bool = True,
+                 bhpc_exe: Path = Path('C:\\_AWS', 'actualVersion', 'bhpc.exe'), auth_data: Dict = os.environ):
+        self.ca_bundle: Path = Path('ca-certificates.crt')
+        self.default_region: str = "eu-central-1"
+        self.no_proxy: str = ".bayer.biz"
+        self.proxy: str = "http://MVHNG:jA54QWMy@10.185.190.10:8080"
+        self.session_token: Optional[str] = None
+        self.key: Optional[str] = None
+        self.key_id: Optional[str] = None
+        self.request_auth_data_when_missing = request_auth_data_when_missing
+        self.request_auth_data_when_invalid = request_auth_data_when_invalid
+        self.bhpc_exe = bhpc_exe
+        self.read_auth_data_dict(auth_data)
+
+    def read_auth_data_powershell(self, copy_paste: str):
+        logger = logging.getLogger()
+        lines = copy_paste.splitlines()
+        variables = {}
+        for line in lines:
+            logger.debug({"status": "listing lines", "line": line})
+            if line.startswith("$Env:"):
+                kv_string = line.split(':', maxsplit=1)[1]
+                key = kv_string.split('=')[0].strip()
+                value = ''.join(kv_string.split('=')[1:]).strip()
+                if value.startswith(("'", '"')) and value.endswith(("'", '"')):
+                    value = value[1:-1]
+                variables[key] = value
+        logger.debug({"status": "read env vars from user in powershell format", "vars": variables})
+        self.read_auth_data_dict(variables)
+
+    def read_auth_data_dict(self, d: Dict[str, str]):
+        if "AWS_ACCESS_KEY_ID" in d.keys():
+            self.key_id = d["AWS_ACCESS_KEY_ID"]
+        if "AWS_SECRET_ACCESS_KEY" in d.keys():
+            self.key = d["AWS_SECRET_ACCESS_KEY"]
+        if "AWS_SESSION_TOKEN" in d.keys():
+            self.session_token = d["AWS_SESSION_TOKEN"]
+        if "HTTPS_PROXY" in d.keys():
+            self.proxy = d["HTTPS_PROXY"]
+        if "NO_PROXY" in d.keys():
+            self.no_proxy = d["NO_PROXY"]
+        if "AWS_DEFAULT_REGION" in d.keys():
+            self.default_region = d["AWS_DEFAULT_REGION"]
+        if "AWS_CA_BUNDLE" in d.keys():
+            self.ca_bundle = Path(d["AWS_CA_BUNDLE"])
+
+    def _get_bhpc_env(self) -> Dict[str, str]:
+        env = {
+            "HTTPS_PROXY": self.proxy,
+            "NO_PROXY": self.no_proxy,
+            "AWS_DEFAULT_REGION": self.default_region,
+            "AWS_CA_BUNDLE": str(self.ca_bundle)
+        }
+        if self.key_id:
+            env["AWS_ACCESS_KEY_ID"] = self.key_id
+        if self.key:
+            env["AWS_SECRET_ACCESS_KEY"] = self.key
+        if self.session_token:
+            env["AWS_SESSION_TOKEN"] = self.session_token
+        return env
+    def validate_auth_data(self, check_online: bool = True) -> bool:
+        if self.key_id is None or self.key is None \
+                or self.session_token is None \
+                or self.proxy is None or self.no_proxy is None \
+                or self.default_region is None or self.ca_bundle is None:
+            return False
+        if check_online:
+            try:
+                self.list()
+            except:
+                return False
+        return True
+
+    def request_auth_data(self) -> bool:
+        logger = logging.getLogger()
+        logger.info("Requesting BHPC Credentials from user")
+        print("To authorize this script against the BHPC, please copy the CLI Credentials from http://go/bhpc-prod")
+        user_input = ""
+        for line in stdin:
+            line = line.strip()
+            if line:
+                user_input += line + '\n'
+            else:
+                break
+        self.read_auth_data_powershell(copy_paste=user_input)
+        if self.validate_auth_data(check_online=False):
+            print("Thank you for providing the Credentials. Calls to the bhpc are now possible")
+            logger.info("Received BHPC Credentials from user")
+            return True
         else:
-            break
-    print("Thank you for the credentials. This script can now make requests to the BHPC")
-    auth_data = "\n".join(auth_data)
-    setup_env_from_copy_paste(auth_data)
-    logger.info("Set credentials from user input")
+            logger.warning("BHPC Credentials by user were not valid")
+            if input(
+                    "Unfortunately there were missing fields in the Credentials. Try again? [Y/n]").strip().casefold() != 'n'.strip().casefold():
+                logger.debug("Retrying BHPC Credentials request")
+                return self.request_auth_data()
+            else:
+                return False
 
-
-def setup_env_from_copy_paste(webpage_copy_paste: str):
-    """Takes the credentials for the BHPC from the webpage and adds them to the environment
-    :param webpage_copy_paste: The string that is placed into the clipboard by the webpage"""
-    logger = logging.getLogger()
-    logger.debug({"auth_data": webpage_copy_paste})
-    variable_definitions = webpage_copy_paste.splitlines()[:-2]
-    logger.debug({"lines": variable_definitions})
-    env_vars = {vardef.split(":", 2)[1].split("=", 2)[0]: vardef.split(":", 2)[1].split("=", 2)[1].strip('"') for vardef
-                in variable_definitions}
-    logger.info({"new_env_vars": env_vars})
-    setup_env(key_id=env_vars["AWS_ACCESS_KEY_ID"],
-              key=env_vars["AWS_SECRET_ACCESS_KEY"],
-              session_token=env_vars["AWS_SESSION_TOKEN"],
-              proxy=env_vars["HTTPS_PROXY"],
-              no_proxy=env_vars["NO_PROXY"],
-              default_region=env_vars["AWS_DEFAULT_REGION"],
-              ca_bundle=env_vars["AWS_DEFAULT_REGION"])
-
-
-def setup_env(key_id: str, key: str, session_token: str,
-              proxy: str = "http://MVHNG:jA54QWMy@10.185.190.10:8080",
-              no_proxy: str = ".bayer.biz",
-              default_region: str = "eu-central-1",
-              ca_bundle: str = "ca-certificates.crt"):
-    """Set the environment variables for the BHPC"""
-    os.environ["AWS_ACCESS_KEY_ID"] = key_id
-    os.environ["AWS_SECRET_ACCESS_KEY"] = key
-    os.environ["AWS_SESSION_TOKEN"] = session_token
-    os.environ["AWS_CA_BUNDLE"] = ca_bundle
-    os.environ["HTTPS_PROXY"] = proxy
-    os.environ["NO_PROXY"] = no_proxy
-    os.environ["AWS_DEFAULT_REGION"] = default_region
-
-
-def start_submit_file(submit_folder: Path,
-                      session_name_prefix: str = "Unknown session", session_name_suffix: Optional[str] = None,
-                      submit_file_regex=r".+\.sub",
+    def start_session(self, submit_folder: Path, submit_file_regex=r'.+\.sub',
+                      session_name_prefix: str = "Unknown session", session_name_suffix: str = None,
                       machines: int = 1, cores: int = 2, multithreading: bool = True,
-                      notification_email: Optional[str] = None, session_timeout: int = 6) -> str:
-    """Starts a session defined by submit files in the bhpc. This method assumes that the bhpc environment variables
-    have already been set.
-    
-    :param submit_folder: The folder to search for submit files. Will be searched recursively
-    :param session_name_prefix: The prefix for bhpc session names. Defaults to "Unknown session"
-    :param session_name_suffix: The suffix for bhpc session names. Defaults to a random int
-    :param submit_file_regex: The regex for submit file filenames. Defaults to ".+\\.sub" which is also the bhpc default
-    :param machines: How many ec2 instances to use for running.
-    Prefer increasing the cores count if you need more performance as that produces less overhead
-    :param cores: How many cores each instance should have. Valid values are 2,4,8,16 and 96
-    :param multithreading: Whether to use multithreading support in the bhpc
-    :param notification_email: Who to notify when the bhpc session completes
-    :param session_timeout: Maximum time for the bhpc session. Automatically enables longRun mode if over 12.
-    :return: The ID of the created bhpc session"""
-    logger = logging.getLogger()
-    submit_folder = submit_folder.absolute()
-    with pushd(bhpc_dir):
+                      notification_email: str = None, session_timeout: int = 6) -> str:
         suffix = session_name_suffix if session_name_suffix else random.getrandbits(32)
-        session = f"{session_name_prefix}{suffix}"
-        logger.info('Using sessionID %s', session)
-        upload(submit_folder, submit_file_regex, session)
-        logging.info('Running run command')
-        run(session, machines, cores, multithreading, notification_email, session_timeout)
+        session = session_name_prefix + suffix
+        logger = logging.getLogger()
+        logger.debug('Starting session %s', session)
+        logger.info('Starting upload of session %s', session)
+        self.upload(submit_folder=submit_folder, submit_file_regex=submit_file_regex, session=session)
+        logger.info('Starting run of session %s', session)
+        self.run(session=session, machines=machines, cores=cores, multithreading=multithreading,
+                 notification_email=notification_email, session_timeout=session_timeout)
+        logger.debug('Session %s is now running on the BHPC', session)
         return session
 
+    def upload(self, submit_folder: Path, session: str, submit_file_regex=r'.+\.sub'):
+        self._execute_bhpc_command(
+            [
+                'upload',
+                '-path', str(submit_folder),
+                '-search', submit_file_regex,
+                session
+            ]
+        )
+        # TODO Error handling session already exists
+        # TODO Error handling no submit files found
 
-def run(session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
-        notification_email: Optional[str] = None, session_timeout: int = 6):
-    """Execute the run command on the BHPC
-    :param machines: How many ec2 instances should the BHPC use
-    :param cores: How many cores should each ec2 instance have (valid values are: 2,4,8,16,96)
-    :param notification_email: Which email inbox should be notified upon completion of the BHPC Job
-    :param session_timeout: When should the session time out
-    :param multithreading: True if one Machine should only host one job at a time instead of one core for one job.
-    Use for jobs with native multithreading
-    :param session: The session id to run"""
-    assert cores in (2, 4, 8, 16, 96), f"Invalid core number {cores}. Only 2,4,8,16 or 96 are permitted"
-    logger = logging.getLogger()
-    command_args = [str(bhpc_exe.absolute()), 'run',
-                    '-force',
-                    '-cores', str(cores),
-                    '-count', str(machines),
-                    session]
-    if multithreading:
-        command_args += ['-multi']
-    if notification_email:
-        command_args += ['-notificationEmail', notification_email]
-    if session_timeout > 12:
-        command_args += ['-longRun']
-    run_process = subprocess.run(command_args, text=True, capture_output=True)
-    logger.debug(run_process.stdout)
-    if is_auth_message(run_process.stdout):
-        request_auth_data()
-        run(session, machines, cores, multithreading, notification_email, session_timeout)
-    if run_process.stdout.startswith('Session ') and run_process.stdout.endswith(' is not initialized.'):
-        raise ValueError(f"Session {session} was not initialized. Start upload command for that session first")
+    def run(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
+            notification_email: str = None, session_timeout: int = 6):
+        assert cores in (2, 4, 8, 16, 96), f"Invalid core number {cores}. Only 2,4,8,16 or 96 are permitted"
+        assert machines > 0, "The number of machines must be a positive number or the job will stall"
+        command_args = ['run',
+                        '-force',
+                        '-cores', str(cores),
+                        '-count', str(machines),
+                        session]
+        if multithreading:
+            command_args += ['-multi']
+        if notification_email:
+            command_args += ['-notificationEmail', notification_email]
+        if session_timeout > 12:
+            command_args += ['-longRun']
 
-
-def upload(submit_folder, submit_file_regex, session):
-    """Run the upload command for the BHPC
-    :param submit_folder: The parent directory for all the submit files to upload
-    :param submit_file_regex: The pattern that submit files need to match to be uploaded
-    :param session: The session name to use when uploading. Has to be unique on the BHPC for current jobs"""
-    logger = logging.getLogger()
-    logger.info('Running upload command')
-    upload_process = subprocess.run([
-        str(bhpc_exe.absolute()), 'upload',
-        '-path', str(submit_folder),
-        '-search', submit_file_regex,
-        session], text=True, capture_output=True)
-    logger.debug(upload_process.stdout)
-
-    if is_auth_message(upload_process.stdout):
-        request_auth_data()
-        upload(submit_folder, submit_file_regex, session)
+        run_process = self._execute_bhpc_command(command_args)
+        if run_process[0].startswith('Session ') and run_process[0].endswith(' is not initialized.'):
+            raise BHPCStateError(f"Session {session} could not be run because it was not initialized. "
+                                 f"Initialize that session with the upload command first")
 
 
-def download(session: str, wait_until_finished: bool = True, retry_interval: float = 60) -> bool:
-    """Download the results of a bhpc session.
-     The results will be in the directory where the submit file that started the session is.
-    :param session: The sessionId of the session to download
-    :param wait_until_finished: Whether to wait until the session is finished
-    :param retry_interval: How long to wait between checks of the session status
-    :return: False if wait_until_finished if False and the download was not ready, True otherwise"""
-    logger = logging.getLogger()
-    try:
-        if wait_until_finished:
-            while not bhpc_job_finished(session):
-                time.sleep(retry_interval)
-        with pushd(bhpc_dir):
-            logger.info('Running download command')
-            download_process = subprocess.run([
-                str(bhpc_exe.absolute()), 'download', session
-            ], text=True, capture_output=True)
-            logger.debug(download_process.stdout)
-            if is_auth_message(download_process.stderr):
-                request_auth_data()
-                return download(session, wait_until_finished, retry_interval)
-            return True
-    except KeyboardInterrupt as e:
-        if wait_until_finished:
-            logger.warning(f"Download wait interrupted by interactive user")
-            answer = input(
-                f"Stopping monitoring session {session}. Should the session also be removed and killed? y/N:")
-            if answer.strip().casefold() == "y".casefold():
-                print("Removing session")
-                logger.warning(f"Removing session {session} on request of interactive user")
-                remove(session, True)
-            raise e
+    def download(self, session: str, wait_until_finished: bool = True,
+                 retry_interval: timedelta = timedelta(seconds=60)) -> bool:
+        logger = logging.getLogger()
+        try:
+            if wait_until_finished:
+                before_last_check = datetime.now()
+                while not self.is_session_finished(session):
+                    after_last_check = datetime.now()
+                    sleep_interval = retry_interval - (after_last_check - before_last_check)
+                    logger.debug('Sleeping for %s before the next check of session status', sleep_interval)
+                    time.sleep(sleep_interval.total_seconds() + sleep_interval.microseconds / 1_000_000)
+                    before_last_check = datetime.now()
+                logger.info('Finished wait for the completion of %s', session)
+                self._execute_bhpc_command(['download', session])
+                return True
+                # TODO report missing files if not waiting
+        except KeyboardInterrupt as e:
+            if wait_until_finished:
+                logger.warning("Download wait interrupted by interactive user")
+                answer = input(
+                    f"Stopping monitoring session {session}. Should the session also be removed and killed? y/N:")
+                if answer.strip().casefold() == 'y'.casefold():
+                    print("Removing session")
+                    logger.warning(f"Removing session {session} on request of interactive user")
+                    self.remove(session, True)
+                raise e
+            else:
+                raise e
+
+    def remove(self, session: str, kill: bool = True):
+        logger = logging.getLogger()
+        logger.info('Running remove command for session %s', session)
+        self._execute_bhpc_command(["remove", session], 'yes' if kill else 'no')
+
+    def list(self) -> BHPCState:
+        stdout, _ = self._execute_bhpc_command(['list'])
+        return BHPCState.from_bhpc_message(stdout)
+
+    def show(self, session) -> SessionStatus:
+        return self.get_session_status(session)
+
+    def is_session_finished(self, session: str):
+        for status in self.get_session_status(session).submit_files:
+            if not status.is_finished:
+                return False
+        return True
+
+    def get_session_status(self, session) -> SessionStatus:
+        stdout, _ = self._execute_bhpc_command(["show", session])
+        return SessionStatus.from_bhpc_message(stdout)
+
+    def _execute_bhpc_command(self, arguments: List[str], command_input: str = "") -> Tuple[str, str]:
+        argv = [str(self.bhpc_exe.absolute()), *arguments]
+        env = os.environ.copy()
+        env.update(self._get_bhpc_env())
+        # env = sort_dict(env)
+        logger = logging.getLogger()
+        logger.debug({"action": "Starting BHPC command", "arguments": argv})
+        bhpc_process = subprocess.Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=self.bhpc_exe.parent, env=env,
+                                        text=True, encoding="windows-1252")
+        stdout, stderr = bhpc_process.communicate(input=command_input)
+        if is_auth_message(stdout):
+            logger.info("BHPC rejected credentials, retrying after requesting new ones")
+            self._handle_auth()
+            return self._execute_bhpc_command(arguments, command_input)
         else:
-            raise e
+            return stdout, stderr
 
-
-def remove(session: str, kill: bool = True):
-    """Remove a session from the bhpc
-    :param session: The session to remove
-    :param kill: Whether to also kill the session"""
-    logger = logging.getLogger()
-    with pushd(bhpc_dir):
-        logger.info('Running remove command')
-        p = subprocess.Popen([
-            str(bhpc_exe.absolute()), "remove", session],
-            stdin=PIPE, stdout=PIPE, text=True)
-        if kill:
-            remove_stdout, _ = p.communicate("yes")
+    def _handle_auth(self):
+        if (
+                self.session_token is None or self.key is None or self.key_id is None) and self.request_auth_data_when_missing:
+            if not self.request_auth_data():
+                raise BHPCAccessError("Failed when requesting credentials after initialising without them")
+        elif self.request_auth_data_when_invalid:
+            if not self.request_auth_data():
+                raise BHPCAccessError("Failed when requesting credentials after the old credentials became invalid"
+                                      "or were never provided")
         else:
-            remove_stdout, _ = p.communicate("no")
-        logger.debug(remove_stdout)
-
-        if is_auth_message(remove_stdout):
-            request_auth_data()
-            remove(session, kill)
-
-
-def bhpc_job_finished(session: str) -> bool:
-    """Checks whether the status message is a finished bhpc session
-    :param session: The sessionID to check
-    :return: True if all jobs in the session have finished status, False otherwise"""
-    for status in get_bhpc_job_status(session):
-        if not status.is_finished():
-            return False
-    return True
-
-
-@dataclass
-class Status:
-    """A dataclass representing the status of a BHPC submit file"""
-    initial: int
-    """How many jobs are initialised, that is defined and uploaded but not yet running"""
-    started: int
-    """How many jobs are currently running"""
-    done: int
-    """How many jobs have already finished running"""
-    submit_file: Path
-    """The path of the submit file defining the jobs. 
-    Any downloads from this job will be saved in the same directory as this file"""
-
-    def is_finished(self):
-        return self.initial == 0 and self.started == 0
-
-
-def get_bhpc_job_status(session: str) -> Generator[Status, None, None]:
-    """Checks the status of a BHPC job
-    KNOWN ISSUE: Paths with whitespace other than single spaces will have their whitespace reduced to single spaces
-    :param session: The session to check
-    :return: The statuses of each submit file in the order BHPC show presents them"""
-    logger = logging.getLogger()
-    with pushd(bhpc_dir):
-        logging.info('Running show command for session %s', session)
-        p = subprocess.run([
-            str(bhpc_exe.absolute()), 'show', session], text=True, capture_output=True)
-    if is_auth_message(p.stdout):
-        request_auth_data()
-        yield from get_bhpc_job_status(session)
-    logger.debug("%s", p.stdout)
-    lines = p.stdout.splitlines()
-    lines = lines[3:]
-    for line in lines:
-        if line.startswith('-'):
-            return
-        initial, started, done, *path = line.split()
-        initial = int(initial)
-        started = int(started)
-        done = int(done)
-        # attempt to repair path with spaces - only works if the only whitespace in path is single spaces, but that's
-        # the most common case and this will most likely be used for reporting, not accessing the submit file
-        path = Path(" ".join(path))
-        logger.debug("%s %s %s %s", initial, started, done, path)
-        yield Status(initial, started, done, path)
+            raise BHPCAccessError("Could not obtain valid credentials for the bhpc")
 
 
 def is_auth_message(response: str) -> bool:
     """Returns True if response is the BHPC error message for missing authorization
     :param response: The response from the BHPC executable
     :return: True if response is the error response, False for all other values"""
-    auth_message = ("--> Authorization environment variables not set. "
-                    "Check if you have file with certificates in the same folder as the executable. "
-                    "You will be redirected to http://go/bhpc-prod. "
-                    "Please get variables and .crt File to use the bhpc cli <--\n")
-    return auth_message == response
+    return 'Authorization environment variables not set' in response

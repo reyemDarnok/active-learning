@@ -27,7 +27,7 @@
     "metabolites": [],
     "molarMass": 300,
     "water_solubility": 90.0,
-    "vaporization_pressure": 1e-4,
+    "vapor_pressure": 1e-4,
     "reference_temperature": 20,
     "koc": 300,
     "freundlich": 0.9,

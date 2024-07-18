@@ -12,7 +12,7 @@ from zipfile import ZipFile
 
 from jinja2 import Environment, StrictUndefined, select_autoescape, PackageLoader
 
-from focusStepsPelmo.bhpc import commands
+from focusStepsPelmo.bhpc.commands import BHPC
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario, GAP
@@ -62,7 +62,7 @@ def main():
 def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None,
              combination_dir: Path = None,
              crops: Iterable[FOCUSCrop] = FOCUSCrop, scenarios: Iterable[Scenario] = Scenario,
-             notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True):
+             notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True, bhpc: BHPC = BHPC()):
     logger = logging.getLogger()
     logger.info('Starting to generate psm files')
     psm_file_data = generate_psm_files(compounds=Compound.from_path(compound_file) if compound_file else None,
@@ -84,16 +84,16 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
             cores = 16
         else:
             cores = 8
-        session = commands.start_submit_file(submit_folder=submit, session_name_prefix='Pelmo',
+        session = bhpc.start_session(submit_folder=submit, session_name_prefix='Pelmo',
                                              submit_file_regex='pelmo\\.sub',
                                              machines=max(1, batch_number // 10), cores=cores, multithreading=True,
                                              notification_email=notification_email, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
-        commands.download(session)
+        bhpc.download(session)
         rebuild_scattered_to_file(file=output, parent=submit,
                                   input_directories=tuple(x for x in (gap_file, compound_file, combination_dir) if x),
                                   glob_pattern="psm*.d-output.json")
-        commands.remove(session)
+        bhpc.remove(session)
 
 
 def zip_common_directories(target: Path):

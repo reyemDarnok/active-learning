@@ -2,12 +2,8 @@ import csv
 import functools
 import json
 import logging
-import sys
-from collections import UserDict, UserList
-from dataclasses import asdict, is_dataclass
-from datetime import timedelta
 from pathlib import Path
-from typing import Any, Dict, Generator, Iterable, List, Sequence, Tuple, Type, Union
+from typing import Any, Dict, Generator, Iterable, Sequence, Tuple, Type, Union
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
@@ -37,53 +33,14 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
     elif output_format == 'csv':
         with file.with_suffix('.csv').open('w', newline='') as fp:
             writer = csv.writer(fp, )
-            # noinspection PyProtectedMember,PyTypeChecker
-            doubles = list(flatten_to_tuples(next(results).asdict()))
-            header = [x[0] for x in doubles]
-            row = [x[1] for x in doubles]
-            writer.writerow(header)
-            writer.writerow(row)
-            # noinspection PyProtectedMember
-            writer.writerows((x[1] for x in flatten_to_tuples(r.asdict())) for r in results)
+            results_iter = iter(results)
+            first_result: PECResult = next(results_iter)
+            writer.writerow(first_result.get_csv_headers())
+            writer.writerow(first_result.to_list())
+            writer.writerows(r.to_list() for r in results_iter)
     else:
         raise ValueError("Could not infer format, please specify explicitly")
 
-
-def flatten_to_tuples(o: Any, prefix=None) -> Generator[Tuple[str, str], None, None]:
-    if prefix is None:
-        prefix = []
-    if isinstance(o, (dict, UserDict)):
-        yield from flatten_dict_to_tuples(o, prefix)
-    elif isinstance(o, (list, UserList, tuple)):
-        yield from flatten_list_to_tuples(o, prefix)
-    elif hasattr(o, 'asdict'):
-        for key, value in flatten_to_tuples(o.asdict(), prefix):
-            yield key, value
-    elif is_dataclass(o):
-        for key, value in flatten_to_tuples(asdict(o), prefix):
-            yield key, value
-    elif type(o) == timedelta:
-        yield ".".join(prefix + ['seconds']), o.total_seconds()
-        yield ".".join(prefix + ['microseconds']), o.microseconds
-    else:
-        yield ".".join(prefix), str(o)
-
-
-def flatten_dict_to_tuples(d: Dict, prefix=None) -> Generator[Tuple[str, str], None, None]:
-    if prefix is None:
-        prefix = []
-    sys.stdout.flush()
-    for key, value in d.items():
-        for k, v in flatten_to_tuples(value, prefix=prefix + [str(key)]):
-            yield k, v
-
-
-def flatten_list_to_tuples(to_flatten: List, prefix=None) -> Generator[Tuple[str, str], None, None]:
-    if prefix is None:
-        prefix = []
-    for index, value in enumerate(to_flatten):
-        for k, v in flatten_to_tuples(value, prefix=prefix + [str(index)]):
-            yield k, v
 
 
 def rebuild_scattered_output(parent: Path, input_directories: Tuple[Path, ...], glob_pattern: str = "output.json",
@@ -143,7 +100,7 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
                         metabolite = metabolite.metabolites[0].metabolite
                     pecs[metabolite.name] = pec
 
-        yield PECResult(compound=compound, gap=gap, crop=output.crop, scenario=output.scenario, pec=pecs)
+        yield PECResult(compound=compound, gap=gap, scenario=output.scenario, pec=pecs)
 
 
 @functools.lru_cache(maxsize=None)
