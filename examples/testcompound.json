@@ -1,0 +1,36 @@
+{
+  "metabolites": [
+    {
+      "formation_fraction": 0.2,
+      "metabolite": {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 7.0,
+        "vaporization_pressure": 1e-6,
+        "reference_temperature": 20,
+        "koc": 137,
+        "freundlich": 0.89,
+        "plant_uptake": 0.0,
+        "dt50": {
+          "system": 6,
+          "soil": 421,
+          "surfaceWater": 6,
+          "sediment": 6
+        }
+      }
+    }
+  ],
+  "molarMass": 350,
+  "water_solubility": 9.0,
+  "vaporization_pressure": 1e-5,
+  "reference_temperature": 20,
+  "koc": 393,
+  "freundlich": 0.91,
+  "plant_uptake": 0.5,
+  "dt50": {
+    "system": 6,
+    "soil": 137,
+    "surfaceWater": 6,
+    "sediment": 6
+  }
+}
