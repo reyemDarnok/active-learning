@@ -1,10 +1,11 @@
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Union
 
 from focusStepsPelmo.ioTypes.compound import Compound
-from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, AbsoluteConstantGAP
+from focusStepsPelmo.util.conversions import flatten_to_keys, flatten
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
@@ -176,18 +177,29 @@ class PECResult:
     """The gap that was under consideration"""
     scenario: Scenario
     """The scenario that was under consideration"""
-    crop: FOCUSCrop
-    """The crop that was under consideration"""
     pec: Dict[str, float]
     """A mapping from compound names (The compound and all its metabolites) to their PECs"""
 
     def __hash__(self):
-        return hash(tuple([self.compound, self.gap, self.scenario, self.crop,
+        return hash(tuple([self.compound, self.gap, self.scenario,
                            tuple(tuple([tuple(ord(c) for c in key), value]) for key, value in self.pec.items())]))
 
-    def asdict(self):
+    def asdict(self) -> Dict[str, Union[Compound, GAP, Scenario, Dict[str, float]]]:
         return {"compound": self.compound,
                 "gap": self.gap,
                 "scenario": self.scenario,
-                "crop": self.crop.name,
                 "pec": self.pec}
+
+    def get_csv_headers(self) -> List[str]:
+        number_of_compounds = len(self.pec.keys())
+        key_dict = self.asdict()
+        key_dict.pop('pec')
+        key_dict['gap'] = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
+        return list(flatten_to_keys(key_dict)) + [f"{i}.compound_pec" for i in range(number_of_compounds)] + [
+            f"{i}.compound_name" for i in range(number_of_compounds)]
+
+    def to_list(self) -> List[Union[str, float, int]]:
+        key_dict = self.asdict()
+        key_dict.pop('pec')
+        key_dict['gap'] = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
+        return list(flatten(key_dict)) + [pec for pec in self.pec.values()] + [name for name in self.pec.keys()]
