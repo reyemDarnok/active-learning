@@ -7,4 +7,5 @@
 {% endif%}{% endfor %}{% if not loop.last%}
 {% endif %}{% endfor %}
  {{ application.type.value }}    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually>
-<END APPLICATION>
+{% if application.type.value != 1 %}{% include "psm-fragments/fate-on-crop.j2" %}
+{% endif %}<END APPLICATION>
