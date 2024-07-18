@@ -157,10 +157,10 @@ class PsmCompound:
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
         degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction)]
         volatizations = (Volatization(henry=3.33E-04, solubility=compound.water_solubility,
-                                      vaporization_pressure=compound.vaporization_pressure,
+                                      vaporization_pressure=compound.vapor_pressure,
                                       temperature=compound.reference_temperature),
                          Volatization(henry=3.33E-04 * 2, solubility=compound.water_solubility,
-                                      vaporization_pressure=compound.vaporization_pressure * 4,
+                                      vaporization_pressure=compound.vapor_pressure * 4,
                                       temperature=compound.reference_temperature + 10))
         if 'pelmo' in compound.model_specific_data.keys():
             position = compound.model_specific_data['pelmo']['position']
@@ -272,7 +272,7 @@ class PsmFile(TypeCorrecting):
         WARNING: This is lossy, as psmFiles do not use all data from the input files"""
         compound = Compound(molarMass=self.compound.molar_mass,
                             water_solubility=self.compound.volatizations[0].solubility,
-                            vaporization_pressure=self.compound.volatizations[0].vaporization_pressure,
+                            vapor_pressure=self.compound.volatizations[0].vaporization_pressure,
                             reference_temperature=self.compound.volatizations[0].temperature,
                             koc=self.compound.adsorptions[0].koc,
                             freundlich=self.compound.adsorptions[0].freundlich,

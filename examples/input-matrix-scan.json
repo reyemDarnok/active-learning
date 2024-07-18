@@ -47,7 +47,7 @@
               "sigma": 1
             }
           },
-          "vaporization_pressure": {
+          "vapor_pressure": {
             "type": "log_normal",
             "parameters": {
               "mu": -5,
@@ -95,7 +95,7 @@
         "sigma": 1
       }
     },
-    "vaporization_pressure": {
+    "vapor_pressure": {
       "type": "log_normal",
       "parameters": {
         "mu": -5,
