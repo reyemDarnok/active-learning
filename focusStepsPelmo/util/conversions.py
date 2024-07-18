@@ -69,18 +69,20 @@ def flatten(to_flatten: Union[List, Dict, Tuple, timedelta, Any]) -> Generator[s
     
     :param to_flatten: The structure to flatten"""
     if isinstance(to_flatten, dict):
-        ordered = OrderedDict(sorted(to_flatten.items()))
-        return ",".join(flatten(value) for _, value in ordered.items())
-    elif isinstance(to_flatten, list):
-        return ",".join(flatten(value) for value in to_flatten)
-    elif hasattr(to_flatten, '_asdict'):
-        # noinspection PyProtectedMember
-        return flatten(to_flatten._asdict())
-    elif dataclasses.is_dataclass(to_flatten):
-        return flatten(dataclasses.asdict(to_flatten))
+        ordered = OrderedDict(sorted(to_flatten.items(), key=lambda x: x[0]))
+        yield from (flattened for _, value in ordered.items() for flattened in flatten(value))
+    elif isinstance(to_flatten, (list, tuple)):
+        yield from (flattened for value in to_flatten for flattened in flatten(value))
+    elif hasattr(to_flatten, 'asdict'):
+        yield from flatten(to_flatten.asdict())
+    elif is_dataclass(to_flatten):
+        yield from flatten(asdict(to_flatten))
+    elif type(to_flatten) == timedelta:
+        yield to_flatten.total_seconds()
+        yield to_flatten.microseconds
     else:
         to_flatten = str(to_flatten)
-        return re.sub(r'([\\,])', r"\\\1", to_flatten)
+        yield re.sub(r'([\\,])', r"\\\1", to_flatten)
 
 
 def excel_date_to_datetime(excel_date: int) -> datetime:
