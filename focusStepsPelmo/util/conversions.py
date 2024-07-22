@@ -5,6 +5,7 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from json import JSONEncoder
+from pathlib import Path
 from typing import Any, Generator, Iterable, List, TypeVar, Union, Dict, Tuple
 
 T = TypeVar('T')
@@ -134,3 +135,9 @@ def flatten_list_to_keys(to_flatten: List, prefix=None) -> Generator[str, None, 
     for index, value in enumerate(to_flatten):
         for k in flatten_to_keys(value, prefix=prefix + [str(index)]):
             yield k
+
+def decomment_file(file: Path, comment_chars: str = '#') -> Generator[str, None, None]:
+    with file.open() as raw:
+        for line in raw:
+            if line.rstrip() and line.lstrip()[0] not in comment_chars:
+                yield line
