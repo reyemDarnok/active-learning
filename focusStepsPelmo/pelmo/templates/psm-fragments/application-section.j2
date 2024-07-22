@@ -1,0 +1,4 @@
+{% for scenario in current_gap.defined_scenarios %}{{ "%03d" % (current_gap.application_data(scenario) | list | length)}}   {{ scenario.name }}         <number of application location>
+{% for application_event in current_gap.application_data(scenario) %}{% include "psm-fragments/application.j2" %}{% if not loop.last%}
+{% endif%}{% endfor %}{% if not loop.last%}
+{% endif %}{% endfor %}
