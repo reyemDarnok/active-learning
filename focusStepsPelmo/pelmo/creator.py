@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""A script for creating psm files"""
 import json
 import logging
 from argparse import ArgumentParser, Namespace
@@ -19,6 +20,7 @@ jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
 
 
 def main():
+    """Entrypoint for calling this script from the command line"""
     args = parse_args()
     write_psm_files(output_dir=args.output_dir, compounds=args.compound_file, gaps=args.gap_file,
                     combinations=args.combination_file)
@@ -125,6 +127,7 @@ def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
 
 
 def parse_args() -> Namespace:
+    """Parses command line arguments"""
     parser = ArgumentParser()
     parser.add_argument('-c', '--compound-file', default=None, type=Path,
                         help='The compound to create a psm file for. If this is a directory, create psm files for '
