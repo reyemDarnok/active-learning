@@ -1,7 +1,8 @@
 <APPLICATION>
  {{ (gap.defined_scenarios | length ) + 1 }}    0    0    <number of locations absolute app/relative app>
-001
-{% with application_event=dummy_event %}{% include "psm-fragments/application.j2" %}{% endwith %}
+{{ "%03d" % (dummy_gap.application_data(dummy_scenario) | list | length) }}            <number of application location>
+{% for application_event in dummy_gap.application_data(dummy_scenario) %}{% include "psm-fragments/application.j2" %}{% if not loop.last %}
+{% endif %}{% endfor %}
 {% for scenario in gap.defined_scenarios %}{{ "%03d" % (gap.application_data(scenario) | list | length)}}   {{ scenario.name }}         <number of application location>
 {% for application_event in gap.application_data(scenario) %}{% include "psm-fragments/application.j2" %}{% if not loop.last%}
 {% endif%}{% endfor %}{% if not loop.last%}
