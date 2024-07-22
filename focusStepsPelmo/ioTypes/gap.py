@@ -1,3 +1,4 @@
+"""A file describing GAPs and their components"""
 import csv
 import json
 from abc import ABC, abstractmethod
@@ -257,6 +258,8 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
 
     @staticmethod
     def parse(parsable: str) -> 'FOCUSCrop':
+        """Parse a string into a FOCUSCrop. Use a two letter acronym or a full name, if a full name is used the closest
+        match in the registered names is returned"""
         if len(parsable) <= 2:
             return FOCUSCrop.from_acronym(parsable)
         else:
@@ -627,6 +630,7 @@ class AbsoluteConstantGAP(GAP):
 
     @classmethod
     def from_gap(cls, source: GAP, scenario: Scenario) -> 'AbsoluteConstantGAP':
+        """Create an AbsoluteConstantGAP from the data of a different GAP"""
         args = source._get_common_dict()
         args['time_in_year'] = next(source.application_data(scenario))[0]
         return cls(**args)
