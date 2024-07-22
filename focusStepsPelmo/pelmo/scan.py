@@ -77,18 +77,13 @@ def main():
         bhpc = BHPC()
         logger.info("Starting deployment to BHPC")
         if args.run_test_set:
-            run_bhpc(combination_dir=test_set_location,
-                     submit=args.work_dir / 'remote' / "test_data",
-                     output=args.output_dir / f"test_data.{args.output_format}",
-                     crops=crops, scenarios=scenarios,
-                     notification_email=args.notification_email, session_timeout=args.session_timeout, run=True,
-                     bhpc=bhpc)
-        run_bhpc(compound_file=compound_dir, gap_file=gap_dir,
-                 combination_dir=combination_dir,
+            run_bhpc(combination_dir=test_set_location, submit=args.work_dir / 'remote' / "test_data",
+                     output=args.output_dir / f"test_data.{args.output_format}", crops=crops, scenarios=scenarios,
+                     notification_email=args.notification_email, session_timeout=args.session_timeout, bhpc=bhpc)
+        run_bhpc(compound_file=compound_dir, gap_file=gap_dir, combination_dir=combination_dir,
                  submit=args.work_dir / 'remote' / "samples", output=args.output_dir / f"samples.{args.output_format}",
-                 crops=crops, scenarios=scenarios,
-                 notification_email=args.notification_email, session_timeout=args.session_timeout, run=True,
-                 bhpc=bhpc)
+                 crops=crops, scenarios=scenarios, notification_email=args.notification_email,
+                 session_timeout=args.session_timeout, bhpc=bhpc)
     elif args.run == 'local':
         logger.info("Starting local calculation")
         if args.run_test_set:
@@ -127,7 +122,6 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     :param definition: defines the structure of the samples
     :param output_dir: The path to write the samples to
     :param sample_size: How many samples to generate
-    :param test_set_size: How large a test set to generate
     :param test_set_path: Where to load an existing test set from. Don't load a test set if this is None
     :param test_set_buffer: How far any point in the sample has to be from the test set
     (Euclidean distance between features normalised to [-1,1] range)
@@ -402,7 +396,7 @@ def parse_args() -> Namespace:
         args.input_format = args.input_file.suffix[1:]
 
     assert args.input_format != 'csv' or (
-                args.template_compound and args.template_gap), "CSV input requires gap and compound templates"
+            args.template_compound and args.template_gap), "CSV input requires gap and compound templates"
     logger = logging.getLogger()
     jsonLogger.configure_logger_from_argparse(logger, args)
     return args

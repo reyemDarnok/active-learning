@@ -83,8 +83,8 @@ def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
 
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
                        crops: FrozenSet[FOCUSCrop] = None, scenarios: FrozenSet[Scenario] = None,
-                       combinations: Iterable[Combination] = None) -> Generator[
-    Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
+                       combinations: Iterable[Combination] = None
+                       ) -> Generator[Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
     """Create the contents of psm files
     :param compounds: The compounds to combine with gaps to make psm files
     :param gaps: The gaps to combine with compounds to make psm files

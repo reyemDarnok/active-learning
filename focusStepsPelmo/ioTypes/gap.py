@@ -447,8 +447,7 @@ class GAP(ABC, TypeCorrecting):
                             candidate_num += 1
                         filtered_header.append(f"{h}.{candidate_num}")
                         seen.add(f"{h}.{candidate_num}")
-        gap_df = pandas.read_csv(file, skiprows=4, sep='|', skip_blank_lines=True, names=filtered_header,
-                                 usecols=[*range(35), 43, 44])
+        gap_df = pandas.read_csv(file, skiprows=4, sep='|', names=filtered_header, usecols=[*range(35), 43, 44])
         for _, row in gap_df.iterrows():
             model_crop = FOCUSCrop.parse(row['FOCUS Crop used'])
             gap_name = row['PMT ID']
@@ -633,7 +632,6 @@ class AbsoluteConstantGAP(GAP):
         return cls(**args)
 
 
-
 @dataclass(frozen=True)
 class AbsoluteDayOfYearGAP(AbsoluteConstantGAP):
     """A GAP to describe an absolute application date by a day of the year instead of date.
@@ -737,4 +735,4 @@ def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pand
                                                               '& `Recommended Application date` >= '
                                                               '@date'
                                                               )
-    return filtered_frame.sort_values(ascending=True, by=['Recommended Application date']).iloc[0]
+    return filtered_frame.sort_values(by=['Recommended Application date']).iloc[0]

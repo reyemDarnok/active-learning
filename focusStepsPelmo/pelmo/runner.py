@@ -52,7 +52,7 @@ def main():
     crops: FrozenSet[FOCUSCrop] = frozenset(args.crop)
     scenarios: FrozenSet[Scenario] = frozenset(args.scenario)
     run_data = [(file, crop, scenarios) for file in files for crop in crops]
-    write_psm_results(output_file=args.output, run_data=run_data, input_directories=None, working_dir=args.working_dir,
+    write_psm_results(output_file=args.output, run_data=run_data, working_dir=args.working_dir,
                       max_workers=args.threads)
 
 

@@ -1,8 +1,8 @@
-from argparse import ArgumentParser, Namespace
-import logging
 import json
-from pathlib import Path
+import logging
 import platform
+from argparse import ArgumentParser, Namespace
+from pathlib import Path
 
 
 class JsonFormatter(logging.Formatter):
@@ -69,7 +69,7 @@ def get_json_handler(file: str, logging_format=None):
     if logging_format is None:
         logging_format = {"module": "module", "time": "asctime", "level": "levelname",
                           "thread": "threadName", "function": "funcName", "message": "message"}
-    file_handler = logging.FileHandler(file, mode='a')
+    file_handler = logging.FileHandler(file)
     json_formatter = JsonFormatter(logging_format)
     file_handler.setFormatter(json_formatter)
     return file_handler

@@ -151,7 +151,7 @@ class PsmCompound:
 
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
         degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction)]
-        volatizations = (Volatization(henry=3.33E-04, solubility=compound.water_solubility,
+        volatizations = (Volatization(solubility=compound.water_solubility,
                                       vaporization_pressure=compound.vapor_pressure,
                                       temperature=compound.reference_temperature),
                          Volatization(henry=3.33E-04 * 2, solubility=compound.water_solubility,
@@ -220,14 +220,7 @@ class PsmFile(TypeCorrecting):
         for position in ('A1', 'B1', 'C1', 'D1', 'A2', 'B2', 'C2', 'D2'):
             if position in metabolites.keys():
                 metabolite_list.append(PsmCompound.from_compound(metabolites[position]))
-        return PsmFile(application=application,
-                       compound=psm_compound,
-                       metabolites=metabolite_list,
-                       comment="No comment",
-                       num_soil_horizons=0,
-                       degradation_type=DegradationType.FACTORS,
-                       gap=gap
-                       )
+        return PsmFile(application=application, compound=psm_compound, metabolites=metabolite_list, gap=gap)
 
     @staticmethod
     def reorder_metabolites(compound, metabolites):

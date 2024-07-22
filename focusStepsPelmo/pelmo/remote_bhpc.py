@@ -68,14 +68,12 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
     psm_file_data = generate_psm_files(compounds=Compound.from_path(compound_file) if compound_file else None,
                                        gaps=GAP.from_path(gap_file) if gap_file else None,
                                        combinations=Combination.from_path(combination_dir) if combination_dir else None)
-    crops = list(crops)
-    scenarios = list(scenarios)
+
 
     with suppress(FileNotFoundError):
         rmtree(submit)
     logger.info('Generating sub files for bhpc')
-    batch_number = make_sub_file(psm_file_data=psm_file_data, target_dir=submit,
-                                 batch_size=1000)
+    batch_number = make_sub_file(psm_file_data=psm_file_data, target_dir=submit)
     if run:
         logger.info('Starting Pelmo run')
         if batch_number > 10:
@@ -85,9 +83,9 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
         else:
             cores = 8
         session = bhpc.start_session(submit_folder=submit, session_name_prefix='Pelmo',
-                                             submit_file_regex='pelmo\\.sub',
-                                             machines=max(1, batch_number // 10), cores=cores, multithreading=True,
-                                             notification_email=notification_email, session_timeout=session_timeout)
+                                     submit_file_regex='pelmo\\.sub',
+                                     machines=max(1, batch_number // 10), cores=cores, multithreading=True,
+                                     notification_email=notification_email, session_timeout=session_timeout)
         logger.info('Started Pelmo run as session %s', session)
         bhpc.download(session)
         rebuild_scattered_to_file(file=output, parent=submit,
@@ -173,8 +171,8 @@ def make_sub_file(psm_file_data: Iterable[Tuple[str, FOCUSCrop, FrozenSet[Scenar
 
 
 def make_batches(psm_file_data: Iterable[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]],
-                 target_dir: Path, batch_size: int = 1000) -> Generator[
-    Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
+                 target_dir: Path, batch_size: int = 1000
+                 ) -> Generator[Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
     """Create the directories for the batches and fill them
     :param psm_file_data: The psm files to batch.
     :param target_dir: The parent directory for the batch directories

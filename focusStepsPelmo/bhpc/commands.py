@@ -98,6 +98,8 @@ class SessionSummary(TypeCorrecting):
         if self.finished in ('N/A', '-'):
             self.finished = None
         if self.elapsed_time and type(self.elapsed_time) == str:
+            # still in init, type hints are not yet correct
+            # noinspection PyUnresolvedReferences
             parts = self.elapsed_time.split(':')
             self.elapsed_time = timedelta(hours=int(parts[0]), minutes=int(parts[1]), seconds=int(parts[2]))
 
@@ -107,6 +109,8 @@ class BHPCListSections(int, Enum):
     TABLE_HEADLINE = 1
     TABLE_ENTRIES = 2
     ACTIVE_SESSION_COUNT = 3
+
+
 @dataclass(frozen=True)
 class BHPCState(TypeCorrecting):
     sessions: List[SessionSummary]
@@ -132,7 +136,6 @@ class BHPCState(TypeCorrecting):
                 if line:
                     return cls(sessions, int(line.split()[0]))
         raise ValueError("BHPC Message was malformed. Was the input taken from the BHPC list command?")
-
 
 
 class BHPC:
@@ -196,6 +199,7 @@ class BHPC:
         if self.session_token:
             env["AWS_SESSION_TOKEN"] = self.session_token
         return env
+
     def validate_auth_data(self, check_online: bool = True) -> bool:
         if self.key_id is None or self.key is None \
                 or self.session_token is None \
@@ -205,7 +209,7 @@ class BHPC:
         if check_online:
             try:
                 self.list()
-            except:
+            except BHPCAccessError:
                 return False
         return True
 
@@ -227,8 +231,8 @@ class BHPC:
             return True
         else:
             logger.warning("BHPC Credentials by user were not valid")
-            if input(
-                    "Unfortunately there were missing fields in the Credentials. Try again? [Y/n]").strip().casefold() != 'n'.strip().casefold():
+            if (input("Unfortunately there were missing fields in the Credentials. Try again? [Y/n]").strip().casefold()
+                    != 'n'.strip().casefold()):
                 logger.debug("Retrying BHPC Credentials request")
                 return self.request_auth_data()
             else:
@@ -236,7 +240,7 @@ class BHPC:
 
     def start_session(self, submit_folder: Path, submit_file_regex=r'.+\.sub',
                       session_name_prefix: str = "Unknown session", session_name_suffix: str = None,
-                      machines: int = 1, cores: int = 2, multithreading: bool = True,
+                      machines: int = 1, cores: int = 2, multithreading: bool = False,
                       notification_email: str = None, session_timeout: int = 6) -> str:
         suffix = session_name_suffix if session_name_suffix else random.getrandbits(32)
         session = session_name_prefix + suffix
@@ -283,7 +287,6 @@ class BHPC:
             raise BHPCStateError(f"Session {session} could not be run because it was not initialized. "
                                  f"Initialize that session with the upload command first")
 
-
     def download(self, session: str, wait_until_finished: bool = True,
                  retry_interval: timedelta = timedelta(seconds=60)) -> bool:
         logger = logging.getLogger()
@@ -308,7 +311,7 @@ class BHPC:
                 if answer.strip().casefold() == 'y'.casefold():
                     print("Removing session")
                     logger.warning(f"Removing session {session} on request of interactive user")
-                    self.remove(session, True)
+                    self.remove(session)
                 raise e
             else:
                 raise e
@@ -353,8 +356,8 @@ class BHPC:
             return stdout, stderr
 
     def _handle_auth(self):
-        if (
-                self.session_token is None or self.key is None or self.key_id is None) and self.request_auth_data_when_missing:
+        if ((self.session_token is None or self.key is None or self.key_id is None)
+                and self.request_auth_data_when_missing):
             if not self.request_auth_data():
                 raise BHPCAccessError("Failed when requesting credentials after initialising without them")
         elif self.request_auth_data_when_invalid:

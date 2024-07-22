@@ -42,7 +42,6 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
         raise ValueError("Could not infer format, please specify explicitly")
 
 
-
 def rebuild_scattered_output(parent: Path, input_directories: Tuple[Path, ...], glob_pattern: str = "output.json",
                              ) -> Generator[PECResult, None, None]:
     logger = logging.getLogger()
