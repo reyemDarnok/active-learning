@@ -8,12 +8,11 @@ from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet, Optional
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet, Optional, Union
 
-import numpy
 import pandas
 
-from focusStepsPelmo.util.conversions import excel_date_to_datetime
+from focusStepsPelmo.util.conversions import excel_date_to_datetime, decomment_file
 from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting, correct_type
 
 bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BBCHGW.csv',
@@ -424,85 +423,9 @@ class GAP(ABC, TypeCorrecting):
         elif file.suffix == '.gap':
             yield from GAP.from_gap_machine(file)
 
-    # noinspection SpellCheckingInspection
     @staticmethod
     def from_gap_machine(file: Path) -> Generator['GAP', None, None]:
-        """Parse the Bayer GAP machine output into GAPs
-        :param: The file that is the result from an export in the GAP machine
-        :result: The GAPs defined in file"""
-        with file.open() as gap_file:
-            gap_file.readline()
-            gap_file.readline()
-            gap_file.readline()
-            csv_reader = csv.reader(gap_file, delimiter='|')
-            header = next(csv_reader)
-            header.append('Interceptions.1')
-            seen = set()
-            filtered_header = []
-            for h in header:
-                if h:
-                    if h not in seen:
-                        filtered_header.append(h)
-                        seen.add(h)
-                    else:
-                        candidate_num = 1
-                        while f"{h}.{candidate_num}" in seen:
-                            candidate_num += 1
-                        filtered_header.append(f"{h}.{candidate_num}")
-                        seen.add(f"{h}.{candidate_num}")
-        gap_df = pandas.read_csv(file, skiprows=4, sep='|', names=filtered_header, usecols=[*range(35), 43, 44])
-        for _, row in gap_df.iterrows():
-            model_crop = FOCUSCrop.parse(row['FOCUS Crop used'])
-            gap_name = row['PMT ID']
-            rate = row['Rate per treatment: ']
-            if row['Repeat-Mode'] == "every 3 years":
-                period_between_applications = 3
-            elif row['Repeat-Mode'] == "every 2 years":
-                period_between_applications = 2
-            else:
-                period_between_applications = 1
-            number = row['Max total # of apps']
-            interval = row['Appl. intervall']  # typo in source data, intentional here
-
-            # dates are in Lotus123 (and Excel) reckoning, meaning days since 30.12.1899
-            scenarios = {}
-            if not numpy.isnan(row["Appl. dates, 1st veg. period Chateaudun"]):
-                scenarios[Scenario.C] = {
-                    "time_in_year": excel_date_to_datetime(row['Appl. dates, 1st veg. period Chateaudun'])}
-            for scenario in Scenario:
-                if scenario == Scenario.C:
-                    continue
-                scenario_name = scenario.replace('ü', 'u')
-                if not numpy.isnan(row[scenario_name]):
-                    scenarios[Scenario(scenario)] = {"time_in_year": excel_date_to_datetime(row[scenario_name])}
-            first_gap = AbsoluteScenarioGAP(modelCrop=model_crop, name=gap_name,
-                                            rate=rate,
-                                            number_of_applications=number,
-                                            apply_every_n_years=period_between_applications,
-                                            interval=interval,
-                                            scenarios=scenarios)
-            second_scenarios = {}
-            if not numpy.isnan(row["Appl. dates, 2nd veg. period Chateaudun"]):
-                scenarios[Scenario.C] = excel_date_to_datetime(row['Appl. dates, 2nd veg. period Chateaudun'])
-            for scenario in Scenario:
-                if scenario == Scenario.C:
-                    continue
-                scenario_name = scenario.replace('ü', 'u') + ".1"
-                if not numpy.isnan(row[scenario_name]):
-                    scenarios[Scenario(scenario)] = excel_date_to_datetime(row[scenario_name])
-            if second_scenarios:
-                second_gap = AbsoluteScenarioGAP(modelCrop=model_crop, name=gap_name,
-                                                 rate=rate,
-                                                 number_of_applications=number,
-                                                 apply_every_n_years=period_between_applications,
-                                                 interval=interval,
-                                                 scenarios=second_scenarios)
-                yield MultiGAP(modelCrop=model_crop, name=gap_name, rate=rate,
-                               number_of_applications=number, apply_every_n_years=period_between_applications,
-                               interval=interval,
-                               timings=(first_gap, second_gap))
-            else:
-                yield first_gap
+        yield from GAPMachineGAP.from_gap_machine(file)
 
 
 @dataclass(frozen=True)
@@ -707,6 +630,94 @@ class AbsoluteScenarioGAP(GAP):
                 corrected_scenarios[scenario] = AbsoluteConstantGAP(**init_dict_copy)
         object.__setattr__(self, '_scenario_gaps', corrected_scenarios)
         super().__post_init__()
+
+@dataclass(frozen=True)
+class GAPMachineGAP(GAP):
+    first_season: Dict[Scenario, datetime] = field(default_factory=dict)
+    second_season: Dict[Scenario, datetime] = field(default_factory=dict)
+    interceptions: Tuple[float, ...] = tuple()
+
+    def __hash__(self) -> int:
+        init_dict = self._get_common_dict()
+        init_dict.pop('model_specific_data')
+        return hash(tuple([tuple(tuple([key, value]) for key, value in self.first_season.items()),
+                           tuple(tuple([key, value]) for key, value in self.second_season.items()),
+                           tuple(tuple([key, value]) for key, value in init_dict.items()),
+                           self.interceptions]))
+
+    def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
+        for year in range(1, 6 + 20 * self.apply_every_n_years + 1, self.apply_every_n_years):
+            if scenario in self.first_season.keys() and self.first_season[scenario]:
+                for index in range(self.number_of_applications):
+                    yield self.first_season[scenario] + index * self.interval, self.interceptions[index]
+            if scenario in self.second_season.keys() and self.second_season[scenario]:
+                for index in range(self.number_of_applications):
+                    yield self.second_season[scenario] + index * self.interval, self.interceptions[index]
+
+    @property
+    def _dict_args(self) -> Dict[str, Any]:
+        return {
+            "first_season": self.first_season,
+            "second_season": self.second_season,
+            "interceptions": self.interceptions
+        }
+
+    @property
+    def _type(self) -> str:
+        return 'gap_machine'
+
+    @classmethod
+    def from_gap_machine(cls, file: Path) -> Generator['GAPMachineGAP', None, None]:
+        """Parse the Bayer GAP machine output into GAPs
+        :param: The file that is the result from an export in the GAP machine
+        :result: The GAPs defined in file"""
+        file_object = decomment_file(file)
+        next(file_object)
+        next(file_object)
+        gap_file_reader = csv.DictReader(file_object, delimiter="|",
+                                         fieldnames=["PMT ID", "FOCUS Crop used", "FOCUS Crop for interception",
+                                                     "GAP Group (DGR) name", "GAP group (DGR) ID", "Use IDs", "Crops",
+                                                     "Season", "PMT name", "Repeat-Mode", "Max total # of apps",
+                                                     "Appl. mode", "Appl. interval", "User BBCH code", "Appl. Method",
+                                                     "Incorporation depth", "1-Châteaudun", "1-Hamburg", "1-Jokioinen",
+                                                     "1-Kremsmünster", "1-Okehampton", "1-Piacenza", "1-Porto",
+                                                     "1-Sevilla", "1-Thiva", "2-Châteaudun", "2-Hamburg", "2-Jokioinen",
+                                                     "2-Kremsmünster", "2-Okehampton", "2-Piacenza", "2-Porto",
+                                                     "2-Sevilla", "2-Thiva", "Rate per treatment: ",
+                                                     "", "", "", "", "", "", "", ""],
+                                         restkey='interceptions')
+
+        for row in gap_file_reader:
+            row: Dict[str, Union[str, List[str]]]
+            model_crop = FOCUSCrop.parse(row['FOCUS Crop used'])
+            gap_name = row['PMT ID']
+            rate = float(row['Rate per treatment: '])
+            if row['Repeat-Mode'] == "every 3 years":
+                period_between_applications = 3
+            elif row['Repeat-Mode'] == "every 2 years":
+                period_between_applications = 2
+            else:
+                period_between_applications = 1
+            number = int(row['Max total # of apps'])
+            interval = timedelta(days=float(row['Appl. interval']))
+
+            # dates are in Lotus123 (and Excel) reckoning, meaning days since 30.12.1899
+            first_season = {}
+            for scenario in Scenario:
+                scenario_name = "1-" + scenario
+                if row[scenario_name]:
+                    first_season[Scenario(scenario)] = excel_date_to_datetime(int(row[scenario_name]))
+
+            second_season = {}
+            for scenario in Scenario:
+                scenario_name = "2-" + scenario
+                if row[scenario_name]:
+                    second_season[Scenario(scenario)] = excel_date_to_datetime(int(row[scenario_name]))
+            interceptions = row['interceptions']
+            yield cls(modelCrop=model_crop, rate=rate, apply_every_n_years=period_between_applications,
+                      number_of_applications=number, interval=interval, model_specific_data={}, name=gap_name,
+                      first_season=first_season, second_season=second_season,
+                      interceptions=tuple(float(x) for x in interceptions))
 
 
 # parameters are used in pandas query, which PyCharm does not notice
