@@ -116,7 +116,12 @@ def find_duration(psm_file_string) -> int:
                 pass
             except IndexError:
                 pass
-    return max_year + 1
+    if max_year <= 26:
+        return 26
+    elif max_year <= 46:
+        return 46
+    else:
+        return max_year
 
 
 def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], working_dir: Path) -> PelmoResult:

@@ -1,5 +1,5 @@
 import math
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
@@ -44,7 +44,7 @@ class ApplicationType(int, Enum):
 
 @dataclass(frozen=True)
 class PsmApplication(TypeCorrecting):
-    type: ApplicationType = ApplicationType.soil
+    type: ApplicationType = ApplicationType.manual
     lower_depth: float = 0
     upper_depth: float = 0
     ffield: float = 0
@@ -90,24 +90,8 @@ class DegradationData(TypeCorrecting):
     moisture: Moisture = Moisture()
     rel_deg_new_sites: float = 0
     formation_factor: float = 1
-    inverse_rate: float = 0
-    i_ref: float = 100
-
-
-@dataclass(frozen=True)
-class PsmDegradation(TypeCorrecting):
-    to_disregard: DegradationData
-    metabolites: Optional[Tuple['PsmDegradation', ...]] = field(default_factory=tuple)
-
-    # None if it is dt50 to BR/CO2
-
-    def __post_init__(self):
-        if self.metabolites is not None:
-            object.__setattr__(self, 'metabolites', self.metabolites +
-                               tuple([PsmDegradation(to_disregard=DegradationData(rate=0), metabolites=None)] *
-                                     (4 - len(self.metabolites))))
-        else:
-            object.__setattr__(self, 'metabolites', tuple())
+    photodegradation: float = 0
+    reference_irradiance: float = 100
 
 
 @dataclass(frozen=True)
@@ -128,6 +112,16 @@ class PsmAdsorption:
 
 
 @dataclass(frozen=True)
+class FateOnCrop:
+    plant_decay_rate: float = 0.0693
+    washoff_parameter: float = 1.0
+    penetration: float = 0.0693
+    photodegradation: float = 0
+    reference_irradiance: float = 100
+    laminar_layer: float = 0.03
+
+
+@dataclass(frozen=True)
 class PsmCompound:
     molar_mass: float
     adsorptions: Tuple[PsmAdsorption, ...]
@@ -137,6 +131,7 @@ class PsmCompound:
     degradation_type: DegradationType = DegradationType.FACTORS
     name: str = "Unknown name"
     position: Optional[str] = None
+    fate_on_crop: FateOnCrop = FateOnCrop()
 
     @staticmethod
     def from_compound(compound: Compound) -> 'PsmCompound':
@@ -190,6 +185,7 @@ class PsmFile(TypeCorrecting):
 
     def asdict(self):
         return {
+            "gap": self.gap,
             "application": self.application,
             "compound": self.compound,
             "metabolites": self.metabolites,
@@ -288,6 +284,5 @@ class PsmFile(TypeCorrecting):
         psm_template = jinja_env.get_template('general.psm.j2')
         template_data = self.asdict()
         template_data['dummy_event'] = tuple([datetime(year=1, month=1, day=1), 0])
-        template_data['gap'] = self.gap
         rendered = psm_template.render(**template_data)
         return rendered

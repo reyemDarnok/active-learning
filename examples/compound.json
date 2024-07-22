@@ -1,15 +1,15 @@
 {
   "metabolites": [],
-    "molarMass": 300,
+  "molarMass": 300,
   "water_solubility": 90.0,
   "vapor_pressure": 1e-4,
   "reference_temperature": 20,
-  "koc": 60,
-  "freundlich": 0.9,
-  "plant_uptake": 0.5,
+  "koc": 5,
+  "freundlich": 1.1,
+  "plant_uptake": 0,
   "dt50": {
     "system": 6,
-    "soil": 5,
+    "soil": 200,
     "surfaceWater": 6,
     "sediment": 6
   }
