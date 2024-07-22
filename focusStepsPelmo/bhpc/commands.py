@@ -179,6 +179,9 @@ class BHPC:
         self.read_auth_data_dict(auth_data)
 
     def read_auth_data_powershell(self, copy_paste: str):
+        """Reads the auth data in its powershell format. More specifically, it checks for lines starting with
+        "$ENV:" and reads the key value pair that follows, ignoring any keys the BHPC does not care about
+        and any other lines"""
         logger = logging.getLogger()
         lines = copy_paste.splitlines()
         variables = {}
@@ -195,6 +198,10 @@ class BHPC:
         self.read_auth_data_dict(variables)
 
     def read_auth_data_dict(self, d: Dict[str, str]):
+        """
+        Reads the BHPC keys from a dictionary. Keys no known to the BHPC in `d` will be ignored.
+        If keys that are known to the BHPC are missing, those values are simply not set
+        """
         if "AWS_ACCESS_KEY_ID" in d.keys():
             self.key_id = d["AWS_ACCESS_KEY_ID"]
         if "AWS_SECRET_ACCESS_KEY" in d.keys():
@@ -226,6 +233,9 @@ class BHPC:
         return env
 
     def validate_auth_data(self, check_online: bool = True) -> bool:
+        """Validates if this object has the credentials necessary to connect to the BHCP
+        :param check_online: If this is False, only check if all necessary values are set. If this is True,
+        also attempt to actually connect to the BHPC with a status command, which may take several seconds"""
         if self.key_id is None or self.key is None \
                 or self.session_token is None \
                 or self.proxy is None or self.no_proxy is None \
@@ -239,6 +249,8 @@ class BHPC:
         return True
 
     def request_auth_data(self) -> bool:
+        """Request the credentials from the user as a copy paste of the powershell script provided at go/BHPC.
+        :return: True if the user provided valid credentials, false if they did not"""
         logger = logging.getLogger()
         logger.info("Requesting BHPC Credentials from user")
         print("To authorize this script against the BHPC, please copy the CLI Credentials from http://go/bhpc-prod")
@@ -267,6 +279,21 @@ class BHPC:
                       session_name_prefix: str = "Unknown session", session_name_suffix: str = None,
                       machines: int = 1, cores: int = 2, multithreading: bool = False,
                       notification_email: str = None, session_timeout: int = 6) -> str:
+        """Starts a session, that is `upload`s and `run`s a new session
+        :param submit_folder: Where to find the submit files that make up the session. This directory will be searched
+        recursively
+        :param submit_file_regex: The regex matching the submit files to include. The default matches the default of
+        the bhpc.exe
+        :param session_name_prefix: The start of the session name
+        :param session_name_suffix: The end of the session name. If this is Falsy, use a 32-bit random number
+        :param machines: How many machines to use to run the jobs. Prefer increasing cores first,
+        as each machine requires one core for overhead and is priced per core
+        :param cores: How many cores to use on each machine. Must be in (2, 4, 8, 16, 96)
+        :param multithreading: If this is true, only run one job at a time on a machine. If this is False, run as many
+        jobs on a machine as there are cores available
+        :param notification_email: Which email address to notify on completion of the session
+        :param session_timeout: When to assume that the session hangs and kill it
+        :return: The name of the session that was started"""
         suffix = session_name_suffix if session_name_suffix else random.getrandbits(32)
         session = session_name_prefix + suffix
         logger = logging.getLogger()
@@ -280,6 +307,12 @@ class BHPC:
         return session
 
     def upload(self, submit_folder: Path, session: str, submit_file_regex=r'.+\.sub'):
+        """Upload a session to the BHPC. DOES NOT START THE ACTUAL CALCULATION, THAT'S run
+        :param submit_folder: Where to find the submit files that make up the session. This directory will be searched
+        recursively
+        :param submit_file_regex: The regex matching the submit files to include. The default matches the default of
+        the bhpc.exe
+        :param session: The name of the new session"""
         self._execute_bhpc_command(
             [
                 'upload',
@@ -293,6 +326,16 @@ class BHPC:
 
     def run(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
             notification_email: str = None, session_timeout: int = 6):
+        """Starts a session
+        :param session: The name of the session to start
+        :param machines: How many machines to use to run the jobs. Prefer increasing cores first,
+        as each machine requires one core for overhead and is priced per core
+        :param cores: How many cores to use on each machine. Must be in (2, 4, 8, 16, 96)
+        :param multithreading: If this is true, only run one job at a time on a machine. If this is False, run as many
+        jobs on a machine as there are cores available
+        :param notification_email: Which email address to notify on completion of the session
+        :param session_timeout: When to assume that the session hangs and kill it
+        """
         assert cores in (2, 4, 8, 16, 96), f"Invalid core number {cores}. Only 2,4,8,16 or 96 are permitted"
         assert machines > 0, "The number of machines must be a positive number or the job will stall"
         command_args = ['run',
@@ -314,6 +357,13 @@ class BHPC:
 
     def download(self, session: str, wait_until_finished: bool = True,
                  retry_interval: timedelta = timedelta(seconds=60)) -> bool:
+        """Download the results of a session. Note that the results are placed in the path of the original sub file
+        :param session: The name of the session
+        :param wait_until_finished: If True, this command will block until the session has finished, otherwise download
+        available results immediately
+        :param retry_interval: If wait_until_finished, how long to wait between each check whether the session has
+        finished
+        :return: True if everything was downloaded, False otherwise"""
         logger = logging.getLogger()
         try:
             if wait_until_finished:
@@ -342,28 +392,41 @@ class BHPC:
                 raise e
 
     def remove(self, session: str, kill: bool = True):
+        """Remove a session
+        :param session: The name of the session
+        :param kill: Whether to kill the running machines. Should be specified as True if the session is still running
+        """
+        # TODO add option to let remove check if session is still running
         logger = logging.getLogger()
         logger.info('Running remove command for session %s', session)
         self._execute_bhpc_command(["remove", session], 'yes' if kill else 'no')
 
     def list(self) -> BHPCState:
+        """List the status of the BHPC"""
         stdout, _ = self._execute_bhpc_command(['list'])
         return BHPCState.from_bhpc_message(stdout)
 
-    def show(self, session) -> SessionStatus:
-        return self.get_session_status(session)
-
     def is_session_finished(self, session: str):
+        """Check if a session is finished"""
         for status in self.get_session_status(session).submit_files:
             if not status.is_finished:
                 return False
         return True
 
     def get_session_status(self, session) -> SessionStatus:
+        """Show the status of a single session"""
         stdout, _ = self._execute_bhpc_command(["show", session])
         return SessionStatus.from_bhpc_message(stdout)
 
+    def show(self, session) -> SessionStatus:
+        """Show the status of a single session. Alias for get_session_status"""
+        return self.get_session_status(session)
+
     def _execute_bhpc_command(self, arguments: List[str], command_input: str = "") -> Tuple[str, str]:
+        """Executes a command with the bhpc exe. Retries while asking for credentials if those are invalid
+        :param arguments: The command line arguments to the bhpc exe, not including the name of the exe itself
+        :param command_input: The stdin for the bhpc exe, to answer yes/no questions
+        :return: A tuple of the bhpc.exe stdout and stderr"""
         argv = [str(self.bhpc_exe.absolute()), *arguments]
         env = os.environ.copy()
         env.update(self._get_bhpc_env())
@@ -381,6 +444,8 @@ class BHPC:
             return stdout, stderr
 
     def _handle_auth(self):
+        """Checks if credential requests are allowed and if they are, make them
+        :raises BHPCAccessError: if _handle_auth fails to collect valid credentials"""
         if ((self.session_token is None or self.key is None or self.key_id is None)
                 and self.request_auth_data_when_missing):
             if not self.request_auth_data():
