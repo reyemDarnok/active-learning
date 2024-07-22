@@ -9,7 +9,7 @@ from dataclasses import replace
 from os import cpu_count
 from pathlib import Path
 from shutil import rmtree
-from typing import Dict, Generator, Iterable, Optional, Set, Tuple, Union, Sequence
+from typing import Dict, Generator, Iterable, Optional, Set, Tuple, Union, Sequence, FrozenSet
 
 from focusStepsPelmo.bhpc.commands import BHPC
 from focusStepsPelmo.ioTypes.combination import Combination
@@ -68,9 +68,12 @@ def main():
         else:
             raise ValueError("Cannot infer input format, please specify explicitly")
     if not crops:
-        crops = file_span_params.pop('crop', FOCUSCrop)
+        crops = file_span_params.pop('crop', frozenset(FOCUSCrop))
     if not scenarios:
-        scenarios = file_span_params.pop('scenario', Scenario)
+        scenarios = file_span_params.pop('scenario', frozenset(Scenario))
+
+    crops = correct_type(crops, FrozenSet[FOCUSCrop])
+    scenarios = correct_type(scenarios, FrozenSet[Scenario])
 
     logger.info("Finished generating compounds")
     if args.run == 'bhpc':
