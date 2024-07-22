@@ -86,6 +86,8 @@ def run_psms(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Sce
     When given scenarios that are not defined for some given crops, they are silently ignored for those crops only
     :param working_dir: Where to run them
     :param max_workers: How many worker threads to use at most
+    :param run_data: Information about the Pelmo runs that should be started. Each value is a tuple containing
+    the psm file, the crop to use and the defined scenarios for the runs in that order
     :return: A Generator of the results of the calculations. Makes new results available as their calculations finish.
                 No particular ordering is guaranteed but the calculations are started in order of
                 psm_file, then crop, then scenario"""
