@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""A script for running Pelmo locally"""
 import logging
 from argparse import ArgumentParser, Namespace
 from contextlib import suppress
@@ -18,6 +19,7 @@ from focusStepsPelmo.util.datastructures import correct_type
 
 
 def main():
+    """The entry point for running this script from the command line"""
     args = parse_args()
     logger = logging.getLogger()
 
@@ -62,6 +64,7 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
 
 
 def parse_args() -> Namespace:
+    """Parse command line arguments"""
     parser = ArgumentParser()
     parser.add_argument('-c', '--compound-file', default=None, type=Path,
                         help='The compound to create a psm file for. If this is a directory, create psm files for '
