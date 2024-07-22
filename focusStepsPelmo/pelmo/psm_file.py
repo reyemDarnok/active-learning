@@ -1,3 +1,4 @@
+"""A file describing a psm file and its components"""
 import math
 from dataclasses import dataclass, replace
 from datetime import datetime
@@ -7,7 +8,7 @@ from typing import Dict, List, Optional, Tuple
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
 from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, DT50
-from focusStepsPelmo.ioTypes.gap import GAP
+from focusStepsPelmo.ioTypes.gap import GAP, GAPMachineGAP, Scenario
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 PELMO_UNSET = -99
@@ -26,6 +27,7 @@ class Emergence(int, Enum):
 
     @staticmethod
     def from_stage(stage: int) -> 'Emergence':
+        """Turn bbch major stages into Pelmo emergence values"""
         if stage >= 9:
             return Emergence.first_harvest
         if stage >= 8:
@@ -113,6 +115,7 @@ class PsmAdsorption:
 
 @dataclass(frozen=True)
 class FateOnCrop:
+    """Data about what happens to the substance on the crop"""
     plant_decay_rate: float = 0.0693
     washoff_parameter: float = 1.0
     penetration: float = 0.0693
@@ -123,6 +126,7 @@ class FateOnCrop:
 
 @dataclass(frozen=True)
 class PsmCompound:
+    """Describes a compound as it appears in a psm file"""
     molar_mass: float
     adsorptions: Tuple[PsmAdsorption, ...]
     degradations: List[DegradationData]
@@ -135,6 +139,7 @@ class PsmCompound:
 
     @staticmethod
     def from_compound(compound: Compound) -> 'PsmCompound':
+        """Creates a psmCompound from a general Compound"""
         if compound.dt50.soil > 0:
             full_rate = math.log(2) / compound.dt50.soil
         else:
@@ -175,6 +180,7 @@ PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(k
 
 @dataclass(frozen=True)
 class PsmFile(TypeCorrecting):
+    """Describes the contents of a psm file"""
     application: PsmApplication
     gap: GAP
     compound: PsmCompound
@@ -184,6 +190,7 @@ class PsmFile(TypeCorrecting):
     degradation_type: DegradationType = DegradationType.FACTORS
 
     def asdict(self):
+        """Represent self as a dict. Necessary because dataclasses.asdict chokes on named tuples in gap"""
         return {
             "gap": self.gap,
             "application": self.application,
@@ -276,6 +283,9 @@ class PsmFile(TypeCorrecting):
     def render(self) -> str:
         psm_template = jinja_env.get_template('general.psm.j2')
         template_data = self.asdict()
-        template_data['dummy_event'] = tuple([datetime(year=1, month=1, day=1), 0])
+        dummy_gap = GAPMachineGAP(modelCrop=self.gap.modelCrop, rate=0, interceptions=tuple([0]),
+                                  first_season={Scenario.C: datetime(year=1, month=1, day=1) })
+        template_data['dummy_gap'] = dummy_gap
+        template_data['dummy_scenario'] = Scenario.C
         rendered = psm_template.render(**template_data)
         return rendered
