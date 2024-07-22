@@ -1,3 +1,4 @@
+"""A file for useful data structures"""
 import itertools
 import sys
 import typing
@@ -20,16 +21,22 @@ class RSDict(UserDict):
 
 
 class HashableDict(UserDict):
+    """A Dict that supports hashing. Note that using it as keys and then changing it will have unpredictable effects"""
+
     def __hash__(self):
         return hash(frozenset(self.items()))
 
 
 class HashableRSDict(RSDict):
+    """A hashable version of RSDict. Note that using it as keys and then changing it will have unpredictable effects"""
     def __hash__(self):
         return hash(frozenset(self.items()))
 
 
 class TypeCorrecting:
+    """A class that enforces the type annotations of its members.
+    Its intended use is as a superclass for dataclasses"""
+
     def __post_init__(self):
         module_name = self.__class__.__module__
         class_globals = {}
@@ -48,12 +55,17 @@ T = TypeVar('T')
 
 
 class NoValidStrategyException(Exception):
+    """There were several strategies for an operation specified but none worked"""
+
     def __init__(self, *args, strategy_exceptions: List[Exception]):
         super().__init__(*args)
         self.strategy_exceptions = strategy_exceptions
 
 
 def correct_type(input_value: Any, t: Type[T]) -> T:
+    """
+    Coerce the input_value into a value of type t. Respects all typing annotations with simple constructors
+    """
     try:
         if t == typing.Any:
             return input_value
