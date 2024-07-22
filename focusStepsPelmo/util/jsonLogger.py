@@ -1,3 +1,4 @@
+"""A Logger that logs in json"""
 import json
 import logging
 import platform

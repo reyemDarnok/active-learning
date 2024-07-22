@@ -1,3 +1,4 @@
+"""A file for methods to generate objects from probabilistic definitions"""
 import math
 import random
 import sys

@@ -1,3 +1,4 @@
+"""A file for methods that create simple iterators"""
 from typing import Generator, TypeVar
 
 T = TypeVar('T')
