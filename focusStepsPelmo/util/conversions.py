@@ -1,3 +1,4 @@
+"""A file of useful method for converting objects between types"""
 import re
 from collections import OrderedDict, UserDict, UserList
 from dataclasses import asdict, is_dataclass
@@ -24,6 +25,9 @@ class EnhancedJSONEncoder(JSONEncoder):
     """
 
     def default(self, o):
+        """Handles the cases that the Encoder does not recognize and returns something that it does.
+        Note that this does not allow for a change in the default representation of objects that the default
+        Encoder understands"""
         if Enum in type(o).__bases__:
             print(f"Enum: {o}")
             if {str, int, float, bool} & set(type(o).__bases__):
@@ -86,11 +90,14 @@ def flatten(to_flatten: Union[List, Dict, Tuple, timedelta, Any]) -> Generator[s
 
 
 def excel_date_to_datetime(excel_date: int) -> datetime:
+    """Converts an int in the internal representation of Excel to a datetime object
+    :excel_date: The number of days since 1899-12-30 (Excels internal representation for dates)"""
     base_date = datetime(year=1899, month=12, day=30)
     return base_date + timedelta(excel_date)
 
 
 def flatten_to_keys(o: Any, prefix=None) -> Generator[str, None, None]:
+    """Convert an object into a List of table headings"""
     if prefix is None:
         prefix = []
     if isinstance(o, (dict, UserDict)):
@@ -112,6 +119,7 @@ def flatten_to_keys(o: Any, prefix=None) -> Generator[str, None, None]:
 
 
 def flatten_dict_to_keys(d: Dict, prefix=None) -> Generator[str, None, None]:
+    """Convert a dict into table headings"""
     if prefix is None:
         prefix = []
     for key, value in d.items():
@@ -120,6 +128,7 @@ def flatten_dict_to_keys(d: Dict, prefix=None) -> Generator[str, None, None]:
 
 
 def flatten_list_to_keys(to_flatten: List, prefix=None) -> Generator[str, None, None]:
+    """Convert a list into table headings"""
     if prefix is None:
         prefix = []
     for index, value in enumerate(to_flatten):
