@@ -1,3 +1,4 @@
+"""A file describing combination objects"""
 import json
 from collections import UserList
 from dataclasses import dataclass, asdict
@@ -16,6 +17,7 @@ class Combination(TypeCorrecting):
     compound: Compound
 
     def asdict(self) -> Dict:
+        """Represent self as a dictionary - the dataclasses.asdict method chokes on NamedTuples in gap"""
         return {"gap": self.gap.asdict(),
                 "compound": asdict(self.compound)}
 
