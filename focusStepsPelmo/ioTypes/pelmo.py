@@ -1,3 +1,4 @@
+"""A file for Pelmo specific datatypes"""
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -185,12 +186,14 @@ class PECResult:
                            tuple(tuple([tuple(ord(c) for c in key), value]) for key, value in self.pec.items())]))
 
     def asdict(self) -> Dict[str, Union[Compound, GAP, Scenario, Dict[str, float]]]:
+        """Convert this object into a dict. Necessary, as dataclasses.asdict chokes on gap"""
         return {"compound": self.compound,
                 "gap": self.gap,
                 "scenario": self.scenario,
                 "pec": self.pec}
 
     def get_csv_headers(self) -> List[str]:
+        """Get the headers of a csv file for values with structure like this object"""
         number_of_compounds = len(self.pec.keys())
         key_dict = self.asdict()
         key_dict.pop('pec')
@@ -199,6 +202,7 @@ class PECResult:
             f"{i}.compound_name" for i in range(number_of_compounds)]
 
     def to_list(self) -> List[Union[str, float, int]]:
+        """Turn this object into a list of values, keeping the same ordering as get_csv_headers"""
         key_dict = self.asdict()
         key_dict.pop('pec')
         key_dict['gap'] = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
