@@ -1,3 +1,5 @@
+""" A file describing a compound and its components
+"""
 import json
 from collections import UserList
 from dataclasses import dataclass, field
