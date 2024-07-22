@@ -22,8 +22,23 @@ jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
 def main():
     """Entrypoint for calling this script from the command line"""
     args = parse_args()
-    write_psm_files(output_dir=args.output_dir, compounds=args.compound_file, gaps=args.gap_file,
-                    combinations=args.combination_file)
+    compounds = None
+    gaps = None
+    combinations = None
+    if args.compound_file and args.compound_file.is_dir():
+        compounds = args.compound_file.rglob("*.json")
+    elif args.compound_file:
+        compounds = [args.compound_file]
+    if args.gap_file and args.gap_file.is_dir():
+        gaps = args.gap_file.rglob("*.json")
+    elif args.gap_file:
+        gaps = [args.gap_file]
+    if args.combination_file and args.combination_file.is_dir():
+        combinations = args.combination_file.rglob("*.json")
+    elif args.combination_file:
+        combinations = [args.combinations]
+    write_psm_files(output_dir=args.output_dir, compounds=compounds, gaps=gaps,
+                    combinations=combinations)
 
 
 def write_psm_files(output_dir: Path,
@@ -45,6 +60,7 @@ def write_psm_files(output_dir: Path,
     if combinations:
         combinations = load_or_use(combinations, Combination)
     total = 0
+    output_dir.mkdir(exist_ok=True, parents=True)
     for psm_file in generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations):
         total += 1
         (output_dir / f"{hash(psm_file)}.psm").write_text(psm_file[0])
@@ -63,24 +79,7 @@ def load_or_use(it: Iterable[Union[Path, T]], t: Type[T]) -> Generator[T, None, 
         if isinstance(element, t):
             yield element
         else:
-            yield from load_class(element, t)
-
-
-def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
-    """Given a path, load the object in the class
-    :param source: The source path for the object
-    :param t: The type of the object in source
-    :return: All objects of type t that could be parsed from source"""
-    if source.suffix == '.json':
-        with source.open() as file:
-            json_content = json.load(file)
-        if isinstance(json_content, list):
-            for element in json_content:
-                yield t(**element)
-        else:
-            yield t(**json_content)
-    elif source.suffix == 'xlsx':
-        yield from t.from_excel(source)
+            yield from t.from_path(element)
 
 
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
