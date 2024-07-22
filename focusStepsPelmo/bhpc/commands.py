@@ -1,3 +1,4 @@
+"""A file describing the commands that can be sent to the BHPC"""
 import contextlib
 import logging
 import os
@@ -16,10 +17,12 @@ from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
 class BHPCStateError(Exception):
+    """An Error indicating that the request is incompatible with the current state of the BHPC"""
     pass
 
 
 class BHPCAccessError(Exception):
+    """An Error indicating that this script failed to access the BHPC"""
     pass
 
 
@@ -36,16 +39,22 @@ class SubmitFileStatus(TypeCorrecting):
     """The path of the submit file defining the jobs. 
     Any downloads from this job will be saved in the same directory as this file"""
 
-    def is_finished(self):
+    def is_finished(self) -> bool:
+        """True if all jobs have finished, false otherwise"""
         return self.initial == 0 and self.started == 0
 
 
 @dataclass(frozen=True)
 class SessionStatus(TypeCorrecting):
+    """A dataclass describing a single session"""
     submit_files: List[SubmitFileStatus]
+    """A list of the statuses of the .sub files making up this session"""
 
     @staticmethod
     def from_bhpc_message(bhpc_message: str) -> 'SessionStatus':
+        """Parse a message from the BHPC into a SessionStatus object
+        :param bhpc_message: The message to parse
+        :return: An object describing the session described by the bhpc_message"""
         lines = bhpc_message.splitlines()
         lines = lines[3:]  # remove headings
         submit_files = []
@@ -79,16 +88,27 @@ def pushd(new_dir):
 
 @dataclass
 class SessionSummary(TypeCorrecting):
+    """A summary of all session data, as returned by the BHPC list command"""
     session_id: str
+    """The id of the session"""
     cwid: Optional[str]
+    """Who started the run of the session, if anybody"""
     status: str  # TODO make Enum
+    """Which state the session is in right now"""
     instance_type: Optional[str]  # TODO make Enum
+    """On what type of amazon resources the session is deployed, if any"""
     vCPUs: Optional[int]
+    """How many vCPUs are assigned to the session, if it has started to run"""
     creation_time: Optional[datetime]
+    """When was the session started"""
     elapsed_time: Optional[timedelta]
+    """How long did the session run, if it has been started"""
     initialized: Optional[int]
+    """If the session is running or has finished, how many jobs are in initialized state"""
     started: Optional[int]
+    """If the session is running or has finished, how many jobs are in started state"""
     finished: Optional[int]
+    """If the session is running or has finished, how many jobs are in finished state"""
 
     def __post_init__(self):
         if self.initialized in ('N/A', '-'):
@@ -105,6 +125,7 @@ class SessionSummary(TypeCorrecting):
 
 
 class BHPCListSections(int, Enum):
+    """Identifiers for different Sections in the BHPC list response"""
     PREAMBLE = 0
     TABLE_HEADLINE = 1
     TABLE_ENTRIES = 2
@@ -113,11 +134,13 @@ class BHPCListSections(int, Enum):
 
 @dataclass(frozen=True)
 class BHPCState(TypeCorrecting):
+    """A description of the state of the BHPC, as returned by the list call"""
     sessions: List[SessionSummary]
     active_sessions: int
 
     @classmethod
     def from_bhpc_message(cls, bhpc_message: str) -> 'BHPCState':
+        """Parse a bhpc message from a string into a BHPCState object"""
         section = BHPCListSections.PREAMBLE
         sessions = []
         for line in bhpc_message.splitlines():
@@ -139,6 +162,8 @@ class BHPCState(TypeCorrecting):
 
 
 class BHPC:
+    """A connector to the BHPC. Manages credentials but relies on the bhpc exe being installed"""
+
     def __init__(self, request_auth_data_when_missing: bool = True, request_auth_data_when_invalid: bool = True,
                  bhpc_exe: Path = Path('C:\\_AWS', 'actualVersion', 'bhpc.exe'), auth_data: Dict = os.environ):
         self.ca_bundle: Path = Path('ca-certificates.crt')
