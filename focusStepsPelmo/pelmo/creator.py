@@ -82,18 +82,19 @@ def load_class(source: Path, t: Type[T]) -> Generator[T, None, None]:
 
 
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
-                       crops: FrozenSet[FOCUSCrop] = None, scenarios: FrozenSet[Scenario] = None,
+                       crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
+                       scenarios: FrozenSet[Scenario] = frozenset(Scenario),
                        combinations: Iterable[Combination] = None
                        ) -> Generator[Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
     """Create the contents of psm files
     :param compounds: The compounds to combine with gaps to make psm files
     :param gaps: The gaps to combine with compounds to make psm files
     :param combinations: The combinations to turn into psm files
+    :param crops: The crops for which psm files should be generated. If a GAP does not match the crops given, it will be
+    skipped
+    :param scenarios:The scenarios for which psm files should be generated. For a given GAP, the scenarios used are
+    the intersection of the scenarios defined by the gap and the scenarios passed into the function
     :return: The contents of the psm files"""
-    if scenarios is None:
-        scenarios = set(Scenario)
-    if crops is None:
-        crops = set(FOCUSCrop)
     assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
     if combinations:
         for combination in combinations:
