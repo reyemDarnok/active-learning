@@ -7,9 +7,7 @@
         {{' focusStepsPelmo.pelmo.runner' -}}
         {{' -p '}}{{ batch_info[0] -}}
         {{' -w '}}{{ batch_info[0] }}{{'-work' -}}
-        {{' -c'}}{% for crop in batch_info[1] -%}
-            {{' '}}{{ crop.name -}}
-        {% endfor -%}
+        {{' -c '}}{{ batch_info[1].name -}}
         {{' -s'}}{% for scenario in batch_info[2] -%}
             {{' '}}{{ scenario.name -}}
         {% endfor -%}
