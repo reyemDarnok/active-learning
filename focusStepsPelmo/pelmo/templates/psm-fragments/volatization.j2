@@ -1,1 +1,3 @@
-  {{ '%.2E' % volatization.henry}}   {{ volatization.solubility}}    {{ compound.molar_mass }}     {{ '%.2E' % volatization.vaporization_pressure }}   {{ volatization.diff_air }}    {{ volatization.depth_volatility }}    {{ volatization.hv }}    {{ volatization.temperature }} 
+{%- set solubility = ('%.7f' % volatization.solubility).rstrip('0').rstrip('.')-%}
+{%- set molmass = ('%.7f' % compound.molar_mass).rstrip('0').rstrip('.')-%}
+{{- '' }}  {{ '%.2E' % volatization.henry}}   {{ solubility}}    {{ molmass }}     {{ '%.2E' % volatization.vaporization_pressure }}   {{ volatization.diff_air }}    {{ volatization.depth_volatility }}    {{ volatization.hv }}    {{ volatization.temperature }}
