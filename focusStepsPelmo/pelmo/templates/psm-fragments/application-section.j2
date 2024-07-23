@@ -1,4 +1,4 @@
-{% set name_scenario = name_scenario | default(True) %}{% for scenario in current_gap.defined_scenarios %}{{ "%03d" % (current_gap.application_data(scenario) | list | length)}}   {% if name_scenario %}{{ scenario.name }}{% else %} {% endif %}         <number of application location>
+{% set name_scenario = name_scenario | default(True) %}{% for scenario in current_gap.defined_scenarios %}{{ "%03d" % (current_gap.application_data(scenario) | list | length)}}{% if name_scenario %}         {{ scenario.name }}   {% else %}            {% endif %}<number of application location>
 {% for application_event in current_gap.application_data(scenario) %}{% include "psm-fragments/application.j2" %}{% if not loop.last%}
 {% endif%}{% endfor %}{% if not loop.last%}
 {% endif %}{% endfor %}

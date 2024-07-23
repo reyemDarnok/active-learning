@@ -2,6 +2,6 @@
  {{ (gap.defined_scenarios | length ) + 1 }}    0    0    <number of locations absolute app/relative app>
 {% with current_gap = dummy_gap %}{% with name_scenario = False %}{% include "psm-fragments/application-section.j2" %}{% endwith %}{% endwith %}
 {% with current_gap = gap %}{% include "psm-fragments/application-section.j2" %}{% endwith %}
- {{ application.type.value }}    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually>
+ {{ application.type.value }}    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually
 {% if application.type.value != 1 %}{% include "psm-fragments/fate-on-crop.j2" %}
 {% endif %}<END APPLICATION>
