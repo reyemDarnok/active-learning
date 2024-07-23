@@ -1,2 +1,15 @@
+{# Setup variables -#}
 {%- set koc = ('%.7f' % adsorption.koc).rstrip('0').rstrip('.') -%}
-{{ ' ' }}{{ koc }}         {{adsorption.freundlich}}       {{adsorption.pH}}          {{adsorption.pKa}}         {{'%.2E' % adsorption.limit_freundl}}          {{adsorption.annual_increment}}      {{adsorption.k_doc}}     {{adsorption.percent_change}}    {{adsorption.koc2}}    {{adsorption.pH2}}     {{adsorption.f_neq}}     {{adsorption.kdes}}
+{# Write line -#}
+{{ ' ' -}}{{ koc -}}
+{{ '         ' -}}{{adsorption.freundlich -}}
+{{ '       ' -}}{{adsorption.pH -}}
+{{ '          '}}{{adsorption.pKa -}}
+{{ '         ' }}{{'%.2E' % adsorption.limit_freundl -}}
+{{ '          ' }}{{adsorption.annual_increment -}}
+{{ '      ' }}{{adsorption.k_doc -}}
+{{ '     ' }}{{adsorption.percent_change -}}
+{{'    '}}{{adsorption.koc2 -}}
+{{'    '}}{{adsorption.pH2 -}}
+{{'     '}}{{adsorption.f_neq -}}
+{{'     '}}{{adsorption.kdes}}
