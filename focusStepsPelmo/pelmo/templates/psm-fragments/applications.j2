@@ -15,5 +15,5 @@
 {{'    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually\n' -}}
 {% if application.type.value != 1 -%}
     {% include "psm-fragments/fate-on-crop.j2" -%}
-{% endif -%}
+{% endif -%}{{'\n' -}}
 {{'<END APPLICATION>' -}}
