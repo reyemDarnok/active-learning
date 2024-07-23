@@ -1,18 +1,33 @@
-<FLAGS>
- {{ 1 if do_henry_calc | default(True) else 0 }}   {{ 1 if do_kd_calc | default(True) else 0 }}   <henry(0=direct 1=calc.)  kd_flag(0=direct 1=calc.)>
-<END FLAGS>
-<VOLATILIZATION>
-<henry       solub.      molmass     vap.press   diff air    depth volat.  Hv        Temperature>
-{% with volatization = compound.volatizations[0] %}{% include "psm-fragments/volatization.j2" %}{% endwith %}
-{% with volatization = compound.volatizations[1] %}{% include "psm-fragments/volatization.j2" %}{% endwith %}
-<END VOLATILIZATION>
-{% with plant_uptake = compound.plant_uptake %}{% include "psm-fragments/plant-uptake.j2" %}{% endwith %}
-{% include "psm-fragments/compound-degradation.j2" %}
-<ADSORPTION>
-<Koc-value    Fr.exp.Koc  pH          pKa     limit for Freundl.  ann.incr.> <k_doc> <% change> KOC2      pH2 f_neq       kdes>
-{% for adsorption in compound.adsorptions %}{% include "psm-fragments/adsorption.j2" %}{% if not loop.last %}
-{% endif %}{% endfor %}
-<END ADSORPTION>
-<DEPTH DEPENDENT SORPTION AND TRANSFORMATION VALUES>
-<Kd          Fr.exp.     Met A1   Met B1   Met C1   Met D1   BR/CO2 >
-<END DEPTH DEPENDENT>
+{{'<FLAGS>\n' -}}
+    {{' ' -}}
+    {{ 1 if do_henry_calc | default(True) else 0 -}}
+    {{'   ' -}}
+    {{ 1 if do_kd_calc | default(True) else 0 -}}
+    {{'   <henry(0=direct 1=calc.)  kd_flag(0=direct 1=calc.)>\n' -}}
+{{'<END FLAGS>\n' -}}
+{{'<VOLATILIZATION>\n' -}}
+    {{'<henry       solub.      molmass     vap.press   diff air    depth volat.  Hv        Temperature>\n' -}}
+    {% with volatization = compound.volatizations[0] -%}
+        {% include "psm-fragments/volatization.j2" -%}
+    {% endwith -%}
+    {{ '\n' -}}
+    {% with volatization = compound.volatizations[1] -%}
+        {% include "psm-fragments/volatization.j2" -%}
+    {% endwith -%}
+    {{ '\n' -}}
+{{'<END VOLATILIZATION>\n' -}}
+{% with plant_uptake = compound.plant_uptake -%}
+    {% include "psm-fragments/plant-uptake.j2" -%}
+{% endwith -%}
+{% include "psm-fragments/compound-degradation.j2" -%}
+{{'<ADSORPTION>\n' -}}
+    {{'<Koc-value    Fr.exp.Koc  pH          pKa     limit for Freundl.  ann.incr.> <k_doc>' -}}
+    {{' <% change> KOC2      pH2 f_neq       kdes>\n' -}}
+    {% for adsorption in compound.adsorptions -%}
+        {% include "psm-fragments/adsorption.j2" -%}
+        {{ '\n' -}}
+    {% endfor -%}
+{{'<END ADSORPTION>\n' -}}
+{{'<DEPTH DEPENDENT SORPTION AND TRANSFORMATION VALUES>\n' -}}
+{{'<Kd          Fr.exp.     Met A1   Met B1   Met C1   Met D1   BR/CO2 >\n' -}}
+{{'<END DEPTH DEPENDENT>' -}}
