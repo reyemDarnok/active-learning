@@ -1,1 +1,8 @@
- {% if degradation.rate == 0 %} {{ '%.2E' % degradation.rate }}{% else %}{{ degradation.rate }}{% endif %}   {{ degradation.temperature }}          {{ degradation.q10}}        {{ degradation.moisture.absolute }}           {{ degradation.moisture.relative }}         {{ degradation.moisture.exp }}       {{ degradation.rel_deg_new_sites}}         {{ degradation.formation_factor }}
+{%- if degradation.rate != 0 -%}
+    {%- set degrate = ('%.7f' % degradation.rate).rstrip('0').rstrip('.') -%}
+{%- else -%}
+    {%- set degrate = ' 0.00+E00' -%}
+{%- endif -%}
+{%- set rel_deg_neq_sites = ('%.7f' % degradation.rel_deg_new_sites).rstrip('0').rstrip('.') -%}
+{%- set stoichiometric_factor = ('%.7f' % degradation.formation_factor).rstrip('0').rstrip('.') -%}
+{{ '' }} {{ degrate }}   {{ degradation.temperature }}          {{ degradation.q10}}        {{ degradation.moisture.absolute }}           {{ degradation.moisture.relative }}         {{ degradation.moisture.exp }}       {{ rel_deg_neq_sites}}         {{ stoichiometric_factor }}
