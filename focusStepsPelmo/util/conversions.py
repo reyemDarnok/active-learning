@@ -42,6 +42,8 @@ class EnhancedJSONEncoder(JSONEncoder):
             return o._asdict()
         if isinstance(o, timedelta):
             return {"seconds": o.total_seconds()}
+        if isinstance(o, datetime):
+            return o.isoformat()
         if isinstance(o, frozenset):
             return list(o)
         if is_dataclass(o):

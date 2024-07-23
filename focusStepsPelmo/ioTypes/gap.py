@@ -649,10 +649,10 @@ class GAPMachineGAP(GAP):
         for year in range(1, 6 + 20 * self.apply_every_n_years + 1, self.apply_every_n_years):
             if scenario in self.first_season.keys() and self.first_season[scenario]:
                 for index in range(self.number_of_applications):
-                    yield self.first_season[scenario] + index * self.interval, self.interceptions[index]
+                    yield self.first_season[scenario].replace(year=year) + index * self.interval, self.interceptions[index]
             if scenario in self.second_season.keys() and self.second_season[scenario]:
                 for index in range(self.number_of_applications):
-                    yield self.second_season[scenario] + index * self.interval, self.interceptions[index]
+                    yield self.second_season[scenario].replace(year=year) + index * self.interval, self.interceptions[index]
 
     @property
     def _dict_args(self) -> Dict[str, Any]:
@@ -661,6 +661,10 @@ class GAPMachineGAP(GAP):
             "second_season": self.second_season,
             "interceptions": self.interceptions
         }
+
+    @property
+    def defined_scenarios(self) -> FrozenSet[Scenario]:
+        return frozenset(self.first_season.keys()).union(self.second_season.keys())
 
     @property
     def _type(self) -> str:
@@ -672,7 +676,6 @@ class GAPMachineGAP(GAP):
         :param: The file that is the result from an export in the GAP machine
         :result: The GAPs defined in file"""
         file_object = decomment_file(file)
-        next(file_object)
         next(file_object)
         gap_file_reader = csv.DictReader(file_object, delimiter="|",
                                          fieldnames=["PMT ID", "FOCUS Crop used", "FOCUS Crop for interception",

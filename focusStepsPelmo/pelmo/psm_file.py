@@ -117,7 +117,7 @@ class PsmAdsorption:
 class FateOnCrop:
     """Data about what happens to the substance on the crop"""
     plant_decay_rate: float = 0.0693
-    washoff_parameter: float = 1.0
+    washoff_parameter: float = 0.0
     penetration: float = 0.0693
     photodegradation: float = 0
     reference_irradiance: float = 100
