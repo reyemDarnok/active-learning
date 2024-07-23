@@ -5,15 +5,23 @@ from datetime import datetime
 from enum import Enum, auto
 from typing import Dict, List, Optional, Tuple
 
-from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
+from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader, Template
 
 from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, DT50
-from focusStepsPelmo.ioTypes.gap import GAP, GAPMachineGAP, Scenario
+from focusStepsPelmo.ioTypes.gap import GAP, GAPMachineGAP, Scenario, FOCUSCrop
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 PELMO_UNSET = -99
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
+
+def setup_psm_template() -> Template:
+    global_data = {}
+    global_data['dummy_gap'] = GAPMachineGAP(modelCrop=FOCUSCrop.AP, rate=0, interceptions=tuple([0]),
+                                             first_season={Scenario.C: datetime(year=1, month=1, day=1) })
+    global_data['dummy_scenario'] = Scenario.C
+    return jinja_env.get_template('general.psm.j2', globals=global_data)
+psm_template = setup_psm_template()
 
 
 class Emergence(int, Enum):
@@ -281,11 +289,6 @@ class PsmFile(TypeCorrecting):
         return compound, self.gap
 
     def render(self) -> str:
-        psm_template = jinja_env.get_template('general.psm.j2')
         template_data = self.asdict()
-        dummy_gap = GAPMachineGAP(modelCrop=self.gap.modelCrop, rate=0, interceptions=tuple([0]),
-                                  first_season={Scenario.C: datetime(year=1, month=1, day=1) })
-        template_data['dummy_gap'] = dummy_gap
-        template_data['dummy_scenario'] = Scenario.C
-        rendered = psm_template.render(**template_data)
+        rendered = psm_template.render(template_data)
         return rendered
