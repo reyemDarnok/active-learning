@@ -8,14 +8,12 @@
     {% else -%}
         {{'            ' -}}
     {% endif -%}
-    {{'number of application location' -}}
+    {{'<number of application location>\n' -}}
     {% for application_event in current_gap.application_data(scenario) -%}
         {% include "psm-fragments/application.j2" -%}
         {% if not loop.last -%}
             {{ '\n' -}}
         {% endif -%}
     {% endfor -%}
-    {% if not loop.last -%}
-        {{ '\n' -}}
-    {% endif -%}
+    {{ '\n' -}}
 {% endfor -%}
