@@ -1,3 +1,4 @@
+{# Setup variables -#}
 {%- if degradation.rate != 0 -%}
     {%- set degrate = ('%.7f' % degradation.rate).rstrip('0').rstrip('.') -%}
 {%- else -%}
@@ -6,4 +7,12 @@
 {%- set degtemp = ('%.7f' % degradation.temperature).rstrip('0').rstrip('.') -%}
 {%- set rel_deg_neq_sites = ('%.7f' % degradation.rel_deg_new_sites).rstrip('0').rstrip('.') -%}
 {%- set stoichiometric_factor = ('%.7f' % degradation.formation_factor).rstrip('0').rstrip('.') -%}
-{{ '' }} {{ degrate }}   {{ degtemp }}          {{ degradation.q10}}        {{ degradation.moisture.absolute }}           {{ degradation.moisture.relative }}         {{ degradation.moisture.exp }}       {{ rel_deg_neq_sites}}         {{ stoichiometric_factor }}
+{# Write line -#}
+{{ ' ' }}{{ degrate -}}
+{{'   '}}{{ degtemp -}}
+{{'          '}}{{ degradation.q10 -}}
+{{'        '}}{{ degradation.moisture.absolute -}}
+{{'           '}}{{ degradation.moisture.relative -}}
+{{'         '}}{{ degradation.moisture.exp -}}
+{{'       '}}{{ rel_deg_neq_sites -}}
+{{'         '}}{{ stoichiometric_factor -}}
