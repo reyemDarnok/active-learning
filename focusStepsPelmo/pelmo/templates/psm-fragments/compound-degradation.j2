@@ -1,9 +1,21 @@
-<DEGRADATION>
-<degrate    degtemp     q10         moist-abs   moist-rel   moist-exp   rel deg neq sites  stoichiometric factor>
-{% for degradation in compound.degradations %}{% include "psm-fragments/degradation.j2" %}{% if not loop.last%}
-{% endif %}{% endfor %}
- {{ compound.degradation_type.value }}                 <0 = degradation according to degradation factors, 1 = constant with depth,2 individual,3 = degradation according to degradation factors, 4 = constant with depth,5 individual, >2 deg in liquid phase only)
-<PHOTODEGRADATION>
-<rate 1/n>  <I_Ref W>
-{% for degradation in compound.degradations %}{% include "psm-fragments/photodegradation.j2" %}{%endfor%}
-<END DEGRADATION>
+{{'<DEGRADATION>\n' -}}
+{{'<degrate    degtemp     q10         moist-abs   moist-rel   moist-exp' -}}
+{{'   rel deg neq sites  stoichiometric factor>\n' -}}
+{% for degradation in compound.degradations -%}
+    {% include "psm-fragments/degradation.j2" -%}
+    {% if not loop.last -%}
+        {{ '\n' -}}
+    {% endif -%}
+{% endfor -%}
+{{ '\n' -}}
+{{' '}}{{ compound.degradation_type.value -}}
+{{'                 <0 = degradation according to degradation factors, 1 = constant with depth,' -}}
+{{'2 individual,3 = degradation according to degradation factors, 4 = constant with depth,' -}}
+{{'5 individual, >2 deg in liquid phase only)\n' -}}
+{{'<PHOTODEGRADATION>\n' -}}
+{{'<rate 1/n>  <I_Ref W>\n' -}}
+{% for degradation in compound.degradations -%}
+    {% include "psm-fragments/photodegradation.j2" -%}
+{%endfor -%}
+{{ '\n' -}}
+{{'<END DEGRADATION>' -}}
