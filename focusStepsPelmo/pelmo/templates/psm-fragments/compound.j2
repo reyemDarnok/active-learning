@@ -10,25 +10,21 @@
     {% with volatization = compound.volatizations[0] -%}
         {% include "psm-fragments/volatization.j2" -%}
     {% endwith -%}
-    {{ '\n' -}}
     {% with volatization = compound.volatizations[1] -%}
         {% include "psm-fragments/volatization.j2" -%}
     {% endwith -%}
-    {{ '\n' -}}
 {{'<END VOLATILIZATION>\n' -}}
 {% with plant_uptake = compound.plant_uptake -%}
     {% include "psm-fragments/plant-uptake.j2" -%}
 {% endwith -%}
 {% include "psm-fragments/compound-degradation.j2" -%}
-{{ '\n' -}}
 {{'<ADSORPTION>\n' -}}
     {{'<Koc-value    Fr.exp.Koc  pH          pKa     limit for Freundl.  ann.incr.> <k_doc>' -}}
     {{' <% change> KOC2      pH2 f_neq       kdes>\n' -}}
     {% for adsorption in compound.adsorptions -%}
         {% include "psm-fragments/adsorption.j2" -%}
-        {{ '\n' -}}
     {% endfor -%}
 {{'<END ADSORPTION>\n' -}}
 {{'<DEPTH DEPENDENT SORPTION AND TRANSFORMATION VALUES>\n' -}}
 {{'<Kd          Fr.exp.     Met A1   Met B1   Met C1   Met D1   BR/CO2 >\n' -}}
-{{'<END DEPTH DEPENDENT>' -}}
+{{'<END DEPTH DEPENDENT>\n' -}}

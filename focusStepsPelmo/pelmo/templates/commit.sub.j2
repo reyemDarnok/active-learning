@@ -16,12 +16,12 @@
     {{'\n' -}}
     {{'transfer_input_files = ' -}}
         {{'common.zip,' -}}
-        {{ batch_dir }}{{'.zip,' -}}
+        {{ batch_info[0] }}{{'.zip,' -}}
         {{'requirements.txt' -}}
     {{'\n' -}}
     {{'transfer_output_files = ' -}}
-        {{ batch_dir }}{{'-output.json,' -}}
-        {{ batch_dir}}{{'-log.json' -}}
+        {{ batch_info[0] }}{{'-output.json,' -}}
+        {{ batch_info[0] }}{{'-log.json' -}}
         {{'\n' -}}
     {{'Queue\n' -}}
 {% endfor %}

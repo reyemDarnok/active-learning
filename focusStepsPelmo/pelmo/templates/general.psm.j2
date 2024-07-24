@@ -1,15 +1,16 @@
-<COMMENT>
-{{ comment | default('No comment') }}
-<END COMMENT>
-<NUMBER OF SOIL HORIZONS>
- {{ num_soil_horizons | default(0)}} 
-<END NUMBER OF SOIL HORIZONS>
-{% include "psm-fragments/applications.j2"%}
-{% include "psm-fragments/compound.j2" %}{% if metabolites | length > 0 %}
-{% endif %}{% for metabolite in metabolites %}{% include "psm-fragments/metabolite.j2"%}{% if not loop.last %}
-{% endif %}{% endfor %}
-<THE FOLLOWING SECTION IS USED BY THE SHELL ONLY NOT BY PELMO>
-<FORMATION FRACTIONS ENTERED BY THE USER (0=NO,1=YES)>
- 0 
-<END FORMATION FRACTIONS>
-<END PSM>
+{{'<COMMENT>\n' -}}
+{{ comment | default('No comment') }}{{'\n' -}}
+{{'<END COMMENT>\n' -}}
+{{'<NUMBER OF SOIL HORIZONS>}\n' -}}
+{{' '}}{{ num_soil_horizons | default(0)}}{{' \n' -}}
+{{'<END NUMBER OF SOIL HORIZONS>\n' -}}
+{% include "psm-fragments/applications.j2" -%}
+{% include "psm-fragments/compound.j2" -%}
+{% for metabolite in metabolites %}
+    {% include "psm-fragments/metabolite.j2" -%}
+{% endfor -%}
+{{'<THE FOLLOWING SECTION IS USED BY THE SHELL ONLY NOT BY PELMO>\n' -}}
+{{'<FORMATION FRACTIONS ENTERED BY THE USER (0=NO,1=YES)>\n' -}}
+{{' 0 \n' -}}
+{{'<END FORMATION FRACTIONS>\n' -}}
+{{'<END PSM>\n' -}}

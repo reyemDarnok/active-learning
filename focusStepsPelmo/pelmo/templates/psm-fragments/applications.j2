@@ -10,10 +10,9 @@
 {% with current_gap = gap -%}
     {% include "psm-fragments/application-section.j2" -%}
 {% endwith -%}
-{{' ' -}}
-{{ application.type.value -}}
+{{' ' -}}{{ application.type.value -}}
 {{'    <pesticide appl. flag: 1=soil 2 =linear 3=exp. foliar 4=manually\n' -}}
 {% if application.type.value != 1 -%}
     {% include "psm-fragments/fate-on-crop.j2" -%}
-{% endif -%}{{'\n' -}}
-{{'<END APPLICATION>' -}}
+{% endif -%}
+{{'<END APPLICATION>\n' -}}
