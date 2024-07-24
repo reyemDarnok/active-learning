@@ -138,6 +138,7 @@ def flatten_list_to_keys(to_flatten: List, prefix=None) -> Generator[str, None, 
         for k in flatten_to_keys(value, prefix=prefix + [str(index)]):
             yield k
 
+
 def decomment_file(file: Path, comment_chars: str = '#') -> Generator[str, None, None]:
     with file.open() as raw:
         for line in raw:

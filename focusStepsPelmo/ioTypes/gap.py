@@ -631,6 +631,7 @@ class AbsoluteScenarioGAP(GAP):
         object.__setattr__(self, '_scenario_gaps', corrected_scenarios)
         super().__post_init__()
 
+
 @dataclass(frozen=True)
 class GAPMachineGAP(GAP):
     first_season: Dict[Scenario, datetime] = field(default_factory=dict)
@@ -649,10 +650,12 @@ class GAPMachineGAP(GAP):
         for year in range(1, 6 + 20 * self.apply_every_n_years + 1, self.apply_every_n_years):
             if scenario in self.first_season.keys() and self.first_season[scenario]:
                 for index in range(self.number_of_applications):
-                    yield self.first_season[scenario].replace(year=year) + index * self.interval, self.interceptions[index]
+                    yield self.first_season[scenario].replace(year=year) + index * self.interval, self.interceptions[
+                        index]
             if scenario in self.second_season.keys() and self.second_season[scenario]:
                 for index in range(self.number_of_applications):
-                    yield self.second_season[scenario].replace(year=year) + index * self.interval, self.interceptions[index]
+                    yield self.second_season[scenario].replace(year=year) + index * self.interval, self.interceptions[
+                        index]
 
     @property
     def _dict_args(self) -> Dict[str, Any]:

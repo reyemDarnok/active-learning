@@ -85,11 +85,13 @@ def pushd(new_dir):
     finally:
         os.chdir(previous_dir)
 
+
 class SessionStatus(Enum):
     INITIALIZED = "Initialized"
     CREATING = "CREATE_IN_PROGRESS"
     RUNNING = "CREATE_COMPLETE"
     FINISHED = "Finished"
+
 
 class InstanceType(Enum):
     TINY = "c6i.large"
@@ -97,6 +99,7 @@ class InstanceType(Enum):
     MEDIUM = "c6i.2xlarge"
     LARGE = "c6i.4xlarge"
     MAXIMUM = "c6i.24xlarge"
+
 
 @dataclass
 class SessionSummary(TypeCorrecting):
@@ -425,7 +428,7 @@ class BHPC:
                 return False
         return True
 
-    def get_session_status(self, session) -> SessionStatus:
+    def get_session_status(self, session) -> SessionDescription:
         """Show the status of a single session"""
         stdout, _ = self._execute_bhpc_command(["show", session])
         return SessionDescription.from_bhpc_message(stdout)

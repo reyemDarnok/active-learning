@@ -15,12 +15,14 @@ PELMO_UNSET = -99
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
 
+
 def setup_psm_template() -> Template:
-    global_data = {}
-    global_data['dummy_gap'] = GAPMachineGAP(modelCrop=FOCUSCrop.AP, rate=0, interceptions=tuple([0]),
-                                             first_season={Scenario.C: datetime(year=1, month=1, day=1) })
-    global_data['dummy_scenario'] = Scenario.C
+    global_data = {'dummy_gap': GAPMachineGAP(modelCrop=FOCUSCrop.AP, rate=0, interceptions=tuple([0]),
+                                              first_season={Scenario.C: datetime(year=1, month=1, day=1)}),
+                   'dummy_scenario': Scenario.C}
     return jinja_env.get_template('general.psm.j2', globals=global_data)
+
+
 psm_template = setup_psm_template()
 
 
@@ -187,12 +189,15 @@ class PsmCompound:
 PsmCompound.empty = PsmCompound(molar_mass=0, adsorption=PsmAdsorption(koc=0, freundlich=1), degradations=[],
                                 volatizations=(Volatization(), Volatization()))
 
+
 def expand_volatilization_regulatory(volatilization: Volatization) -> Tuple[Volatization, Volatization]:
     return volatilization, volatilization
+
 
 def expand_volatilization_user_manual(volatilization: Volatization) -> Tuple[Volatization, Volatization]:
     return volatilization, replace(volatilization, solubility=volatilization.solubility * 2,
                                    vaporization_pressure=volatilization.vaporization_pressure * 4)
+
 
 @dataclass(frozen=True)
 class PsmFile(TypeCorrecting):
