@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import List, Dict, Union
 
 from focusStepsPelmo.ioTypes.compound import Compound
-from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, AbsoluteConstantGAP
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, AbsoluteConstantGAP, GAPMachineGAP
 from focusStepsPelmo.util.conversions import flatten_to_keys, flatten
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
@@ -197,7 +197,10 @@ class PECResult:
         number_of_compounds = len(self.pec.keys())
         key_dict = self.asdict()
         key_dict.pop('pec')
-        key_dict['gap'] = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
+        converted_gap = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
+        gap_dict = converted_gap.asdict()
+        gap_dict['interception'] = 0
+        key_dict['gap'] = gap_dict
         return list(flatten_to_keys(key_dict)) + [f"{i}.compound_pec" for i in range(number_of_compounds)] + [
             f"{i}.compound_name" for i in range(number_of_compounds)]
 
@@ -205,5 +208,11 @@ class PECResult:
         """Turn this object into a list of values, keeping the same ordering as get_csv_headers"""
         key_dict = self.asdict()
         key_dict.pop('pec')
-        key_dict['gap'] = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
+        converted_gap = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
+        gap_dict = converted_gap.asdict()
+        if isinstance(self.gap, GAPMachineGAP):
+            gap_dict['interception'] = self.gap.interceptions[0]
+        else:
+            gap_dict['interception'] = next(self.gap.application_data(self.scenario))[1]
+        key_dict['gap'] = gap_dict
         return list(flatten(key_dict)) + [pec for pec in self.pec.values()] + [name for name in self.pec.keys()]
