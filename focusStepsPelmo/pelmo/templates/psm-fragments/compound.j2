@@ -21,7 +21,9 @@
 {{'<ADSORPTION>\n' -}}
     {{'<Koc-value    Fr.exp.Koc  pH          pKa     limit for Freundl.  ann.incr.> <k_doc>' -}}
     {{' <% change> KOC2      pH2 f_neq       kdes>\n' -}}
-    {% include "psm-fragments/adsorption.j2" -%}
+    {% with adsorption = compound.adsorption -%}
+        {% include "psm-fragments/adsorption.j2" -%}
+    {% endwith -%}
 {{'<END ADSORPTION>\n' -}}
 {{'<DEPTH DEPENDENT SORPTION AND TRANSFORMATION VALUES>\n' -}}
 {{'<Kd          Fr.exp.     Met A1   Met B1   Met C1   Met D1   BR/CO2 >\n' -}}
