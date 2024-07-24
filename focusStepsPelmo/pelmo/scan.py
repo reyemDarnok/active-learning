@@ -80,9 +80,11 @@ def main():
         bhpc = BHPC()
         logger.info("Starting deployment to BHPC")
         if args.run_test_set:
+            logger.info("Starting to run test set on BHPC")
             run_bhpc(combination_dir=test_set_location, submit=args.work_dir / 'remote' / "test_data",
                      output=args.output_dir / f"test_data.{args.output_format}", crops=crops, scenarios=scenarios,
                      notification_email=args.notification_email, session_timeout=args.session_timeout, bhpc=bhpc)
+        logger.info("Starting to run sample set on BHPC")
         run_bhpc(compound_file=compound_dir, gap_file=gap_dir, combination_dir=combination_dir,
                  submit=args.work_dir / 'remote' / "samples", output=args.output_dir / f"samples.{args.output_format}",
                  crops=crops, scenarios=scenarios, notification_email=args.notification_email,
@@ -90,10 +92,12 @@ def main():
     elif args.run == 'local':
         logger.info("Starting local calculation")
         if args.run_test_set:
+            logger.info("Starting to run test set locally")
             run_local(work_dir=args.work_dir / 'local' / "test_data",
                       combination_dir=test_set_location,
                       output_file=args.output_dir / f"test_data.{args.output_format}", crops=crops, scenarios=scenarios,
                       threads=args.threads)
+        logger.info("Starting to run sample set locally")
         run_local(work_dir=args.work_dir / 'local' / "samples", compound_files=compound_dir, gap_files=gap_dir,
                   combination_dir=combination_dir,
                   output_file=args.output_dir / f"samples.{args.output_format}", crops=crops, scenarios=scenarios,
