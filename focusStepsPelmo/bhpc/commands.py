@@ -316,7 +316,7 @@ class BHPC:
         self._execute_bhpc_command(
             [
                 'upload',
-                '-path', str(submit_folder),
+                '-path', str(submit_folder.absolute()),
                 '-search', submit_file_regex,
                 session
             ]
