@@ -172,7 +172,7 @@ class PsmCompound:
         volatizations = (Volatization(solubility=compound.water_solubility,
                                       vaporization_pressure=compound.vapor_pressure,
                                       temperature=compound.reference_temperature),
-                         Volatization(henry=3.33E-04 * 2, solubility=compound.water_solubility,
+                         Volatization(solubility=compound.water_solubility * 2,
                                       vaporization_pressure=compound.vapor_pressure * 4,
                                       temperature=compound.reference_temperature + 10))
         if 'pelmo' in compound.model_specific_data.keys():
