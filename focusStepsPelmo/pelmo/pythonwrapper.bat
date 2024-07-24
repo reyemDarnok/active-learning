@@ -1,4 +1,5 @@
-@REM Powershell scripts have to be signed, batch scripts don't and piping powershell commands to the powershell.exe from batch is apparently ok
+@REM Powershell scripts have to be signed, batch scripts don't
+@REM and piping powershell commands to the powershell.exe from batch is apparently ok
 echo Expand-Archive common.zip -DestinationPath . -Force | powershell.exe
 echo Expand-Archive %1.zip -DestinationPath . -Force | powershell.exe
 

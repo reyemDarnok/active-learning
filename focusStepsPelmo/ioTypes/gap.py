@@ -12,7 +12,7 @@ from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, F
 
 import pandas
 
-from focusStepsPelmo.util.conversions import excel_date_to_datetime, decomment_file
+from focusStepsPelmo.util.conversions import excel_date_to_datetime, uncomment
 from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting, correct_type
 
 bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BBCHGW.csv',
@@ -678,7 +678,7 @@ class GAPMachineGAP(GAP):
         """Parse the Bayer GAP machine output into GAPs
         :param: The file that is the result from an export in the GAP machine
         :result: The GAPs defined in file"""
-        file_object = decomment_file(file)
+        file_object = uncomment(file)
         next(file_object)
         gap_file_reader = csv.DictReader(file_object, delimiter="|",
                                          fieldnames=["PMT ID", "FOCUS Crop used", "FOCUS Crop for interception",
