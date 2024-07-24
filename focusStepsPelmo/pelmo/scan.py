@@ -372,12 +372,12 @@ def parse_args() -> Namespace:
                         help="How big a test set to generate if --make-test set is set")
     parser.add_argument('--test-set-buffer', type=float, default=0.001,
                         help="How far a point has to be from the test set to be allowed in the sample")
+    parser.add_argument('--no-run-test-set', action="store_false", default=True, dest="run_test_set",
+                        help="Don't run the test set")
     test_set_group = parser.add_argument_group('Test Set')
     test_set = test_set_group.add_mutually_exclusive_group()
     test_set.add_argument('--make-test-set', action="store_true", default=False,
                           help="Generate a test set of a given size")
-    test_set.add_argument('--no-run-test-set', action="store_false", default=True, dest="run_test_set",
-                          help="Don't run the test set")
     test_set.add_argument('--test-set-location', type=Path, default=None,
                           help="Where to find the test set. Defaults to colocating with the generated samples in work dir")
 
