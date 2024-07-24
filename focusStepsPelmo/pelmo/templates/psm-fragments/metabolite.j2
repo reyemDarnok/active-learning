@@ -11,7 +11,7 @@
     {{' 1   <kd_flag(0=direct 1=calc.)>\n' -}}
 {{'<END FLAGS>\n' -}}
 {{'<MOLMASS>\n' -}}
-    {{' '}}{{ molar_mass }}{{'\n' -}}
+    {{' '}}{{ molar_mass }}{{' \n' -}}
 {{'<END MOLMASS>\n' -}}
 {% with plant_uptake = metabolite.plant_uptake -%}
     {% include "psm-fragments/plant-uptake.j2" -%}
