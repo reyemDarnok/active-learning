@@ -6,7 +6,7 @@
 {{'<END NUMBER OF SOIL HORIZONS>\n' -}}
 {% include "psm-fragments/applications.j2" -%}
 {% include "psm-fragments/compound.j2" -%}
-{% for metabolite in metabolites %}
+{% for metabolite in metabolites -%}
     {% include "psm-fragments/metabolite.j2" -%}
 {% endfor -%}
 {{'<THE FOLLOWING SECTION IS USED BY THE SHELL ONLY NOT BY PELMO>\n' -}}
