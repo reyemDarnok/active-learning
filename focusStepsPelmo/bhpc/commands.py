@@ -409,7 +409,7 @@ class BHPC:
     def is_session_finished(self, session: str):
         """Check if a session is finished"""
         for status in self.get_session_status(session).submit_files:
-            if not status.is_finished:
+            if not status.is_finished():
                 return False
         return True
 
@@ -436,6 +436,7 @@ class BHPC:
         bhpc_process = subprocess.Popen(argv, stdin=PIPE, stdout=PIPE, stderr=PIPE, cwd=self.bhpc_exe.parent, env=env,
                                         text=True, encoding="windows-1252")
         stdout, stderr = bhpc_process.communicate(input=command_input)
+        logger.debug({"stdout": stdout, "stderr": stderr})
         if is_auth_message(stdout):
             logger.info("BHPC rejected credentials, retrying after requesting new ones")
             self._handle_auth()
