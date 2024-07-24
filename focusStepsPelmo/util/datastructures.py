@@ -73,17 +73,19 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
             origin = t.__origin__
             # noinspection PyProtectedMember
             if origin == Union:
-                if type(None) in t.__args__ and input_value is None:
-                    return None
-                else:
-                    exceptions = []
-                    for union_type in t.__args__:
-                        try:
-                            return correct_type(input_value, union_type)
-                        except Exception as e:
-                            exceptions.append(e)
-                    raise NoValidStrategyException("Could not find a type that works with the value",
-                                                   strategy_exceptions=exceptions)
+                if type(None) in t.__args__:
+                    if input_value is None:
+                        return None
+                    elif isinstance(input_value, str) and str not in t.__args__:
+                        return None
+                exceptions = []
+                for union_type in t.__args__:
+                    try:
+                        return correct_type(input_value, union_type)
+                    except Exception as e:
+                        exceptions.append(e)
+                raise NoValidStrategyException("Could not find a type that works with the value",
+                                               strategy_exceptions=exceptions)
             elif origin == tuple:
                 if not input_value:
                     return tuple()

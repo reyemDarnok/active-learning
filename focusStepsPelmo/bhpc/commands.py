@@ -45,14 +45,14 @@ class SubmitFileStatus(TypeCorrecting):
 
 
 @dataclass(frozen=True)
-class SessionStatus(TypeCorrecting):
+class SessionDescription(TypeCorrecting):
     """A dataclass describing a single session"""
     submit_files: List[SubmitFileStatus]
     """A list of the statuses of the .sub files making up this session"""
 
     @staticmethod
-    def from_bhpc_message(bhpc_message: str) -> 'SessionStatus':
-        """Parse a message from the BHPC into a SessionStatus object
+    def from_bhpc_message(bhpc_message: str) -> 'SessionDescription':
+        """Parse a message from the BHPC into a SessionDescription object
         :param bhpc_message: The message to parse
         :return: An object describing the session described by the bhpc_message"""
         lines = bhpc_message.splitlines()
@@ -67,7 +67,7 @@ class SessionStatus(TypeCorrecting):
             done = int(done)
             path = Path(path)
             submit_files.append(SubmitFileStatus(initial, started, done, path))
-        return SessionStatus(submit_files)
+        return SessionDescription(submit_files)
     # TODO other run information in last section of show
 
 
@@ -85,6 +85,18 @@ def pushd(new_dir):
     finally:
         os.chdir(previous_dir)
 
+class SessionStatus(Enum):
+    INITIALIZED = "Initialized"
+    CREATING = "CREATE_IN_PROGRESS"
+    RUNNING = "CREATE_COMPLETE"
+    FINISHED = "Finished"
+
+class InstanceType(Enum):
+    TINY = "c6i.large"
+    SMALL = "c6i.xlarge"
+    MEDIUM = "c6i.2xlarge"
+    LARGE = "c6i.4xlarge"
+    MAXIMUM = "c6i.24xlarge"
 
 @dataclass
 class SessionSummary(TypeCorrecting):
@@ -93,9 +105,9 @@ class SessionSummary(TypeCorrecting):
     """The id of the session"""
     cwid: Optional[str]
     """Who started the run of the session, if anybody"""
-    status: str  # TODO make Enum
+    status: SessionStatus
     """Which state the session is in right now"""
-    instance_type: Optional[str]  # TODO make Enum
+    instance_type: Optional[InstanceType]
     """On what type of amazon resources the session is deployed, if any"""
     vCPUs: Optional[int]
     """How many vCPUs are assigned to the session, if it has started to run"""
@@ -416,7 +428,7 @@ class BHPC:
     def get_session_status(self, session) -> SessionStatus:
         """Show the status of a single session"""
         stdout, _ = self._execute_bhpc_command(["show", session])
-        return SessionStatus.from_bhpc_message(stdout)
+        return SessionDescription.from_bhpc_message(stdout)
 
     def show(self, session) -> SessionStatus:
         """Show the status of a single session. Alias for get_session_status"""
