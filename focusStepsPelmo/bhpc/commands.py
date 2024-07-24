@@ -294,7 +294,7 @@ class BHPC:
         :param notification_email: Which email address to notify on completion of the session
         :param session_timeout: When to assume that the session hangs and kill it
         :return: The name of the session that was started"""
-        suffix = session_name_suffix if session_name_suffix else random.getrandbits(32)
+        suffix = session_name_suffix if session_name_suffix else str(random.getrandbits(32))
         session = session_name_prefix + suffix
         logger = logging.getLogger()
         logger.debug('Starting session %s', session)
