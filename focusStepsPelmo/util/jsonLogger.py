@@ -59,7 +59,7 @@ class JsonFormatter(logging.Formatter):
         if record.stack_info:
             message_dict["stack_info"] = self.formatStack(record.stack_info)
 
-        return json.dumps(message_dict, default=str)
+        return json.dumps(message_dict, default=str) + ","
 
 
 def get_json_handler(file: str, logging_format=None):
