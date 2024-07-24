@@ -370,7 +370,7 @@ class BHPC:
                 before_last_check = datetime.now()
                 while not self.is_session_finished(session):
                     after_last_check = datetime.now()
-                    sleep_interval = retry_interval - (after_last_check - before_last_check)
+                    sleep_interval = max(timedelta(), retry_interval - (after_last_check - before_last_check))
                     logger.debug('Sleeping for %s before the next check of session status', sleep_interval)
                     time.sleep(sleep_interval.total_seconds() + sleep_interval.microseconds / 1_000_000)
                     before_last_check = datetime.now()
