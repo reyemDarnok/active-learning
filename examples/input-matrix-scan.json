@@ -95,7 +95,7 @@
         "upper_bound": 1.2
       }
     },
-    "plant_uptake": 0.5,
+    "plant_uptake": 0,
     "dt50": {
       "system": 6,
       "soil": {
