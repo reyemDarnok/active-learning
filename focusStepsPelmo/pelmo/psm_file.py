@@ -102,6 +102,11 @@ class DegradationData(TypeCorrecting):
     formation_factor: float = 1
     photodegradation: float = 0
     reference_irradiance: float = 100
+    target: str = "Unknown"
+
+    def __post_init__(self):
+        if self.rate == 0:
+            object.__setattr__(self, 'reference_irradiance', 0)
 
 
 @dataclass(frozen=True)
@@ -167,7 +172,7 @@ class PsmCompound:
         volatizations = (Volatization(solubility=compound.water_solubility,
                                       vaporization_pressure=compound.vapor_pressure,
                                       temperature=compound.reference_temperature),
-                         Volatization(henry=3.33E-04 * 2, solubility=compound.water_solubility,
+                         Volatization(henry=3.33E-04 * 2, solubility=compound.water_solubility * 2,
                                       vaporization_pressure=compound.vapor_pressure * 4,
                                       temperature=compound.reference_temperature + 10))
         if 'pelmo' in compound.model_specific_data.keys():
