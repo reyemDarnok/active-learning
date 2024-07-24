@@ -87,6 +87,7 @@ def pushd(new_dir):
 
 
 class SessionStatus(Enum):
+    """The different session states a session on the BHPC can have"""
     INITIALIZED = "Initialized"
     CREATING = "CREATE_IN_PROGRESS"
     RUNNING = "CREATE_COMPLETE"
@@ -94,6 +95,7 @@ class SessionStatus(Enum):
 
 
 class InstanceType(Enum):
+    """The different ec2 instances the BHPC can use to run sessions"""
     TINY = "c6i.large"
     SMALL = "c6i.xlarge"
     MEDIUM = "c6i.2xlarge"

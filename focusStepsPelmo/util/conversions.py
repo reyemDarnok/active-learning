@@ -139,8 +139,10 @@ def flatten_list_to_keys(to_flatten: List, prefix=None) -> Generator[str, None, 
             yield k
 
 
-def uncomment(file: Path, comment_chars: str = '#') -> Generator[str, None, None]:
+def uncomment(file: Path, comment_char: str = '#') -> Generator[str, None, None]:
+    """Open a file and return it line by line, omitting any empty lines or lines whose first non-whitespace
+    character is comment_char"""
     with file.open() as raw:
         for line in raw:
-            if line.rstrip() and line.lstrip()[0] not in comment_chars:
+            if line.rstrip() and line.lstrip()[0] not in comment_char:
                 yield line
