@@ -141,7 +141,7 @@ class FateOnCrop:
 class PsmCompound:
     """Describes a compound as it appears in a psm file"""
     molar_mass: float
-    adsorptions: Tuple[PsmAdsorption, ...]
+    adsorption: PsmAdsorption
     degradations: List[DegradationData]
     volatizations: Tuple[Volatization, Volatization]
     plant_uptake: float = 0.5
@@ -172,7 +172,7 @@ class PsmCompound:
         volatizations = (Volatization(solubility=compound.water_solubility,
                                       vaporization_pressure=compound.vapor_pressure,
                                       temperature=compound.reference_temperature),
-                         Volatization(henry=3.33E-04 * 2, solubility=compound.water_solubility * 2,
+                         Volatization(henry=3.33E-04 * 2, solubility=compound.water_solubility,
                                       vaporization_pressure=compound.vapor_pressure * 4,
                                       temperature=compound.reference_temperature + 10))
         if 'pelmo' in compound.model_specific_data.keys():
@@ -180,14 +180,13 @@ class PsmCompound:
         else:
             position = None
         return PsmCompound(molar_mass=compound.molarMass,
-                           adsorptions=tuple(
-                               [PsmAdsorption(koc=compound.koc, freundlich=compound.freundlich)]),
+                           adsorption=PsmAdsorption(koc=compound.koc, freundlich=compound.freundlich),
                            plant_uptake=compound.plant_uptake, degradations=degradations, name=compound.name,
                            volatizations=volatizations,
                            position=position)
 
 
-PsmCompound.empty = PsmCompound(molar_mass=0, adsorptions=tuple([PsmAdsorption(koc=0, freundlich=1)]), degradations=[],
+PsmCompound.empty = PsmCompound(molar_mass=0, adsorption=PsmAdsorption(koc=0, freundlich=1), degradations=[],
                                 volatizations=(Volatization(), Volatization()))
 
 
@@ -239,7 +238,10 @@ class PsmFile(TypeCorrecting):
         metabolite_list: List[PsmCompound] = []
         for position in ('A1', 'B1', 'C1', 'D1', 'A2', 'B2', 'C2', 'D2'):
             if position in metabolites.keys():
-                metabolite_list.append(PsmCompound.from_compound(metabolites[position]))
+                metabolite = PsmCompound.from_compound(metabolites[position])
+                met_adsorption = replace(metabolite.adsorption, limit_freundl=1e-20, percent_change=1000)
+                metabolite = replace(metabolite, adsorption=met_adsorption)
+                metabolite_list.append(metabolite)
         return PsmFile(application=application, compound=psm_compound, metabolites=metabolite_list, gap=gap)
 
     @staticmethod
@@ -283,8 +285,8 @@ class PsmFile(TypeCorrecting):
                             water_solubility=self.compound.volatizations[0].solubility,
                             vapor_pressure=self.compound.volatizations[0].vaporization_pressure,
                             reference_temperature=self.compound.volatizations[0].temperature,
-                            koc=self.compound.adsorptions[0].koc,
-                            freundlich=self.compound.adsorptions[0].freundlich,
+                            koc=self.compound.adsorption.koc,
+                            freundlich=self.compound.adsorption.freundlich,
                             dt50=DT50(system=math.log(2) / self.compound.degradations[0].rate,
                                       soil=math.log(2) / self.compound.degradations[0].rate,
                                       surfaceWater=math.log(2) / self.compound.degradations[0].rate,
