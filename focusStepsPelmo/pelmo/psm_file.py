@@ -191,7 +191,8 @@ PsmCompound.empty = PsmCompound(molar_mass=0, adsorption=PsmAdsorption(koc=0, fr
 
 
 def expand_volatilization_regulatory(volatilization: Volatization) -> Tuple[Volatization, Volatization]:
-    return volatilization, volatilization
+    return (replace(volatilization, temperature=volatilization.temperature - 0.5),
+            replace(volatilization, temperature=volatilization.temperature + 0.5))
 
 
 def expand_volatilization_user_manual(volatilization: Volatization) -> Tuple[Volatization, Volatization]:
