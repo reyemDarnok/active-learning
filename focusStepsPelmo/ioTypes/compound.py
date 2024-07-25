@@ -15,20 +15,20 @@ from focusStepsPelmo.util.datastructures import TypeCorrecting
 class DT50(TypeCorrecting):
     """General DT50 information"""
     system: float
-    """Total System DT50"""
+    """Total System DT50 in days"""
     soil: float
-    """DT50 in soil"""
+    """DT50 in soil in days"""
     surfaceWater: float
-    """DT50 in water"""
+    """DT50 in water in days"""
     sediment: float
-    """DT50 in sediment"""
+    """DT50 in sediment in days"""
 
 
 @dataclass(frozen=True)
 class MetaboliteDescription(TypeCorrecting):
     """A structure describing a decay to a metabolite"""
     formation_fraction: float
-    """How much of all dt50 forms this metabolite"""
+    """How much of all dt50 forms this metabolite. Needs to be between 0 and 1. Unitless"""
     metabolite: 'Compound'
     """The Compound that forms"""
 
@@ -45,11 +45,13 @@ class Compound(TypeCorrecting):
     reference_temperature: float
     """The temperature the other values have been measured at in °C"""
     koc: float
+    """The sorption with organic compounds in ml/g"""
     freundlich: float
+    """The freundlich exponent. Unitless"""
     dt50: DT50
     """DT50 behaviours"""
     plant_uptake: float = 0
-    """Fraction of plant uptake"""
+    """Fraction of plant uptake. Needs to between 0 and 1. Unitless"""
     name: Optional[str] = field(hash=False, default='')  # str hash is not stable
     """The compounds name. Used only for labelling purposes"""
     model_specific_data: Dict = field(compare=False, hash=False, default_factory=dict)
