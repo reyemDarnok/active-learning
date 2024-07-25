@@ -433,7 +433,10 @@ class BHPC:
     def get_session_status(self, session) -> SessionDescription:
         """Show the status of a single session"""
         stdout, _ = self._execute_bhpc_command(["show", session])
-        return SessionDescription.from_bhpc_message(stdout)
+        session_description = SessionDescription.from_bhpc_message(stdout)
+        logger = logging.getLogger()
+        logger.debug({"action": "Fetched description of session %s" % session, "data": session_description})
+        return session_description
 
     def show(self, session) -> SessionDescription:
         """Show the status of a single session. Alias for get_session_status"""
