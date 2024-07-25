@@ -114,7 +114,7 @@ class Moisture:
 @dataclass(frozen=True)
 class DegradationData(TypeCorrecting):
     rate: float
-    """Degradation rate, calculated as dt50/ln(2)"""
+    """Degradation rate, calculated as ln(2)/dt50 in days^-1"""
     temperature: float = 20
     """Reference temperature in °C"""
     q10: float = 2.58
@@ -141,40 +141,56 @@ class DegradationData(TypeCorrecting):
 class PsmAdsorption:
     """Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values"""
     koc: float
-    """"""
+    """KOC value in L/kg"""
     freundlich: float
-    """Freundlich exponent"""
+    """Freundlich exponent fo the koc value"""
     pH: float = PELMO_UNSET
+    """pH value at which the first sorption study was performed (only relevant with pH dependent sorption)"""
     pKa: float = 20
+    """pKa value of the compound (only relevant with pH dependent sorption"""
     limit_freundl: float = 0
+    """Concentration where Freundlich sorption switches to linear sorption"""
     annual_increment: float = 0
+    """Annual decrease of sorption constant (linearly, in percent)"""
     k_doc: float = 0
+    """complexation constant to Doc. Unitless. Only relevant if Doc content in soil is > 0"""
     percent_change: float = 100
+    """Relative increase of sorption of soil is air dried. Unitless, in percent"""
     koc2: float = PELMO_UNSET
+    """Koc value of the compound at pH2 during the second sorption study (only relevant with pH dependent sorption) """
     pH2: float = PELMO_UNSET
+    """pH value at which the second sorption study was performed (only relevant with pH dependent sorption)"""
     f_neq: float = 0
-    """Relevant for kinetic sorption"""
+    """soil fraction of the non-equilibrium domain. """
     kdes: float = 0
+    """1st order desorption rate at non-equilibrium sites"""
 
 
 @dataclass(frozen=True)
 class FateOnCrop:
     """Data about what happens to the substance on the crop"""
     plant_decay_rate: float = 0.0693
+    """Decay rate on the plant foliate days^-1 (ln(2)/dt50)"""
     washoff_parameter: float = 0.0
+    """Foliar extraction coefficient for substance washoff per cm of precipitation in cm^-1"""
     penetration: float = 0.0693
+    """Filtration parameter. Only required in exponential application model. in days^-1"""
     photodegradation: float = 0
+    """Photodegradation rate in days^-1 (ln(2)/dt50)"""
     reference_irradiance: float = 100
+    """Reference radiation for photodegradation in W/m^2"""
     laminar_layer: float = 0.03
+    """Laminar layer for volatilisation from foliate in W/m^2"""
 
 
 @dataclass(frozen=True)
 class PsmCompound:
     """Describes a compound as it appears in a psm file"""
     molar_mass: float
+    """molar mass in g/mol"""
     adsorption: PsmAdsorption
     degradations: List[DegradationData]
-    volatizations: Tuple[Volatization, Volatization]
+    volatizations: Tuple[Volatization, Volatization]  # TODO rename volatilization
     plant_uptake: float = 0.5
     degradation_type: DegradationType = DegradationType.FACTORS
     name: str = "Unknown name"
