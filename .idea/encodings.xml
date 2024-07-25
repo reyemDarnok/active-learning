@@ -2,26 +2,5 @@
 <project version="4">
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/examples/earlyexp-test.psm" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/commit.sub.j2" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/general.psm.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/input.dat" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/pelmo.inp.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/adsorption.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/application-section.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/application.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/applications.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/compound-degradation.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/compound.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/degradation.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/fate-on-crop.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/metabolite-degradation.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/metabolite.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/photodegradation.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/plant-uptake.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/focusStepsPelmo/pelmo/templates/psm-fragments/volatization.j2" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/pelmofiles/FOCUS/sample/FOCUS/FOCUS_locations.txt" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/test/local/work/FOCUS/ThreadPoolExecutor-0_0/Châteaudun/-478323748592396782.run/Winter cereals/pelmo.inp" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/test/local/work/FOCUS/ThreadPoolExecutor-0_0/Châteaudun/4768363380111789317.run/Winter cereals/ECHO.PLM" charset="windows-1252" />
-    <file url="file://$PROJECT_DIR$/test/local/work/FOCUS/ThreadPoolExecutor-0_0/Châteaudun/4768363380111789317.run/Winter cereals/pelmo.inp" charset="windows-1252" />
   </component>
 </project>
