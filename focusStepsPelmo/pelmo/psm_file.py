@@ -298,7 +298,6 @@ class PsmFile(TypeCorrecting):
                 follow_formation = find_formation(metabolites[position], follow_position)
                 metabolites[position] = replace(metabolites[position], metabolites=(follow_formation,),
                                                 model_specific_data={'pelmo': {'position': position}})
-        first_order_metabolites = tuple()
         for position in ('D1', 'C1', 'B1', 'A1'):
 
             if position in metabolites.keys():

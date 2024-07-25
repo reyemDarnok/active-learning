@@ -1,3 +1,4 @@
+"""A file for methods relating to running pelmo on the BHPC"""
 import itertools
 import logging
 import os
@@ -50,6 +51,7 @@ def split_into_batches(iterable: Iterable[T], batch_size=1, fillvalue: T = None)
 
 
 def main():
+    """The main entry point for running this script from the command line"""
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
@@ -63,6 +65,20 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
              combination_dir: Path = None,
              crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop), scenarios: FrozenSet[Scenario] = frozenset(Scenario),
              notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True, bhpc: BHPC = BHPC()):
+    """Run Pelmo on the bhpc
+    :param submit: Where to write the files uploaded to the BHPC locally
+    :param output: Where to write the output files
+    :param compound_file: Where to find Compound files. Each Compound file found will be run with each GAP file found
+    :param gap_file: Where to find GAP files. Each GAP file found will be run with each Compound file found
+    :param combination_dir: Where to find Combination files
+    :param crops: Only the specified crops will be run. Restricting this may lead to some GAPs being ignored because
+    they define a crop that is not included
+    :param scenarios: Only the specified scenarios will be run. This is in addition to the fact that not all GAPs define
+    all scenarios - The intersection of the scenarios parameter and the gap defined scenarios are run for each gap
+    :param notification_email: Who to notify when BHPC jobs complete
+    :param session_timeout: What is the maximum runtime for the BHPC job
+    :param run: Whether to actually run Pelmo or only creating the *.sub file
+    :param bhpc: The connector object to the BHPC"""
     logger = logging.getLogger()
     logger.info('Starting to generate psm files')
     psm_file_data = generate_psm_files(compounds=Compound.from_path(compound_file) if compound_file else None,
@@ -198,6 +214,12 @@ def make_batches(psm_file_data: Iterable[Tuple[str, FOCUSCrop, FrozenSet[Scenari
 
 
 def make_batch(index: int, batch: Iterable[str], target_dir: Path) -> str:
+    """Write batch number index to a zip file
+    :param index: The batch index
+    :param batch: The file contents for the zip
+    :param target_dir: Where to write the zip to
+    :return: The name of the created batch
+    """
     logger = logging.getLogger()
     batch_name = f"psm{index}.d"
     logger.info('Adding psm files for batch %s', index)
@@ -210,6 +232,7 @@ def make_batch(index: int, batch: Iterable[str], target_dir: Path) -> str:
 
 
 def parse_args() -> Namespace:
+    """Parse all arguments"""
     parser = ArgumentParser()
     parser.add_argument('-c', '--compound-file', default=None, type=Path,
                         help='The compound to create a psm file for. '
