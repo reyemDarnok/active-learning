@@ -1,3 +1,4 @@
+"""File for methods relating to scanning parameter matrices"""
 import csv
 import json
 import logging
@@ -25,6 +26,7 @@ from focusStepsPelmo.util.iterable_helper import repeat_n_times
 
 
 def main():
+    """entry point for calling this script from the command line"""
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
@@ -157,6 +159,12 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
 
 def make_single_sample(definition: Definition, test_set: Set[Tuple[float, ...]], output_dir: Path,
                        test_set_buffer: float):
+    """Create a single sample
+    :param definition: The definition for the sample to create
+    :param test_set: The test_set to avoid. May be empty
+    :param output_dir: The directory to write the sample to
+    :param test_set_buffer: How far to stay away from the test_set. Uses euclidean distance between the sample features
+    and the test features, the individual features being mapped to the tuple [-1;1]"""
     while True:
         combination_dict = definition.make_sample()
         current_vector = definition.make_vector(combination_dict)
@@ -297,6 +305,7 @@ def span_rate(gaps: Iterable[GAP], rates: Sequence[float]) -> Generator[GAP, Non
 def span_compounds(template_compounds: Union[Compound, Iterable[Compound]], dt50: Optional[Sequence[float]] = None,
                    koc: Optional[Sequence[float]] = None, freundlich: Optional[Sequence[float]] = None,
                    plant_uptake: Optional[Sequence[float]] = None) -> Generator[Compound, None, None]:
+    """Create all elements of a matrix from a template compound and lists of values for the individual features"""
     # Do nothing if template_compounds is iterable, make it a single item list if it's a single compound
     logger = logging.getLogger()
     try:
@@ -319,6 +328,7 @@ def span_compounds(template_compounds: Union[Compound, Iterable[Compound]], dt50
 
 
 def span_dt50(compounds: Iterable[Compound], dt50s: Sequence[float]) -> Generator[Compound, None, None]:
+    """Create one compound for each combination of compound and dt50"""
     for compound in compounds:
         for dt50 in dt50s:
             new_degradation = replace(compound.dt50, system=dt50)
@@ -326,24 +336,28 @@ def span_dt50(compounds: Iterable[Compound], dt50s: Sequence[float]) -> Generato
 
 
 def span_koc(compounds: Iterable[Compound], kocs: Sequence[float]) -> Generator[Compound, None, None]:
+    """Create one compound for each combination of compound and koc"""
     for compound in compounds:
         for koc in kocs:
             yield replace(compound, koc=koc)
 
 
 def span_freundlich(compounds: Iterable[Compound], freundlichs: Sequence[float]) -> Generator[Compound, None, None]:
+    """Create one compound for each combination of compound and freundlich"""
     for compound in compounds:
         for freundlich in freundlichs:
             yield replace(compound, freundlich=freundlich)
 
 
 def span_plant_uptake(compounds: Iterable[Compound], plant_uptakes: Sequence[float]) -> Generator[Compound, None, None]:
+    """Create one compound for each combination of compound and plant_uptake"""
     for compound in compounds:
         for plant_uptake in plant_uptakes:
             yield replace(compound, plant_uptake=plant_uptake)
 
 
 def parse_args() -> Namespace:
+    """Parse all arguments"""
     parser = ArgumentParser()
     parser.add_argument('-c', '--template-compound', type=Path, default=None,
                         help="The compound to use as a template for unchanging parameters when scanning")

@@ -263,7 +263,7 @@ def extract_zip(working_dir: Path, focus_zip: Path):
 
 
 def parse_args() -> Namespace:
-    "Parse all arguments"
+    """Parse all arguments"""
     parser = ArgumentParser()
     parser.add_argument('-p', '--psm-files', type=Path, required=True,
                         help="The psm file to run. If this is a directory, run all .psm files in this directory")
