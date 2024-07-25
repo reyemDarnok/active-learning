@@ -165,20 +165,18 @@ class PsmCompound:
             for met_des in compound.metabolites:
                 if met_des:
                     remaining_degradation_fraction -= met_des.formation_fraction
-                    degradations += [DegradationData(rate=full_rate * met_des.formation_fraction)]
+                    target = "Met " + met_des.metabolite.model_specific_data.get('pelmo', {}).get('position', 'Unknown')
+                    degradations += [DegradationData(rate=full_rate * met_des.formation_fraction, target=target)]
                 else:
-                    degradations += [DegradationData(rate=0)]
+                    degradations += [DegradationData(rate=0, target="Undefined")]
 
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
-        degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction)]
+        degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction, target="BR/CO2")]
         volatizations = expand_volatilization_regulatory(Volatization(solubility=compound.water_solubility,
                                                                       vaporization_pressure=compound.vapor_pressure,
                                                                       temperature=compound.reference_temperature))
 
-        if 'pelmo' in compound.model_specific_data.keys():
-            position = compound.model_specific_data['pelmo']['position']
-        else:
-            position = None
+        position = compound.model_specific_data.get('pelmo', {}).get('position')
         return PsmCompound(molar_mass=compound.molarMass,
                            adsorption=PsmAdsorption(koc=compound.koc, freundlich=compound.freundlich),
                            plant_uptake=compound.plant_uptake, degradations=degradations, name=compound.name,
@@ -236,22 +234,32 @@ class PsmFile(TypeCorrecting):
                 return to_find.model_specific_data.get('pelmo', {}).get('position', 'Unknown Position').upper()
 
             for current in all_metabolites:
-                metabolites[compound_position(current.metabolite)] = current.metabolite
+                position = compound_position(current.metabolite)
+                metabolite = current.metabolite
+                metabolites[position] = metabolite
         elif compound.metabolites:
-            for index, metabolite in enumerate(compound.metabolites):
-                metabolites[chr(ord('A') + index) + "1"] = metabolite.metabolite
-                if metabolite.metabolite.metabolites:
-                    metabolites[chr(ord('A') + index) + "2"] = metabolite.metabolite.metabolites[0].metabolite
+            for index, met_des in enumerate(compound.metabolites):
+                position = chr(ord('A') + index) + "1"
+                all_model_data = met_des.metabolite.model_specific_data.copy()
+                model_data = all_model_data.get('pelmo', {})
+                model_data['position'] = position
+                all_model_data['pelmo'] = model_data
+                metabolite = replace(met_des.metabolite, model_specific_data=all_model_data)
+                metabolites[position] = metabolite
+                if met_des.metabolite.metabolites:
+                    position = chr(ord('A') + index) + "2"
+                    metabolite = met_des.metabolite.metabolites[0].metabolite
+                    metabolites[position] = metabolite
 
         compound = PsmFile.reorder_metabolites(compound, metabolites)
         psm_compound = PsmCompound.from_compound(compound)
         metabolite_list: List[PsmCompound] = []
         for position in ('A1', 'B1', 'C1', 'D1', 'A2', 'B2', 'C2', 'D2'):
             if position in metabolites.keys():
-                metabolite = PsmCompound.from_compound(metabolites[position])
-                met_adsorption = replace(metabolite.adsorption, limit_freundl=1e-20, percent_change=1000)
-                metabolite = replace(metabolite, adsorption=met_adsorption)
-                metabolite_list.append(metabolite)
+                met_des = PsmCompound.from_compound(metabolites[position])
+                met_adsorption = replace(met_des.adsorption, limit_freundl=1e-20, percent_change=1000)
+                met_des = replace(met_des, adsorption=met_adsorption)
+                metabolite_list.append(met_des)
         return PsmFile(application=application, compound=psm_compound, metabolites=metabolite_list, gap=gap)
 
     @staticmethod
@@ -260,7 +268,8 @@ class PsmFile(TypeCorrecting):
                            default: Optional[MetaboliteDescription] = None
                            ) -> Optional[MetaboliteDescription]:
             if metabolite_position in metabolites.keys():
-                return parent.metabolite_description_by_name(metabolites[metabolite_position].name)
+                return replace(parent.metabolite_description_by_name(metabolites[metabolite_position].name),
+                               metabolite=metabolites[metabolite_position])
             else:
                 return default
 
@@ -270,7 +279,9 @@ class PsmFile(TypeCorrecting):
                 follow_formation = find_formation(metabolites[position], follow_position)
                 metabolites[position] = replace(metabolites[position], metabolites=(follow_formation,),
                                                 model_specific_data={'pelmo': {'position': position}})
+        first_order_metabolites = tuple()
         for position in ('D1', 'C1', 'B1', 'A1'):
+
             if position in metabolites.keys():
                 follow_position = chr(ord(position[0]) + 1) + position[1]
                 follow_formation = find_formation(metabolites[position], follow_position)
