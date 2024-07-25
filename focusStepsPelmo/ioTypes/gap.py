@@ -62,10 +62,11 @@ class FOCUSCropMixin(NamedTuple):
     defined_scenarios: FrozenSet[Scenario]
     """The scenarios that are defined for this Crop in Pelmo"""
     interception: OrderedDict[PrincipalStage, float]
-    """Mapping bbch states to interception values"""
+    """Mapping bbch states to interception values in percent. Should be between 0 and 100"""
     bbch_application_name: List[str]
     """The category in the bbch_application data this crop belongs to"""
     alternative_names: List[str] = []
+    """Any alternate names for this crop that should also be recognized"""
 
 
 _s = PrincipalStage
@@ -582,6 +583,7 @@ class AbsoluteScenarioGAP(GAP):
     and fixes the type to AbsoluteConstantGAP"""
     scenarios: Dict[Scenario, Dict] = field(
         default_factory=lambda: {}, hash=False)
+    """A mapping from scenarios to Constant GAPs"""
 
     _scenario_gaps: Dict[Scenario, AbsoluteConstantGAP] = field(init=False, repr=False, hash=False, compare=False)
 
@@ -636,8 +638,11 @@ class AbsoluteScenarioGAP(GAP):
 @dataclass(frozen=True)
 class GAPMachineGAP(GAP):
     first_season: Dict[Scenario, datetime] = field(default_factory=dict)
+    """A mapping from scenario to first application date for the first_season"""
     second_season: Dict[Scenario, datetime] = field(default_factory=dict)
+    """A mapping from scenario to first application date for the second_season"""
     interceptions: Tuple[float, ...] = tuple()
+    """The interceptions for the application series"""
 
     def __hash__(self) -> int:
         init_dict = self._get_common_dict()
