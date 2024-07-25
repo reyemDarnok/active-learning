@@ -155,18 +155,20 @@ def single_pelmo_run(run_data: Tuple[Union[Path, str], FOCUSCrop, Scenario], wor
 
     logger.debug('Creating pelmo input files')
     if isinstance(psm_file, Path):
-        psm_file_string = psm_file.read_text()
-        target_psm_file.write_text(psm_file_string)
+        psm_file_string = psm_file.read_text(encoding="windows-1252")
+        target_psm_file.write_text(psm_file_string, encoding="windows-1252")
     else:
         psm_file_string = psm_file
-        target_psm_file.write_text(psm_file)
+        target_psm_file.write_text(psm_file, encoding="windows-1252")
         psm_file = target_psm_file
 
     duration = find_duration(psm_file_string)
     crop_file_name = lookup_crop_file_name(crop)
     target_inp_file.write_text(inp_file_template.render(psm_file=psm_file, crop_file_name=crop_file_name,
-                                                        scenario=scenario, duration=duration))
-    target_dat_file.write_text(dat_file_template.render())
+                                                        scenario=scenario, duration=duration),
+                               encoding="windows-1252")
+    target_dat_file.write_text(dat_file_template.render(),
+                               encoding="windows-1252")
     shutil.copy(thread_dir / f"{scenario.name}_{crop_file_name}.crp",
                 scenario_dir / f"{scenario.name}_{crop_file_name}.crp")
     logger.info('Starting PELMO run for compound: %s :: crop: %s :: scenario: %s', target_psm_file.stem,

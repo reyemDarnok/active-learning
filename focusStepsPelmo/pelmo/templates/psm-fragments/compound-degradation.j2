@@ -9,7 +9,7 @@
 {{'2 individual,3 = degradation according to degradation factors, 4 = constant with depth,' -}}
 {{'5 individual, >2 deg in liquid phase only)\n' -}}
 {{'<PHOTODEGRADATION>\n' -}}
-{{'<rate 1/n>  <I_Ref W>\n' -}}
+{{'<rate 1/n>  <I_Ref W/m²>\n' -}}
 {% for degradation in compound.degradations -%}
     {% include "psm-fragments/photodegradation.j2" -%}
 {%endfor -%}{{ '\n' -}}

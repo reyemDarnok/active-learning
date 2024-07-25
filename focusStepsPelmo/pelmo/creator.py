@@ -63,7 +63,7 @@ def write_psm_files(output_dir: Path,
     output_dir.mkdir(exist_ok=True, parents=True)
     for psm_file in generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations):
         total += 1
-        (output_dir / f"{hash(psm_file)}.psm").write_text(psm_file[0])
+        (output_dir / f"{hash(psm_file)}.psm").write_text(psm_file[0], encoding="windows-1252")
     return total
 
 
