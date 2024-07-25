@@ -425,6 +425,7 @@ class GAP(ABC, TypeCorrecting):
 
     @staticmethod
     def from_gap_machine(file: Path) -> Generator['GAP', None, None]:
+        """Create GAPs from the export of the gap machine (go/gap-prod)"""
         yield from GAPMachineGAP.from_gap_machine(file)
 
 

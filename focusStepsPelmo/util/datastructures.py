@@ -29,6 +29,7 @@ class HashableDict(UserDict):
 
 class HashableRSDict(RSDict):
     """A hashable version of RSDict. Note that using it as keys and then changing it will have unpredictable effects"""
+
     def __hash__(self):
         return hash(frozenset(self.items()))
 

@@ -17,6 +17,7 @@ jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
 
 
 def setup_psm_template() -> Template:
+    """Initialises the jinja2 template for psm files"""
     global_data = {'dummy_gap': GAPMachineGAP(modelCrop=FOCUSCrop.AP, rate=0, interceptions=tuple([0]),
                                               first_season={Scenario.C: datetime(year=1, month=1, day=1)}),
                    'dummy_scenario': Scenario.C}
@@ -189,11 +190,13 @@ PsmCompound.empty = PsmCompound(molar_mass=0, adsorption=PsmAdsorption(koc=0, fr
 
 
 def expand_volatilization_regulatory(volatilization: Volatization) -> Tuple[Volatization, Volatization]:
+    """Expand a single volatilization line into two according to regulatory practices"""
     return (replace(volatilization, temperature=volatilization.temperature - 0.5),
             replace(volatilization, temperature=volatilization.temperature + 0.5))
 
 
 def expand_volatilization_user_manual(volatilization: Volatization) -> Tuple[Volatization, Volatization]:
+    """Expand a single volatilization line into two according to the pelmo user manual"""
     return volatilization, replace(volatilization, solubility=volatilization.solubility * 2,
                                    vaporization_pressure=volatilization.vaporization_pressure * 4)
 
@@ -223,6 +226,7 @@ class PsmFile(TypeCorrecting):
 
     @staticmethod
     def from_input(compound: Compound, gap: GAP) -> 'PsmFile':
+        """Create a PsmFile from the ioTypes classes"""
         application = PsmApplication()
 
         metabolites: Dict[str, Compound] = {}
@@ -231,6 +235,11 @@ class PsmFile(TypeCorrecting):
                               [met for metabolite in compound.metabolites for met in metabolite.metabolite.metabolites]
 
             def compound_position(to_find: Compound) -> str:
+                """Find the metabolite position of a compound, i.e. "A1"
+                >>> c = Compound(model_specific_data={'pelmo': {'position': "B2"}})
+                >>> compound_position(c)
+                'B2'
+                """
                 return to_find.model_specific_data.get('pelmo', {}).get('position', 'Unknown Position').upper()
 
             for current in all_metabolites:
@@ -263,10 +272,20 @@ class PsmFile(TypeCorrecting):
         return PsmFile(application=application, compound=psm_compound, metabolites=metabolite_list, gap=gap)
 
     @staticmethod
-    def reorder_metabolites(compound, metabolites):
+    def reorder_metabolites(compound: Compound, metabolites: Dict[str, Compound]) -> Compound:
+        """Given a compound and all its metabolites and their Pelmo positions, return a Compound with the degradation
+        tree aligned for Pelmo
+        :param compound: The parent compound
+        :param metabolites: A mapping from the pelmo position of a metabolite to the metabolite
+        :return: A Compound that has the same properties as compound, but has its metabolites in Pelmos ordering"""
         def find_formation(parent: Compound, metabolite_position: str,
                            default: Optional[MetaboliteDescription] = None
                            ) -> Optional[MetaboliteDescription]:
+            """Find the Metabolite Description for a given metabolite position
+            :param parent: The parent compound for the formation
+            :param metabolite_position: The position to find
+            :param default: What to return when no formation could be found
+            :return: The metabolite description for the metabolite_position"""
             if metabolite_position in metabolites.keys():
                 return replace(parent.metabolite_description_by_name(metabolites[metabolite_position].name),
                                metabolite=metabolites[metabolite_position])
@@ -317,6 +336,7 @@ class PsmFile(TypeCorrecting):
         return compound, self.gap
 
     def render(self) -> str:
+        """Render this psm file as a string"""
         template_data = self.asdict()
         rendered = psm_template.render(template_data)
         return rendered

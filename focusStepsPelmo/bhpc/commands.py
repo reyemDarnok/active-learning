@@ -266,7 +266,7 @@ class BHPC:
         return True
 
     def request_auth_data(self) -> bool:
-        """Request the credentials from the user as a copy paste of the powershell script provided at go/BHPC.
+        """Request the credentials from the user as a copy-paste of the powershell script provided at go/BHPC.
         :return: True if the user provided valid credentials, false if they did not"""
         logger = logging.getLogger()
         logger.info("Requesting BHPC Credentials from user")
