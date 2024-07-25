@@ -12,6 +12,7 @@ from focusStepsPelmo.ioTypes.gap import GAP, GAPMachineGAP, Scenario, FOCUSCrop
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 PELMO_UNSET = -99
+"""A value Pelmo uses for inapplicable values"""
 jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
                         autoescape=select_autoescape(), undefined=StrictUndefined)
 
@@ -58,11 +59,17 @@ class ApplicationType(int, Enum):
 @dataclass(frozen=True)
 class PsmApplication(TypeCorrecting):
     type: ApplicationType = ApplicationType.manual
+    """Which application type was selected"""
     lower_depth: float = 0
+    """The lower depth of incorporation in cm (only relevant for soil application)"""
     upper_depth: float = 0
+    """"The upper depth of incorporation in cm (only relevant for soil application"""
     ffield: float = 0
+    """The rapidly dissipating fraction at the soil surface"""
     frpex: float = 0
+    """Fraction of poorly exposed pesticide"""
     time: float = 0
+    """Hour of application"""
 
 
 class DegradationType(int, Enum):
@@ -79,33 +86,51 @@ class DegradationType(int, Enum):
 class Volatization:
     """Used by Pelmo"""
     henry: float = 3.33E-04
+    """Henry constant in J/mol"""
     solubility: float = 90
-    vaporization_pressure: float = 1.00E-04
+    """Water solubility in mg/L"""
+    vaporization_pressure: float = 1.00E-04  # TODO rename
+    """Vapor pressure in Pa"""
     diff_air: float = 0.0498
+    """Diffusion Coefficient Air at 20°C in cm^2/s"""
     depth_volatility: float = 0.1
-    hv: float = 98400
+    """Thickness of Boundary layer in cm"""
+    hv: float = 98400  # TODO document
     temperature: float = 20
+    """Reference temperature in °C"""
 
 
 @dataclass(frozen=True)
 class Moisture:
     """Used by Pelmo"""
     absolute: float = 0
+    """Absolute moisture during study in Volume %"""
     relative: float = 100
+    """Relative moisture during study in %FC"""
     exp: float = 0.7
+    """Moisture exponent"""
 
 
 @dataclass(frozen=True)
 class DegradationData(TypeCorrecting):
     rate: float
+    """Degradation rate, calculated as dt50/ln(2)"""
     temperature: float = 20
+    """Reference temperature in °C"""
     q10: float = 2.58
+    """Temperature correction factor"""
     moisture: Moisture = Moisture()
-    rel_deg_new_sites: float = 0
+    """Moisture information"""
+    rel_deg_new_sites: float = 0  # TOD rename
+    """Relative degradation at non-equilibrium sites"""
     formation_factor: float = 1
+    """stoichiometric factor"""
     photodegradation: float = 0
+    """Photolysis degradation in days"""
     reference_irradiance: float = 100
+    """Reference irradiance for Photolysis in W/m^2"""
     target: str = "Unknown"
+    """Which Pelmo position this degradation points to"""
 
     def __post_init__(self):
         if self.rate == 0:
@@ -116,7 +141,9 @@ class DegradationData(TypeCorrecting):
 class PsmAdsorption:
     """Information about the sorption behavior of a compound. Steps12 uses the koc, Pelmo uses all values"""
     koc: float
+    """"""
     freundlich: float
+    """Freundlich exponent"""
     pH: float = PELMO_UNSET
     pKa: float = 20
     limit_freundl: float = 0
@@ -126,6 +153,7 @@ class PsmAdsorption:
     koc2: float = PELMO_UNSET
     pH2: float = PELMO_UNSET
     f_neq: float = 0
+    """Relevant for kinetic sorption"""
     kdes: float = 0
 
 
