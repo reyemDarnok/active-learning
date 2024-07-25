@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""A file for methods related to directly running pelmo"""
 import csv
 import json
 import logging
@@ -44,6 +45,7 @@ def _init_thread(working_dir: Path):
 
 
 def main():
+    """The entry point for running this script from the command line"""
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
@@ -60,6 +62,13 @@ def write_psm_results(output_file: Path,
                       run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]],
                       input_directories: Optional[Tuple[Path]] = None, working_dir: Path = Path.cwd() / 'pelmo',
                       max_workers: int = cpu_count() - 1):
+    """Run Pelmo and write the results to output_file
+    :param output_file: Where to write the result to
+    :param run_data: What to run. A List of (psm file, crop, scenarios) tuples
+    :param input_directories: In which directories to find the input files for correctly regenerating the input
+    information
+    :param working_dir: Where to run Pelmo
+    :param max_workers: The maximum of threads to use for running Pelmo"""
     results = run_psms(run_data=run_data, working_dir=working_dir,
                        max_workers=max_workers)
     if input_directories:
@@ -101,6 +110,7 @@ def run_psms(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Sce
 
 
 def find_duration(psm_file_string) -> int:
+    """Given a psm file, find out how long it runs"""
     in_application = False
     max_year = 0
     for line in psm_file_string.splitlines():
@@ -242,6 +252,8 @@ def parse_pelmo_result(run_dir: Path) -> Dict[str, float]:
 
 
 def extract_zip(working_dir: Path, focus_zip: Path):
+    """Extract the given zip file to the working directory
+    """
     logger = logging.getLogger()
 
     logger.info(f'Extracting {focus_zip.name} to {working_dir.name}')
@@ -251,6 +263,7 @@ def extract_zip(working_dir: Path, focus_zip: Path):
 
 
 def parse_args() -> Namespace:
+    "Parse all arguments"
     parser = ArgumentParser()
     parser.add_argument('-p', '--psm-files', type=Path, required=True,
                         help="The psm file to run. If this is a directory, run all .psm files in this directory")
