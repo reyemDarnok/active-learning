@@ -163,7 +163,7 @@ def make_single_sample(definition: Definition, test_set: Set[Tuple[float, ...]],
     :param definition: The definition for the sample to create
     :param test_set: The test_set to avoid. May be empty
     :param output_dir: The directory to write the sample to
-    :param test_set_buffer: How far to stay away from the test_set. Uses euclidean distance between the sample features
+    :param test_set_buffer: How far to stay away from the test_set. Uses Euclidean distance between the sample features
     and the test features, the individual features being mapped to the tuple [-1;1]"""
     while True:
         combination_dict = definition.make_sample()

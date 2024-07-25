@@ -1,3 +1,4 @@
+"""A file for functions for summarizing outputs from pelmo"""
 import csv
 import functools
 import json
@@ -15,15 +16,25 @@ from focusStepsPelmo.util.datastructures import correct_type
 
 def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Tuple[Path, ...],
                               glob_pattern: str = "output.json"):
+    """Rebuild output in multiple locations to one location
+    :param file: The final output file
+    :param parent: The parent directory of the output files
+    :param input_directories: Where to find the input data to connect to the output files
+    :param glob_pattern: The pattern to find the output files to combine"""
     write_results_to_file(rebuild_scattered_output(parent, input_directories, glob_pattern), file)
 
 
 def rebuild_output_to_file(file: Path,
                            results: Union[Path, Iterable[PelmoResult]], input_directories: Tuple[Path, ...]):
+    """Rebuild output in one location to one location
+        :param file: The final output file
+        :param input_directories: Where to find the input data to connect to the output files
+        :param results: The file with the pelmo results or a list of the results"""
     write_results_to_file(rebuild_output(results, input_directories), file)
 
 
 def write_results_to_file(results: Iterable[PECResult], file: Path):
+    """Write the results to the output file in the output format indicated by the filename suffix of file"""
     output_format = file.suffix[1:]
     file.parent.mkdir(exist_ok=True, parents=True)
     if output_format == 'json':
@@ -52,6 +63,7 @@ def rebuild_scattered_output(parent: Path, input_directories: Tuple[Path, ...], 
 
 def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories: Tuple[Path, ...]
                    ) -> Generator[PECResult, None, None]:
+    """Rebuild the output from Pelmo together with the input files"""
     logger = logging.getLogger()
     if isinstance(source, Path):
         with source.open() as fp:
@@ -104,6 +116,7 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
 
 @functools.lru_cache(maxsize=None)
 def get_obj_by_hash(h: int, file_roots: Sequence[Path]) -> Union[Compound, GAP, Combination]:
+    """Given a hash of an object and a file_root to search, find an object with that hash in file_root"""
     hashes = {}
     for file_root in file_roots:
         hashes.update(get_hash_obj_relation(file_root, (Compound, GAP, Combination)))
@@ -112,6 +125,7 @@ def get_obj_by_hash(h: int, file_roots: Sequence[Path]) -> Union[Compound, GAP, 
 
 @functools.lru_cache(maxsize=None)
 def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) -> Dict[int, Any]:
+    """Get a mapping from hashes to objects for all objects in files in directory"""
     hashes = {}
     if directory.is_dir():
         files = directory.glob('*.json')

@@ -278,6 +278,7 @@ class PsmFile(TypeCorrecting):
         :param compound: The parent compound
         :param metabolites: A mapping from the pelmo position of a metabolite to the metabolite
         :return: A Compound that has the same properties as compound, but has its metabolites in Pelmos ordering"""
+
         def find_formation(parent: Compound, metabolite_position: str,
                            default: Optional[MetaboliteDescription] = None
                            ) -> Optional[MetaboliteDescription]:
