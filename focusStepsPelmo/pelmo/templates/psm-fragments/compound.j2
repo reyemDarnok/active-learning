@@ -7,12 +7,9 @@
 {{'<END FLAGS>\n' -}}
 {{'<VOLATILIZATION>\n' -}}
     {{'<henry       solub.      molmass     vap.press   diff air    depth volat.  Hv        Temperature>\n' -}}
-    {% with volatization = compound.volatizations[0] -%}
-        {% include "psm-fragments/volatization.j2" -%}
-    {% endwith -%}
-    {% with volatization = compound.volatizations[1] -%}
-        {% include "psm-fragments/volatization.j2" -%}
-    {% endwith -%}
+    {% for volatilization in compound.volatilizations -%}
+        {% include "psm-fragments/volatilization.j2" -%}
+    {% endfor -%}
 {{'<END VOLATILIZATION>\n' -}}
 {% with plant_uptake = compound.plant_uptake -%}
     {% include "psm-fragments/plant-uptake.j2" -%}

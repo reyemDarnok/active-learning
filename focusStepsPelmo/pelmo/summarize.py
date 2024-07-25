@@ -55,6 +55,7 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
 
 def rebuild_scattered_output(parent: Path, input_directories: Tuple[Path, ...], glob_pattern: str = "output.json",
                              ) -> Generator[PECResult, None, None]:
+    """Rebuild the output from Pelmo together with the input files. Fetches the Pelmo result from multiple places"""
     logger = logging.getLogger()
     logger.debug("Iterating over output files %s", list(parent.rglob(glob_pattern)))
     for file in parent.rglob(glob_pattern):

@@ -83,19 +83,20 @@ class DegradationType(int, Enum):
 
 
 @dataclass(frozen=True)
-class Volatization:
+class Volatilization:
     """Used by Pelmo"""
     henry: float = 3.33E-04
     """Henry constant in J/mol"""
     solubility: float = 90
     """Water solubility in mg/L"""
-    vaporization_pressure: float = 1.00E-04  # TODO rename
+    vapor_pressure: float = 1.00E-04
     """Vapor pressure in Pa"""
     diff_air: float = 0.0498
     """Diffusion Coefficient Air at 20°C in cm^2/s"""
     depth_volatility: float = 0.1
     """Thickness of Boundary layer in cm"""
-    hv: float = 98400  # TODO document
+    hv: float = 98400
+    """Volatilisation Enthalpy in J/mol"""
     temperature: float = 20
     """Reference temperature in °C"""
 
@@ -121,7 +122,7 @@ class DegradationData(TypeCorrecting):
     """Temperature correction factor"""
     moisture: Moisture = Moisture()
     """Moisture information"""
-    rel_deg_new_sites: float = 0  # TOD rename
+    relative_degradation_non_equilibrium_sites: float = 0
     """Relative degradation at non-equilibrium sites"""
     formation_factor: float = 1
     """stoichiometric factor"""
@@ -150,19 +151,19 @@ class PsmAdsorption:
     """pKa value of the compound (only relevant with pH dependent sorption"""
     limit_freundl: float = 0
     """Concentration where Freundlich sorption switches to linear sorption"""
-    annual_increment: float = 0
+    annual_decrease_of_sorption_percent: float = 0
     """Annual decrease of sorption constant (linearly, in percent)"""
     k_doc: float = 0
     """complexation constant to Doc. Unitless. Only relevant if Doc content in soil is > 0"""
-    percent_change: float = 100
+    increase_of_sorption_when_air_dried: float = 100
     """Relative increase of sorption of soil is air dried. Unitless, in percent"""
     koc2: float = PELMO_UNSET
     """Koc value of the compound at pH2 during the second sorption study (only relevant with pH dependent sorption) """
     pH2: float = PELMO_UNSET
     """pH value at which the second sorption study was performed (only relevant with pH dependent sorption)"""
-    f_neq: float = 0
+    fraction_non_equilibrium_domain: float = 0
     """soil fraction of the non-equilibrium domain. """
-    kdes: float = 0
+    desorption_at_non_equilibrium_sites: float = 0
     """1st order desorption rate at non-equilibrium sites"""
 
 
@@ -190,7 +191,7 @@ class PsmCompound:
     """molar mass in g/mol"""
     adsorption: PsmAdsorption
     degradations: List[DegradationData]
-    volatizations: Tuple[Volatization, Volatization]  # TODO rename volatilization
+    volatilizations: Tuple[Volatilization, Volatilization]  # TODO rename volatilization
     plant_uptake: float = 0.5
     degradation_type: DegradationType = DegradationType.FACTORS
     name: str = "Unknown name"
@@ -217,32 +218,32 @@ class PsmCompound:
 
         assert remaining_degradation_fraction >= 0, "The sum of formation fractions may not exceed 1"
         degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction, target="BR/CO2")]
-        volatizations = expand_volatilization_regulatory(Volatization(solubility=compound.water_solubility,
-                                                                      vaporization_pressure=compound.vapor_pressure,
-                                                                      temperature=compound.reference_temperature))
+        volatizations = expand_volatilization_regulatory(Volatilization(solubility=compound.water_solubility,
+                                                                        vapor_pressure=compound.vapor_pressure,
+                                                                        temperature=compound.reference_temperature))
 
         position = compound.model_specific_data.get('pelmo', {}).get('position')
         return PsmCompound(molar_mass=compound.molarMass,
                            adsorption=PsmAdsorption(koc=compound.koc, freundlich=compound.freundlich),
                            plant_uptake=compound.plant_uptake, degradations=degradations, name=compound.name,
-                           volatizations=volatizations,
+                           volatilizations=volatizations,
                            position=position)
 
 
 PsmCompound.empty = PsmCompound(molar_mass=0, adsorption=PsmAdsorption(koc=0, freundlich=1), degradations=[],
-                                volatizations=(Volatization(), Volatization()))
+                                volatilizations=(Volatilization(), Volatilization()))
 
 
-def expand_volatilization_regulatory(volatilization: Volatization) -> Tuple[Volatization, Volatization]:
+def expand_volatilization_regulatory(volatilization: Volatilization) -> Tuple[Volatilization, Volatilization]:
     """Expand a single volatilization line into two according to regulatory practices"""
     return (replace(volatilization, temperature=volatilization.temperature - 0.5),
             replace(volatilization, temperature=volatilization.temperature + 0.5))
 
 
-def expand_volatilization_user_manual(volatilization: Volatization) -> Tuple[Volatization, Volatization]:
+def expand_volatilization_user_manual(volatilization: Volatilization) -> Tuple[Volatilization, Volatilization]:
     """Expand a single volatilization line into two according to the pelmo user manual"""
     return volatilization, replace(volatilization, solubility=volatilization.solubility * 2,
-                                   vaporization_pressure=volatilization.vaporization_pressure * 4)
+                                   vapor_pressure=volatilization.vapor_pressure * 4)
 
 
 @dataclass(frozen=True)
@@ -310,7 +311,8 @@ class PsmFile(TypeCorrecting):
         for position in ('A1', 'B1', 'C1', 'D1', 'A2', 'B2', 'C2', 'D2'):
             if position in metabolites.keys():
                 met_des = PsmCompound.from_compound(metabolites[position])
-                met_adsorption = replace(met_des.adsorption, limit_freundl=1e-20, percent_change=1000)
+                met_adsorption = replace(met_des.adsorption, limit_freundl=1e-20,
+                                         increase_of_sorption_when_air_dried=1000)
                 met_des = replace(met_des, adsorption=met_adsorption)
                 metabolite_list.append(met_des)
         return PsmFile(application=application, compound=psm_compound, metabolites=metabolite_list, gap=gap)
@@ -366,9 +368,9 @@ class PsmFile(TypeCorrecting):
         """Convert this psmFile to ioTypes input data.
         WARNING: This is lossy, as psmFiles do not use all data from the input files"""
         compound = Compound(molarMass=self.compound.molar_mass,
-                            water_solubility=self.compound.volatizations[0].solubility,
-                            vapor_pressure=self.compound.volatizations[0].vaporization_pressure,
-                            reference_temperature=self.compound.volatizations[0].temperature,
+                            water_solubility=self.compound.volatilizations[0].solubility,
+                            vapor_pressure=self.compound.volatilizations[0].vapor_pressure,
+                            reference_temperature=self.compound.volatilizations[0].temperature,
                             koc=self.compound.adsorption.koc,
                             freundlich=self.compound.adsorption.freundlich,
                             dt50=DT50(system=math.log(2) / self.compound.degradations[0].rate,

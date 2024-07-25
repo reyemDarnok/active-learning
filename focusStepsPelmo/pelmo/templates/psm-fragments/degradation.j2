@@ -5,7 +5,8 @@
     {%- set degrate = ' 0.00E+00' -%}
 {%- endif -%}
 {%- set degtemp = ('%.7f' % degradation.temperature).rstrip('0').rstrip('.') -%}
-{%- set rel_deg_neq_sites = ('%.7f' % degradation.rel_deg_new_sites).rstrip('0').rstrip('.') -%}
+{%- set relative_degradation_non_equilibrium_sites = ('%.7f' % degradation.relative_degradation_non_equilibrium_sites
+                                                     ).rstrip('0').rstrip('.') -%}
 {%- set stoichiometric_factor = ('%.7f' % degradation.formation_factor).rstrip('0').rstrip('.') -%}
 {# Write line -#}
 {{ ' ' }}{{ degrate -}}
@@ -14,7 +15,7 @@
 {{'        '}}{{ degradation.moisture.absolute -}}
 {{'           '}}{{ degradation.moisture.relative -}}
 {{'         '}}{{ degradation.moisture.exp -}}
-{{'       '}}{{ rel_deg_neq_sites -}}
+{{'       '}}{{ relative_degradation_non_equilibrium_sites -}}
 {{'         '}}{{ stoichiometric_factor -}}
 {{'        <'}}{{ degradation.target }}{{'>' -}}
 {{'\n' -}}
