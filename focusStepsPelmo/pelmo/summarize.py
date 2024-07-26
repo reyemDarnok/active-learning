@@ -3,8 +3,9 @@ import csv
 import functools
 import json
 import logging
+from argparse import ArgumentParser, Namespace
 from pathlib import Path
-from typing import Any, Dict, Generator, Iterable, Sequence, Tuple, Type, Union
+from typing import Any, Dict, Generator, Iterable, Tuple, Type, Union
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
@@ -14,8 +15,27 @@ from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
 from focusStepsPelmo.util.datastructures import correct_type
 
 
+def main():
+    args = parse_args()
+    logger = logging.getLogger()
+    logger.debug(args)
+    rebuild_scattered_to_file(file=args.output, parent=args.source, input_directories=args.input_location,
+                              glob_pattern=args.glob_pattern)
+
+
+def parse_args() -> Namespace:
+    parser = ArgumentParser()
+    parser.add_argument('-o', '--output', default=Path('out.json'), type=Path, help="Where to write the summary results")
+    parser.add_argument('-s', '--source', required=True, type=Path, help="The parent directory of the output files to summarize")
+    parser.add_argument('-i', '--input-location', required=True, nargs='+', type=Path, help="The locations of the input files")
+    parser.add_argument('-g', '--glob_pattern', default="*output.json", type=str, help="The glob pattern the output files conform to")
+    args = parser.parse_args()
+    args.input_location = tuple(args.input_location)
+    return args
+
+
 def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Tuple[Path, ...],
-                              glob_pattern: str = "output.json"):
+                              glob_pattern: str = "*output.json"):
     """Rebuild output in multiple locations to one location
     :param file: The final output file
     :param parent: The parent directory of the output files
@@ -53,7 +73,7 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
         raise ValueError("Could not infer format, please specify explicitly")
 
 
-def rebuild_scattered_output(parent: Path, input_directories: Tuple[Path, ...], glob_pattern: str = "output.json",
+def rebuild_scattered_output(parent: Path, input_directories: Tuple[Path, ...], glob_pattern: str = "*output.json",
                              ) -> Generator[PECResult, None, None]:
     """Rebuild the output from Pelmo together with the input files. Fetches the Pelmo result from multiple places"""
     logger = logging.getLogger()
@@ -116,7 +136,7 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
 
 
 @functools.lru_cache(maxsize=None)
-def get_obj_by_hash(h: int, file_roots: Sequence[Path]) -> Union[Compound, GAP, Combination]:
+def get_obj_by_hash(h: int, file_roots: Iterable[Path]) -> Union[Compound, GAP, Combination]:
     """Given a hash of an object and a file_root to search, find an object with that hash in file_root"""
     hashes = {}
     for file_root in file_roots:
@@ -138,12 +158,14 @@ def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) 
     json_candidates = {candidate for candidate in candidate_classes if candidate not in from_file_candidates}
     for file in files:
         for candidate in from_file_candidates:
-            objs = candidate.from_file(file)
             try:
-                for obj in objs:
-                    hashes[hash(obj)] = obj
+                objs = list(candidate.from_file(file))
             except TypeError:
                 continue
+            for obj in objs:
+                hashes[hash(obj)] = obj
+            if len(objs) == 1:
+                hashes[int(file.stem)] = objs[0]
         for candidate in json_candidates:
             with file.open() as fp:
                 json_data = json.load(fp)
@@ -157,3 +179,6 @@ def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) 
             hashes[hash(obj)] = obj
 
     return hashes
+
+if __name__ == '__main__':
+    main()
