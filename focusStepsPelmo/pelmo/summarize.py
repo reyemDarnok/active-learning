@@ -165,7 +165,10 @@ def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) 
             for obj in objs:
                 hashes[hash(obj)] = obj
             if len(objs) == 1:
-                hashes[int(file.stem)] = objs[0]
+                try:
+                    hashes[int(file.stem)] = objs[0]
+                except ValueError:
+                    pass
         for candidate in json_candidates:
             with file.open() as fp:
                 json_data = json.load(fp)
