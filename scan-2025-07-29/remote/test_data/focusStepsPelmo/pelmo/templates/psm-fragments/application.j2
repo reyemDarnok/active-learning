@@ -1,0 +1,24 @@
+{# Setup variables -#}
+{% if application.type.value == 1 -%}
+    {%- set app_rate = current_gap.rate_in_kg -%}
+{%- else -%}
+    {%- set app_rate = current_gap.rate_in_kg -%}
+{%- endif -%}
+{%- set app_rate = ('%.7f' % app_rate).rstrip('0').rstrip('.') -%}
+{%- set lower_depth = ('%.7f' % application.lower_depth).rstrip('0').rstrip('.') -%}
+{%- set upper_depth = ('%.7f' % application.upper_depth).rstrip('0').rstrip('.') -%}
+{%- set ffield = ('%.7f' % application.ffield).rstrip('0').rstrip('.') -%}
+{%- set frpex = ('%.7f' % application.frpex).rstrip('0').rstrip('.') -%}
+{%- set time = ('%.7f' % application.time).rstrip('0').rstrip('.') -%}
+{# Write line -#}
+{{ "%02d" % application_event[0].day -}}
+{{'  '}}{{ "%02d" % application_event[0].month -}}
+{{'  '}}{{ "%02d" % application_event[0].year -}}
+{{'   '}}{{ app_rate -}}
+{{'    '}}{{ upper_depth -}}
+{{'    '}}{{ lower_depth -}}
+{{'    '}}{{ "%d" % application_event[1]  -}}
+{{'    '}}{{ ffield -}}
+{{'    '}}{{frpex -}}
+{{'    '}}{{time -}}
+{{'   <day month year app_rate obere und untere app_Tiefe Ffield frpex time>\n'}}

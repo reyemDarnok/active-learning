@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 import pandas
+from matplotlib import pyplot as plt
 from pandas import DataFrame
 
 from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario
@@ -44,13 +45,17 @@ def describe(column_name: str, to_describe: DataFrame = working_df):
     print(column_name)
     print('Unmodified')
     print(to_describe[column_name].describe(datetime_is_numeric=True))
+    to_describe[column_name].plot(use_index=True, kind='hist', bins=40)
+    plt.show()
     print('Log scale')
     try:
         print(to_describe[column_name].apply(math.log).describe(datetime_is_numeric=True))
+        to_describe[column_name].plot(use_index=True, kind='hist', bins=40, log=True)
     except ValueError:
         print('Error during log application')
     except TypeError:
         print('Error during log application')
+    plt.show()
     print()
 
 describe('compound.metabolites.0.formation_fraction')
@@ -85,7 +90,7 @@ print(f"Number of PECs greater than 0.1 = {failing_pecs.shape[0]}")
 print(f"That is {failing_pecs.shape[0] / working_df.shape[0] * 100} percent of all data points")
 
 working_df.plot(use_index=True, kind='hist', y=['0.compound_pec', '1.compound_pec'], bins=20, range=(0,0.2))
-#plt.show()
+plt.show()
 
 
 correlations = working_df.corr()
@@ -97,6 +102,8 @@ print(correlations[['0.compound_pec', '1.compound_pec']])
 """Greatest Correlation with dt50 at 0.26 for parent and 0.3 for metabolite
 Lesser Correlations for freundlich (0.11 and 0.13) and koc (-0.11 and -0.13).
 The largest Correlation from metabolite pec to parent properties is with parent water_solubility at 0.09
-These are all weak correlations"""
+These are all weak correlations so while they might be useful for a first intuition, an actual model is still required
+"""
 
+correlations.filter()
 

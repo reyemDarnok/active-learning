@@ -1,0 +1,17 @@
+{# Setup variables -#}
+{% set name_scenario = name_scenario | default(True) -%}
+{# Write section -#}
+{% for scenario in current_gap.defined_scenarios -%}
+    {# Header -#}
+    {{ "%03d" % (current_gap.application_data(scenario) | list | length) -}}
+    {% if name_scenario -%}
+        {{'         '}}{{ scenario.name }}{{'   ' -}}
+    {% else -%}
+        {{'            ' -}}
+    {% endif -%}
+    {{'<number of application location>\n' -}}
+    {# List of applications -#}
+    {% for application_event in current_gap.application_data(scenario) -%}
+        {% include "psm-fragments/application.j2" -%}
+    {% endfor -%}
+{% endfor -%}
