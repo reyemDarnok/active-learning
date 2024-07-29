@@ -83,7 +83,7 @@ describe('scenario')
 describe('0.compound_pec')
 describe('1.compound_pec')
 
-"""Compound has 0 plant_uptake, metabolite 0.5 - error in input-matrix-scan.json but not damaging"""
+"""Compound has 0 plant_uptake, metabolite 0.5 - error in ppdb-scan.json but not damaging"""
 """PECs are mostly below 0.1 - dataset was taken from compounds already adapted, so high pecs are missing"""
 failing_pecs = working_df.query('`0.compound_pec` > 0.1 or `1.compound_pec` > 0.1')
 print(f"Number of PECs greater than 0.1 = {failing_pecs.shape[0]}")
