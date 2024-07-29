@@ -12,7 +12,7 @@ from enum import Enum
 from pathlib import Path
 from subprocess import PIPE
 from sys import stdin
-from typing import Dict, List, Tuple, Optional, Coroutine
+from typing import Dict, List, Tuple, Optional, Coroutine, Any
 
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
@@ -384,7 +384,7 @@ class BHPC:
                                  f"Initialize that session with the upload command first")
 
     async def run_async(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
-                        notification_email: str = None, session_timeout: int = 6) -> Coroutine[None, None, None]:
+                        notification_email: str = None, session_timeout: int = 6) -> Coroutine[Any, Any, None]:
         """Starts a session. Takes the same arguments as run.
         :return: A coroutine that awaits the end of the session if run. Whether this coroutine runs has no influence on
         the behaviour of the running session on the bhpc"""
