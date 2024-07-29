@@ -27,7 +27,7 @@
           "vapor_pressure": {
             "type": "log_normal",
             "parameters": {
-              "mu": -5,
+              "mu": -4.5,
               "sigma": 1.5
             }
           },
@@ -35,8 +35,8 @@
           "koc": {
             "type": "random",
             "parameters": {
-              "lower_bound": 10,
-              "upper_bound": 5000,
+              "lower_bound": 0.1,
+              "upper_bound": 3043,
               "log_random": true
             }
           },
@@ -82,8 +82,8 @@
     "koc": {
       "type": "random",
       "parameters": {
-        "lower_bound": 10,
-        "upper_bound": 5000,
+        "lower_bound": 0.1,
+        "upper_bound": 3043,
         "log_random": true
       }
     },
