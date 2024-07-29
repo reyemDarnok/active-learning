@@ -51,15 +51,15 @@ def split_into_batches(iterable: Iterable[T], batch_size=1, fillvalue: T = None)
     return itertools.zip_longest(*[iterator] * batch_size, fillvalue=fillvalue)
 
 
-def main():
+async def main():
     """The main entry point for running this script from the command line"""
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
-    run_bhpc(compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit,
-             output=args.output,
-             crops=args.crop, scenarios=args.scenario,
-             notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
+    await run_bhpc_async(compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit,
+                         output=args.output,
+                         crops=args.crop, scenarios=args.scenario,
+                         notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
 
 
 def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None,
@@ -313,4 +313,4 @@ def parse_args() -> Namespace:
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
