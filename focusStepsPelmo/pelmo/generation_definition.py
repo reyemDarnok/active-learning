@@ -216,10 +216,10 @@ class LogNormalDefinition(TemplateDefinition):
         self.sigma = sigma
 
     def make_sample(self) -> float:
-        return random.lognormvariate(self.mu, self.sigma)
+        return random.lognormvariate(self.mu * math.log(10), self.sigma * math.log(10))
 
     def make_vector(self, obj: float) -> Tuple[float, ...]:
-        return (min(-1.0, max(1.0, (obj - self.mu) / self.sigma / 3)),)
+        return (min(-1.0, max(1.0, (math.log10(obj) - self.mu) / self.sigma / 3)),)
 
 
 class ChoicesDefinition(TemplateDefinition):
