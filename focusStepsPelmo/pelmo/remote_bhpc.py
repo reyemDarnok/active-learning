@@ -92,9 +92,9 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
     batch_number = make_sub_file(psm_file_data=psm_file_data, target_dir=submit)
     if run:
         logger.info('Starting Pelmo run')
-        if batch_number > 10:
+        if batch_number >= 10:
             cores = 96
-        elif batch_number > 2:
+        elif batch_number >= 2:
             cores = 16
         else:
             cores = 8
