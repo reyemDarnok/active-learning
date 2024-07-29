@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """A script for creating psm files"""
+import asyncio
 import json
 import logging
 from argparse import ArgumentParser, Namespace
 from dataclasses import replace
 from pathlib import Path
-from typing import Generator, Iterable, Type, TypeVar, Union, Tuple, FrozenSet
+from typing import Generator, Iterable, Type, TypeVar, Union, Tuple, FrozenSet, List
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
@@ -112,6 +113,45 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
                     comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
                     yield _generate_psm_contents(compound, gap, comment), gap.modelCrop, psm_file_scenarios
 
+
+async def generate_psm_files_async(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
+                                   crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
+                                   scenarios: FrozenSet[Scenario] = frozenset(Scenario),
+                                   combinations: Iterable[Combination] = None
+                                   ) -> List[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]]:
+    """Create the contents of psm files
+    :param compounds: The compounds to combine with gaps to make psm files
+    :param gaps: The gaps to combine with compounds to make psm files
+    :param combinations: The combinations to turn into psm files
+    :param crops: The crops for which psm files should be generated. If a GAP does not match the crops given, it will be
+    skipped
+    :param scenarios:The scenarios for which psm files should be generated. For a given GAP, the scenarios used are
+    the intersection of the scenarios defined by the gap and the scenarios passed into the function
+    :return: The contents of the psm files"""
+    assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
+    psm_tasks = []
+    if combinations:
+        for combination in combinations:
+            psm_file_scenarios = scenarios.intersection(combination.gap.defined_scenarios)
+            comment = json.dumps({"combination": hash(combination)})
+            psm_tasks.append(asyncio.create_task(
+                _generate_psm_tuple_async(compound=combination.compound, gap=combination.gap,
+                                          comment=comment, scenarios=psm_file_scenarios)
+            ))
+    if compounds and gaps:
+        compounds = list(compounds)
+        for gap in gaps:
+            if gap.modelCrop in crops:
+                for compound in compounds:
+                    psm_file_scenarios = scenarios.intersection(gap.defined_scenarios)
+                    comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
+                    psm_tasks.append(asyncio.create_task(
+                        _generate_psm_tuple_async(compound, gap, comment, psm_file_scenarios)
+                    ))
+    return [await x for x in psm_tasks]
+
+async def _generate_psm_tuple_async(compound: Compound, gap: GAP, comment: str, scenarios: FrozenSet[Scenario]) -> Tuple[str, FOCUSCrop, FrozenSet[Scenario]]:
+    return _generate_psm_contents(compound, gap, comment), gap.modelCrop, scenarios
 
 def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
     """For a given compound and gap file, generate the matching psm files 
