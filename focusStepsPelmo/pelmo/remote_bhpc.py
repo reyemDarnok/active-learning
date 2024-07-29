@@ -1,4 +1,5 @@
 """A file for methods relating to running pelmo on the BHPC"""
+import asyncio
 import itertools
 import logging
 import os
@@ -18,7 +19,7 @@ from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario, GAP
 from focusStepsPelmo.pelmo.creator import generate_psm_files
-from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file
+from focusStepsPelmo.pelmo.summarize import rebuild_scattered_to_file, rebuild_scattered_to_file_async
 from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util.datastructures import correct_type
 from focusStepsPelmo.util.iterable_helper import count_up
@@ -50,15 +51,15 @@ def split_into_batches(iterable: Iterable[T], batch_size=1, fillvalue: T = None)
     return itertools.zip_longest(*[iterator] * batch_size, fillvalue=fillvalue)
 
 
-def main():
+async def main():
     """The main entry point for running this script from the command line"""
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
-    run_bhpc(compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit,
-             output=args.output,
-             crops=args.crop, scenarios=args.scenario,
-             notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
+    await run_bhpc_async(compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit,
+                         output=args.output,
+                         crops=args.crop, scenarios=args.scenario,
+                         notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
 
 
 def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None,
@@ -108,6 +109,49 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
                                   input_directories=tuple(x for x in (gap_file, compound_file, combination_dir) if x),
                                   glob_pattern="psm*.d-output.json")
         bhpc.remove(session)
+
+
+async def run_bhpc_async(submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None,
+                         combination_dir: Path = None,
+                         crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
+                         scenarios: FrozenSet[Scenario] = frozenset(Scenario),
+                         notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True,
+                         bhpc: BHPC = BHPC()):
+    logger = logging.getLogger()
+    logger.info('Starting to generate psm files')
+    psm_file_data = generate_psm_files(compounds=Compound.from_path(compound_file) if compound_file else None,
+                                       gaps=GAP.from_path(gap_file) if gap_file else None,
+                                       combinations=Combination.from_path(combination_dir) if combination_dir else None,
+                                       crops=crops, scenarios=scenarios)
+
+    with suppress(FileNotFoundError):
+        rmtree(submit)
+    logger.info('Generating sub files for bhpc')
+    batch_number = make_sub_file(psm_file_data=psm_file_data, target_dir=submit)
+    if run:
+        logger.info('Starting Pelmo run')
+        if batch_number >= 10:
+            cores = 96
+        elif batch_number >= 2:
+            cores = 16
+        else:
+            cores = 8
+        session = await bhpc.start_session_async(submit_folder=submit, session_name_prefix='Pelmo',
+                                                 submit_file_regex='pelmo\\.sub',
+                                                 machines=max(1, batch_number // 10), cores=cores, multithreading=True,
+                                                 notification_email=notification_email, session_timeout=session_timeout)
+        logger.info('Started Pelmo run as session %s', session)
+        download_task = asyncio.create_task(bhpc.download_async(session=session))
+        rebuild_output_task = asyncio.create_task(
+            rebuild_scattered_to_file_async(file=output,
+                                            parent=submit,
+                                            input_directories=tuple(
+                                                x for x in (gap_file, compound_file, combination_dir) if x),
+                                            glob_pattern="psm*.d-output.json")
+        )
+        await download_task
+        await bhpc.remove_async(session=session)
+        await rebuild_output_task
 
 
 def zip_common_directories(target: Path):
@@ -269,4 +313,4 @@ def parse_args() -> Namespace:
 
 
 if __name__ == '__main__':
-    main()
+    asyncio.run(main())
