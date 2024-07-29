@@ -1,4 +1,5 @@
 """A file describing the commands that can be sent to the BHPC"""
+import asyncio
 import contextlib
 import logging
 import os
@@ -11,7 +12,7 @@ from enum import Enum
 from pathlib import Path
 from subprocess import PIPE
 from sys import stdin
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Coroutine
 
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
@@ -323,6 +324,12 @@ class BHPC:
         logger.debug('Session %s is now running on the BHPC', session)
         return session
 
+    async def start_session_async(self, **kwargs) -> str:
+        """Starts a session, that is `upload`s and `run`s a new session
+        Takes the same arguments as :start_session
+        :return: The name of the session that was started"""
+        return self.start_session(**kwargs)
+
     def upload(self, submit_folder: Path, session: str, submit_file_regex=r'.+\.sub'):
         """Upload a session to the BHPC. DOES NOT START THE ACTUAL CALCULATION, THAT'S run
         :param submit_folder: Where to find the submit files that make up the session. This directory will be searched
@@ -340,6 +347,10 @@ class BHPC:
         )
         # TODO Error handling session already exists
         # TODO Error handling no submit files found
+
+    async def upload_async(self, **kwargs):
+        """Upload a session to the BHPC. DOES NOT START THE ACTUAL CALCULATION, THAT'S run. Takes the same arguments as upload"""
+        self.upload(**kwargs)
 
     def run(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
             notification_email: str = None, session_timeout: int = 6):
@@ -372,6 +383,14 @@ class BHPC:
             raise BHPCStateError(f"Session {session} could not be run because it was not initialized. "
                                  f"Initialize that session with the upload command first")
 
+    async def run_async(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
+                        notification_email: str = None, session_timeout: int = 6) -> Coroutine[None, None, None]:
+        """Starts a session. Takes the same arguments as run.
+        :return: A coroutine that awaits the end of the session if run. Whether this coroutine runs has no influence on
+        the behaviour of the running session on the bhpc"""
+        self.run(session, machines, cores, multithreading, notification_email, session_timeout)
+        return self.wait_on_session_async(session)
+
     def download(self, session: str, wait_until_finished: bool = True,
                  retry_interval: timedelta = timedelta(seconds=60)) -> bool:
         """Download the results of a session. Note that the results are placed in the path of the original sub file
@@ -384,13 +403,7 @@ class BHPC:
         logger = logging.getLogger()
         try:
             if wait_until_finished:
-                before_last_check = datetime.now()
-                while not self.is_session_finished(session):
-                    after_last_check = datetime.now()
-                    sleep_interval = max(timedelta(), retry_interval - (after_last_check - before_last_check))
-                    logger.debug('Sleeping for %s before the next check of session status', sleep_interval)
-                    time.sleep(sleep_interval.total_seconds() + sleep_interval.microseconds / 1_000_000)
-                    before_last_check = datetime.now()
+                self.wait_on_session(session, retry_interval)
                 logger.info('Finished wait for the completion of %s', session)
                 self._execute_bhpc_command(['download', session])
                 return True
@@ -408,27 +421,67 @@ class BHPC:
             else:
                 raise e
 
-    def remove(self, session: str, kill: bool = True):
+    async def download_async(self, **kwargs) -> bool:
+        """Download the results of a session. Note that the results are placed in the path of the original sub file.
+        Takes the same arguments as download"""
+        return self.download(**kwargs)
+
+    def wait_on_session(self, session: str, retry_interval: timedelta = timedelta(seconds=60)):
+        """Runs until the session has finished. Primarily intended to ensure the correct BHPC state
+        :param session: The session to wait on
+        :param retry_interval: How long between checks of the session status.
+        Calculated from start of check to start of check"""
+        logger = logging.getLogger()
+        before_last_check = datetime.now()
+        while not self.is_session_finished(session):
+            after_last_check = datetime.now()
+            sleep_interval = max(timedelta(), retry_interval - (after_last_check - before_last_check))
+            logger.debug('Sleeping for %s before the next check of session status', sleep_interval)
+            time.sleep(sleep_interval.total_seconds() + sleep_interval.microseconds / 1_000_000)
+            before_last_check = datetime.now()
+
+    async def wait_on_session_async(self, session: str, retry_interval: timedelta = timedelta(seconds=60)):
+        """Runs until the session has finished. Primarily intended to host callbacks and be awaited
+        :param session: The session to wait on
+        :param retry_interval: How long between checks of the session status.
+        Calculated from start of check to start of check"""
+        return self.wait_on_session(session, retry_interval)
+
+    def remove(self, session: str, kill: bool = True) -> bool:
         """Remove a session
         :param session: The name of the session
         :param kill: Whether to kill the running machines. Should be specified as True if the session is still running
+        :return: Whether a running session was killed
         """
         # TODO add option to let remove check if session is still running
         logger = logging.getLogger()
         logger.info('Running remove command for session %s', session)
         self._execute_bhpc_command(["remove", session], 'yes' if kill else 'no')
+        return kill
+
+    async def remove_async(self, **kwargs) -> bool:
+        """Removes a session. Takes the same arguments as remove"""
+        return self.remove(**kwargs)
 
     def list(self) -> BHPCState:
         """List the status of the BHPC"""
         stdout, _ = self._execute_bhpc_command(['list'])
         return BHPCState.from_bhpc_message(stdout)
 
-    def is_session_finished(self, session: str):
+    async def list_async(self) -> BHPCState:
+        """List the status of the BHPC"""
+        return self.list()
+
+    def is_session_finished(self, session: str) -> bool:
         """Check if a session is finished"""
         for status in self.get_session_status(session).submit_files:
             if not status.is_finished():
                 return False
         return True
+
+    async def is_session_finished_async(self, session: str):
+        """Check if a session is finished"""
+        return self.is_session_finished(session)
 
     def get_session_status(self, session) -> SessionDescription:
         """Show the status of a single session"""
@@ -438,7 +491,15 @@ class BHPC:
         logger.debug({"action": "Fetched description of session %s" % session, "data": session_description})
         return session_description
 
+    async def get_session_status_async(self, session) -> SessionDescription:
+        """Show the status of a single session"""
+        return self.get_session_status(session)
+
     def show(self, session) -> SessionDescription:
+        """Show the status of a single session. Alias for get_session_status"""
+        return self.get_session_status(session)
+
+    async def show_async(self, session: str) -> SessionDescription:
         """Show the status of a single session. Alias for get_session_status"""
         return self.get_session_status(session)
 
