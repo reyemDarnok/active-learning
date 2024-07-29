@@ -1,0 +1,113 @@
+{
+  "gap": {
+    "type": "relative",
+    "arguments": {
+      "modelCrop": "WC",
+      "number_of_applications": 2,
+      "interval": 14,
+      "rate": 250,
+      "bbch": 31,
+      "apply_every_n_years": 1
+    }
+  },
+  "compound": {
+    "metabolites": [
+      {
+        "formation_fraction": 0.2,
+        "metabolite": {
+          "metabolites": [],
+          "molarMass": 300,
+          "water_solubility": {
+            "type": "log_normal",
+            "parameters": {
+              "mu": -4.605170185988092,
+              "sigma": 1
+            }
+          },
+          "vapor_pressure": {
+            "type": "log_normal",
+            "parameters": {
+              "mu": -11.51292546497023,
+              "sigma": 1.5
+            }
+          },
+          "reference_temperature": 20,
+          "koc": {
+            "type": "random",
+            "parameters": {
+              "lower_bound": 10,
+              "upper_bound": 5000,
+              "log_random": true
+            }
+          },
+          "freundlich": {
+            "type": "random",
+            "parameters": {
+              "lower_bound": 0.7,
+              "upper_bound": 1.2
+            }
+          },
+          "plant_uptake": 0.5,
+          "dt50": {
+            "system": 6,
+            "soil": {
+              "type": "random",
+              "parameters": {
+                "lower_bound": 1,
+                "upper_bound": 300,
+                "log_random": true
+              }
+            },
+            "surfaceWater": 6,
+            "sediment": 6
+          }
+        }
+      }
+    ],
+    "molarMass": 300,
+    "water_solubility": {
+      "type": "log_normal",
+      "parameters": {
+        "mu": -4.6051701859880952,
+        "sigma": 1
+      }
+    },
+    "vapor_pressure": {
+      "type": "log_normal",
+      "parameters": {
+        "mu": -11.51292546497023,
+        "sigma": 1.5
+      }
+    },
+    "reference_temperature": 20,
+    "koc": {
+      "type": "random",
+      "parameters": {
+        "lower_bound": 10,
+        "upper_bound": 5000,
+        "log_random": true
+      }
+    },
+    "freundlich": {
+      "type": "random",
+      "parameters": {
+        "lower_bound": 0.7,
+        "upper_bound": 1.2
+      }
+    },
+    "plant_uptake": 0,
+    "dt50": {
+      "system": 6,
+      "soil": {
+        "type": "random",
+        "parameters": {
+          "lower_bound": 1,
+          "upper_bound": 300,
+          "log_random": true
+        }
+      },
+      "surfaceWater": 6,
+      "sediment": 6
+    }
+  }
+}
