@@ -63,6 +63,9 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
                            input_directories=tuple(x for x in (compound_files, gap_files, combination_dir) if x))
 
 
+async def run_local_async(**kwargs):
+    run_local(**kwargs)
+
 def parse_args() -> Namespace:
     """Parse command line arguments"""
     parser = ArgumentParser()
