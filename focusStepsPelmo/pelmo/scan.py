@@ -99,6 +99,7 @@ async def run_samples(args, combination_dir, compound_dir, crops, gap_dir, logge
 
 
 async def create_input_samples(args, combination_dir, compound_dir, gap_dir, sample_creation_tasks, test_set_location):
+    file_span_params = {}
     with args.input_file.open() as input_file:
         if args.input_format == 'json':
             input_dict = json.load(input_file)
@@ -239,7 +240,7 @@ def make_single_sample(definition: Definition, test_set: Set[Tuple[float, ...]],
                 json.dump(combination, fp, cls=EnhancedJSONEncoder)
             break
 
-def write_single_sample_async(definition: Definition, test_set: Set[Tuple[float, ...]], output_dir: Path,
+async def write_single_sample_async(definition: Definition, test_set: Set[Tuple[float, ...]], output_dir: Path,
                        test_set_buffer: float):
     """Create a single sample
     :param definition: The definition for the sample to create
