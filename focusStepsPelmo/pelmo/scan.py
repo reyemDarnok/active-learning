@@ -49,7 +49,6 @@ async def main():
 
     await run_samples(args, combination_dir, compound_dir, crops, gap_dir, logger, scenarios, test_set_location)
 
-
 async def run_samples(args, combination_dir, compound_dir, crops, gap_dir, logger, scenarios, test_set_location):
     crops = correct_type(crops, FrozenSet[FOCUSCrop])
     scenarios = correct_type(scenarios, FrozenSet[Scenario])

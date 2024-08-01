@@ -1,7 +1,0 @@
-{# Setup variables -#}
-{% set plant_uptake = ('%.7f' % plant_uptake).rstrip('0').rstrip('.') -%}
-{# Write block -#}
-{{'<PLANT UPTAKE>\n' -}}
-    {{' '}}{{ plant_uptake -}}
-    {{'      <plant uptake factor\n' -}}
-{{'<END PLANT UPTAKE>\n'}}

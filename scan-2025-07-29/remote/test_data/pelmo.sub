@@ -1,7 +1,0 @@
-Universe            = Vanilla
-Executable          = pythonwrapper.bat
-
-Arguments = psm0.d focusStepsPelmo.pelmo.runner -p psm0.d -w psm0.d-work -c WC -s H --logfile psm0.d-log.json -o psm0.d-output.json
-transfer_input_files = common.zip,psm0.d.zip,requirements.txt
-transfer_output_files = psm0.d-output.json,psm0.d-log.json
-Queue
