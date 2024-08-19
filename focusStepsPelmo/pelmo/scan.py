@@ -461,7 +461,8 @@ def parse_args() -> Namespace:
     test_set.add_argument('--make-test-set', action="store_true", default=False,
                           help="Generate a test set of a given size")
     test_set.add_argument('--test-set-location', type=Path, default=None,
-                          help="Where to find the test set. Defaults to colocating with the generated samples in work dir")
+                          help="Where to find the test set. "
+                               "Defaults to colocating with the generated samples in work dir")
 
     run_subparsers = parser.add_subparsers(dest="run",
                                            help="Where to run Pelmo. The script will only generate files "
