@@ -25,10 +25,14 @@ def main():
 
 def parse_args() -> Namespace:
     parser = ArgumentParser()
-    parser.add_argument('-o', '--output', default=Path('out.json'), type=Path, help="Where to write the summary results")
-    parser.add_argument('-s', '--source', required=True, type=Path, help="The parent directory of the output files to summarize")
-    parser.add_argument('-i', '--input-location', required=True, nargs='+', type=Path, help="The locations of the input files")
-    parser.add_argument('-g', '--glob_pattern', default="*output.json", type=str, help="The glob pattern the output files conform to")
+    parser.add_argument('-o', '--output', default=Path('out.json'), type=Path,
+                        help="Where to write the summary results")
+    parser.add_argument('-s', '--source', required=True, type=Path,
+                        help="The parent directory of the output files to summarize")
+    parser.add_argument('-i', '--input-location', required=True, nargs='+', type=Path,
+                        help="The locations of the input files")
+    parser.add_argument('-g', '--glob_pattern', default="*output.json", type=str,
+                        help="The glob pattern the output files conform to")
     args = parser.parse_args()
     args.input_location = tuple(args.input_location)
     return args
@@ -182,6 +186,7 @@ def get_hash_obj_relation(directory: Path, candidate_classes: Tuple[Type, ...]) 
             hashes[hash(obj)] = obj
 
     return hashes
+
 
 if __name__ == '__main__':
     main()

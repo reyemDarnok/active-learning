@@ -186,18 +186,82 @@ def load_test_set(location: Path) -> Generator[Dict, None, None]:
 
 
 def create_samples(definition: Definition) -> Generator[Combination, None, None]:
-    # noinspection PyPep8
     """Create Combinations according to a definition
         :param definition: Defines the space of possibilities for the Combination
         :return: A Generator that will infinitely generate more Combinations according to the definition
-        >>> test_definition = {"gap":{"modelCrop":{"type":"choices","parameters":{"options":["MZ","AP"]}},"application":{"number_of_applications":{"type":"steps","parameters":{"start":1,"stop":4,"step":1,"scale_factor":1}},"interval":14,"rate":{"type":"random","parameters":{"lower_bound":1,"upper_bound":10000}},"timing":{"bbch_state":{"type":"choices","parameters":{"options":[-1,10,40,80,90]}}}}},"compound":{"metabolites":{"type":"copies","parameters":{"minimum":0,"maximum":4,"value":{"formation_fraction":0.2,"metabolite":{"metabolites":None,"molarMass":300,"volatility":{"water_solubility":90.0,"vapor_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"dt50":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}}},"molarMass":300,"volatility":{"water_solubility":90.0,"vapor_pressure":1e-4,"reference_temperature":20},"sorption":{"koc":{"type":"random","parameters":{"lower_bound":10,"upper_bound":5000,"log_random":True}},"freundlich":{"type":"random","parameters":{"lower_bound":0.7,"upper_bound":1.2}}},"plant_uptake":0.5,"dt50":{"system":6,"soil":{"type":"random","parameters":{"lower_bound":1,"upper_bound":300,"log_random":True}},"surfaceWater":6,"sediment":6}}}
+        >>> test_definition = {
+        ...   "gap": {
+        ...     "type": "relative",
+        ...     "arguments": {
+        ...       "modelCrop": "WC",
+        ...       "number_of_applications": 2,
+        ...       "interval": 14,
+        ...       "rate": 250,
+        ...       "bbch": 31,
+        ...       "apply_every_n_years": 1
+        ...     }
+        ...   },
+        ...   "compound": {
+        ...     "metabolites": [],
+        ...     "molarMass": 300,
+        ...     "water_solubility": {
+        ...       "type": "log_normal",
+        ...       "parameters": {
+        ...         "mu": -2,
+        ...         "sigma": 1
+        ...       }
+        ...     },
+        ...     "vapor_pressure": {
+        ...       "type": "log_normal",
+        ...       "parameters": {
+        ...         "mu": -5,
+        ...         "sigma": 1.5
+        ...       }
+        ...     },
+        ...     "reference_temperature": 20,
+        ...     "koc": {
+        ...       "type": "random",
+        ...       "parameters": {
+        ...         "lower_bound": 10,
+        ...         "upper_bound": 5000,
+        ...         "log_random": True
+        ...       }
+        ...     },
+        ...     "freundlich": {
+        ...       "type": "random",
+        ...       "parameters": {
+        ...         "lower_bound": 0.7,
+        ...         "upper_bound": 1.2
+        ...       }
+        ...     },
+        ...     "plant_uptake": 0,
+        ...     "dt50": {
+        ...       "system": 6,
+        ...       "soil": {
+        ...         "type": "random",
+        ...         "parameters": {
+        ...           "lower_bound": 1,
+        ...           "upper_bound": 600
+        ...         }
+        ...       },
+        ...       "surfaceWater": 6,
+        ...       "sediment": 6
+        ...     }
+        ...   }
+        ... }
         >>> import random
         >>> random.seed(42)
         >>> sample_generator = create_samples(Definition.parse(test_definition))
-        >>> next(sample_generator)
-        Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(focus_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=7415.7634470985695, timing=GAP(bbch_state=10), number_of_applications=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vapor_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=296.4339328696138, freundlich=0.9952462562245198), dt50=DT50(system=6.0, soil=1.1987525689363516, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=(MetaboliteDescription(formation_fraction=0.2, metabolite=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vapor_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=23.80173872410029, freundlich=0.7512475880857536), dt50=DT50(system=6.0, soil=68.3476855994171, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=None)),)))
-        >>> next(sample_generator)
-        Combination(gap=GAP(modelCrop=<FOCUSCrop.MZ: FOCUSCropMixin(focus_name='Maize', defined_scenarios=(<Scenario.C: 'Châteaudun'>, <Scenario.H: 'Hamburg'>, <Scenario.K: 'Kremsmünster'>, <Scenario.N: 'Okehampton'>, <Scenario.P: 'Piacenza'>, <Scenario.O: 'Porto'>, <Scenario.S: 'Sevilla'>, <Scenario.T: 'Thiva'>), interception={<PrincipalStage.Senescence: 9>: 90, <PrincipalStage.Flowering: 6>: 75, <PrincipalStage.Tillering: 2>: 50, <PrincipalStage.Leaf: 1>: 25, <PrincipalStage.Germination: 0>: 0})>, application=Application(rate=2327.376273014005, timing=GAP(bbch_state=90), number_of_applications=1, interval=14, factor=1.0)), compound=Compound(molarMass=300.0, volatility=Volatility(water_solubility=90.0, vapor_pressure=0.0001, reference_temperature=20.0), sorption=Sorption(koc=327.1776208099365, freundlich=1.0580098064612016), dt50=DT50(system=6.0, soil=54.60934890188404, surfaceWater=6.0, sediment=6.0), plant_uptake=0.5, name='Unknown Name', model_specific_data={}, metabolites=()))
+        >>> s = next(sample_generator)
+        >>> hash(s)
+        -3072208025649140057
+        >>> s.compound.freundlich
+        1.0383497437114557
+        >>> s = next(sample_generator)
+        >>> hash(s)
+        -5474933455740321591
+        >>> s.compound.freundlich
+        1.0249422188897617
     """
     while True:
         d = definition.make_sample()
