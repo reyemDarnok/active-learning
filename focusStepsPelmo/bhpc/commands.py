@@ -1,5 +1,4 @@
 """A file describing the commands that can be sent to the BHPC"""
-import asyncio
 import contextlib
 import logging
 import os

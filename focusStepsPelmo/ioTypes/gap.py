@@ -86,7 +86,7 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
                         defined_scenarios=frozenset({Scenario.J}),
                         interception=HashableRSDict(
                             {_s.Maturity: 80, _s.DevelopmentFruit: 65, _s.Flowering: 65, _s.Germination: 50})
-                        , bbch_application_name=["Missing"])  # TODO)
+                        , bbch_application_name=["Missing"])  # TODO name for bbch lookup
     BF = FOCUSCropMixin(focus_name="Beans (field)",
                         defined_scenarios=frozenset({Scenario.H, Scenario.K, Scenario.N}),
                         interception=HashableRSDict(
@@ -124,7 +124,7 @@ class FOCUSCrop(FOCUSCropMixin, Enum):
                                                      Scenario.P, Scenario.O, Scenario.S, Scenario.T}),
                         interception=HashableRSDict(
                             {_s.Germination: 0, _s.Leaf: 40, _s.Tillering: 60, _s.Flowering: 70, _s.Senescence: 90})
-                        , bbch_application_name=["Missing"])  # TODO)
+                        , bbch_application_name=["Missing"])  # TODO name for bbch lookup
     LS = FOCUSCropMixin(focus_name="Linseed",
                         defined_scenarios=frozenset({Scenario.N}),
                         interception=HashableRSDict(
