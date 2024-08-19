@@ -16,6 +16,7 @@ from focusStepsPelmo.util.datastructures import correct_type
 
 
 def main():
+    """Main entry point for summarize script when run standalone"""
     args = parse_args()
     logger = logging.getLogger()
     logger.debug(args)
@@ -24,6 +25,7 @@ def main():
 
 
 def parse_args() -> Namespace:
+    """Parse the args for this script when run directly"""
     parser = ArgumentParser()
     parser.add_argument('-o', '--output', default=Path('out.json'), type=Path,
                         help="Where to write the summary results")

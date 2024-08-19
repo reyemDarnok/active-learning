@@ -58,7 +58,7 @@ class ApplicationType(int, Enum):
 
 @dataclass(frozen=True)
 class PsmApplication(TypeCorrecting):
-    type: ApplicationType = ApplicationType.manual
+    type: ApplicationType = ApplicationType.soil
     """Which application type was selected"""
     lower_depth: float = 0
     """The lower depth of incorporation in cm (only relevant for soil application)"""
