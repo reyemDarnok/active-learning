@@ -54,7 +54,8 @@
               "type": "random",
               "parameters": {
                 "lower_bound": 1,
-                "upper_bound": 458
+                "upper_bound": 458,
+                "log_random": true
               }
             },
             "surfaceWater": 6,
