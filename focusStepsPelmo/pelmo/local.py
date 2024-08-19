@@ -65,9 +65,9 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
 
 
 async def run_local_async(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None,
-              combination_dir: Path = None,
-              crops: FrozenSet[FOCUSCrop] = FOCUSCrop, scenarios: FrozenSet[Scenario] = Scenario,
-              threads: int = cpu_count() - 1):
+                          combination_dir: Path = None,
+                          crops: FrozenSet[FOCUSCrop] = FOCUSCrop, scenarios: FrozenSet[Scenario] = Scenario,
+                          threads: int = cpu_count() - 1):
     """Run Pelmo locally
     :param work_dir: The directory to use for Pelmos file structure
     :param output_file: The file for the summary of results

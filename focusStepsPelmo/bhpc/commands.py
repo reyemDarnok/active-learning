@@ -348,7 +348,8 @@ class BHPC:
         # TODO Error handling no submit files found
 
     async def upload_async(self, **kwargs):
-        """Upload a session to the BHPC. DOES NOT START THE ACTUAL CALCULATION, THAT'S run. Takes the same arguments as upload"""
+        """Upload a session to the BHPC. DOES NOT START THE ACTUAL CALCULATION, THAT'S run.
+        Takes the same arguments as upload"""
         self.upload(**kwargs)
 
     def run(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,

@@ -35,8 +35,8 @@ async def main():
     gap_dir = args.work_dir / 'gaps'
     combination_dir = args.work_dir / 'combination'
     test_set_location = args.test_set_location if args.test_set_location else args.work_dir / 'test_data'
-    crops = set(args.crop)
-    scenarios = set(args.scenario)
+    crops = frozenset(args.crop)
+    scenarios = frozenset(args.scenario)
     sample_creation_tasks = []
     file_span_params = await create_input_samples(args, combination_dir, compound_dir, gap_dir, sample_creation_tasks,
                                                   test_set_location)
@@ -47,9 +47,21 @@ async def main():
     if not scenarios:
         scenarios = file_span_params.pop('scenario', frozenset(Scenario))
 
-    await run_samples(args, combination_dir, compound_dir, crops, gap_dir, logger, scenarios, test_set_location)
+    await run_samples(combination_dir, compound_dir, gap_dir, crops, scenarios, test_set_location, args)
 
-async def run_samples(args, combination_dir, compound_dir, crops, gap_dir, logger, scenarios, test_set_location):
+
+async def run_samples(combination_dir: Path, compound_dir: Path, gap_dir: Path, crops: FrozenSet[FOCUSCrop],
+                      scenarios: FrozenSet[Scenario], test_set_location: Path,
+                      args):
+    """Run a selection of samples.
+    :param combination_dir: Where to find Combination
+    :param compound_dir: Where to find Compound. Will be run as a cross product with the gaps
+    :param gap_dir: Where to find GAPs. Will be run as a cross product with the Compounds
+    :param crops: Which crops to run
+    :param scenarios: Which scenarios to run
+    :param test_set_location: Where the test_set is
+    :param args: Misc. Args"""
+    logger = logging.getLogger()
     crops = correct_type(crops, FrozenSet[FOCUSCrop])
     scenarios = correct_type(scenarios, FrozenSet[Scenario])
     execution_tasks = []
@@ -98,6 +110,7 @@ async def run_samples(args, combination_dir, compound_dir, crops, gap_dir, logge
 
 
 async def create_input_samples(args, combination_dir, compound_dir, gap_dir, sample_creation_tasks, test_set_location):
+    """Create samples from the definition"""
     file_span_params = {}
     with args.input_file.open() as input_file:
         if args.input_format == 'json':
@@ -222,6 +235,7 @@ async def create_samples_in_dirs_async(definition: Dict, output_dir: Path, sampl
         write_single_sample_async(definition, test_set, output_dir, test_set_buffer) for _ in range(sample_size)
     ))
 
+
 def make_single_sample(definition: Definition, test_set: Set[Tuple[float, ...]], output_dir: Path,
                        test_set_buffer: float):
     """Create a single sample
@@ -239,8 +253,9 @@ def make_single_sample(definition: Definition, test_set: Set[Tuple[float, ...]],
                 json.dump(combination, fp, cls=EnhancedJSONEncoder)
             break
 
+
 async def write_single_sample_async(definition: Definition, test_set: Set[Tuple[float, ...]], output_dir: Path,
-                       test_set_buffer: float):
+                                    test_set_buffer: float):
     """Create a single sample
     :param definition: The definition for the sample to create
     :param test_set: The test_set to avoid. May be empty
@@ -248,6 +263,7 @@ async def write_single_sample_async(definition: Definition, test_set: Set[Tuple[
     :param test_set_buffer: How far to stay away from the test_set. Uses Euclidean distance between the sample features
     and the test features, the individual features being mapped to the tuple [-1;1]"""
     make_single_sample(definition, test_set, output_dir, test_set_buffer)
+
 
 def load_test_set(location: Path) -> Generator[Dict, None, None]:
     """Loads Combinations from the given Path
@@ -372,8 +388,21 @@ def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Pa
         with (compound_dir / f"compound-{hash(compound)}.json").open('w') as fp:
             json.dump(compound, fp, cls=EnhancedJSONEncoder)
 
+
 async def span_to_dir_async(**kwargs):
+    """Creates compound and gap jsons for a parameter matrix
+    :param template_gap: The gap to use as a template for parameters that are not in the matrix
+    :param template_compound: The compound to use as a template for parameters that are not in the matrix
+    :param compound_dir: The directory to write the resulting compound files to
+    :param gap_dir: The directory to write the resulting gap files to. Defaults to compound_dir if not set
+    :param bbch: The BBCH values in the matrix
+    :param rate: The application rate values in the matrix
+    :param dt50: The DT50 values in the matrix
+    :param koc: The koc values in the matrix
+    :param freundlich: The freundlich values in the matrix
+    :param plant_uptake: The plant uptake values in the matrix"""
     span_to_dir(**kwargs)
+
 
 def span(template_gap: GAP, template_compound: Compound,
          bbch: Iterable[int] = None, rate: Iterable[float] = None,

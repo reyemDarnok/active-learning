@@ -49,8 +49,17 @@ def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Tuple
     :param glob_pattern: The pattern to find the output files to combine"""
     write_results_to_file(rebuild_scattered_output(parent, input_directories, glob_pattern), file)
 
-async def rebuild_scattered_to_file_async(**kwargs):
-    rebuild_scattered_to_file(**kwargs)
+
+async def rebuild_scattered_to_file_async(file: Path, parent: Path, input_directories: Tuple[Path, ...],
+                                          glob_pattern: str = "*output.json"):
+    """Rebuild output in multiple locations to one location
+    :param file: The final output file
+    :param parent: The parent directory of the output files
+    :param input_directories: Where to find the input data to connect to the output files
+    :param glob_pattern: The pattern to find the output files to combine"""
+    rebuild_scattered_to_file(file, parent, input_directories, glob_pattern)
+
+
 def rebuild_output_to_file(file: Path,
                            results: Union[Path, Iterable[PelmoResult]], input_directories: Tuple[Path, ...]):
     """Rebuild output in one location to one location

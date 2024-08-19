@@ -150,8 +150,12 @@ async def generate_psm_files_async(compounds: Iterable[Compound] = None, gaps: I
                     ))
     return [await x for x in psm_tasks]
 
-async def _generate_psm_tuple_async(compound: Compound, gap: GAP, comment: str, scenarios: FrozenSet[Scenario]) -> Tuple[str, FOCUSCrop, FrozenSet[Scenario]]:
+
+async def _generate_psm_tuple_async(
+        compound: Compound, gap: GAP, comment: str, scenarios: FrozenSet[Scenario]
+) -> Tuple[str, FOCUSCrop, FrozenSet[Scenario]]:
     return _generate_psm_contents(compound, gap, comment), gap.modelCrop, scenarios
+
 
 def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
     """For a given compound and gap file, generate the matching psm files 
