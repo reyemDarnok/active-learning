@@ -199,13 +199,14 @@ class PECResult:
         key_dict.pop('pec')
         converted_gap = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
         gap_dict = converted_gap.asdict()
-        gap_dict['application_dates'] = list(range(3))
-        gap_dict['converted_rates'] = list(range(3))
+        gap_dict['application_dates'] = [0] * self.gap.number_of_applications
+        gap_dict['converted_rates'] = [0] * self.gap.number_of_applications
+        gap_dict['total_application_rate'] = 0
         key_dict['gap'] = gap_dict
         return list(flatten_to_keys(key_dict)) + [f"{i}.compound_pec" for i in range(number_of_compounds)] + [
             f"{i}.compound_name" for i in range(number_of_compounds)]
 
-    def to_list(self) -> List[Union[str, float, int]]:
+    def to_list(self, pessimistic_interception: bool) -> List[Union[str, float, int]]:
         """Turn this object into a list of values, keeping the same ordering as get_csv_headers"""
         key_dict = self.asdict()
         key_dict.pop('pec')
@@ -214,13 +215,15 @@ class PECResult:
         app_dates = []
         app_rates = []
         app_data = self.gap.application_data(self.scenario)
-        for i in range(min(3, self.gap.number_of_applications)):
+        for i in range(self.gap.number_of_applications):
             app = next(app_data)
             app_dates.append(app[0])
             app_rates.append(self.gap.rate * (100 - app[1]) / 100)
-        app_dates += [app_dates[-1]] * (3 - len(app_dates))
-        app_rates += [0] * (3 - len(app_rates))
         gap_dict['application_dates'] = app_dates
         gap_dict['converted_rates'] = app_rates
+        if pessimistic_interception:
+            gap_dict['total_application_rate'] = app_rates[0] * len(app_rates)
+        else:
+            gap_dict['total_application_rate'] = sum(app_rates)
         key_dict['gap'] = gap_dict
         return list(flatten(key_dict)) + [pec for pec in self.pec.values()] + [name for name in self.pec.keys()]

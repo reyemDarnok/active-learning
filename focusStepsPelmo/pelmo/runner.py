@@ -55,13 +55,13 @@ def main():
     scenarios: FrozenSet[Scenario] = frozenset(args.scenario)
     run_data = [(file, crop, scenarios) for file in files for crop in crops]
     write_psm_results(output_file=args.output, run_data=run_data, working_dir=args.working_dir,
-                      max_workers=args.threads)
+                      max_workers=args.threads, pessimistic_interception=args.pessimistic_interception)
 
 
 def write_psm_results(output_file: Path,
-                      run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]],
+                      run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]], pessimistic_interception: bool,
                       input_directories: Optional[Tuple[Path]] = None, working_dir: Path = Path.cwd() / 'pelmo',
-                      max_workers: int = cpu_count() - 1):
+                      max_workers: int = cpu_count() - 1, ):
     """Run Pelmo and write the results to output_file
     :param output_file: Where to write the result to
     :param run_data: What to run. A List of (psm file, crop, scenarios) tuples
@@ -72,7 +72,7 @@ def write_psm_results(output_file: Path,
     results = run_psms(run_data=run_data, working_dir=working_dir,
                        max_workers=max_workers)
     if input_directories:
-        rebuild_output_to_file(file=output_file, results=results, input_directories=input_directories)
+        rebuild_output_to_file(file=output_file, results=results, input_directories=input_directories, pessimistic_interception=pessimistic_interception)
     else:
         with output_file.open('w') as output:
             if output_file.suffix == '.json':
@@ -293,6 +293,8 @@ def parse_args() -> Namespace:
                         help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
     parser.add_argument('-o', '--output', type=Path, default=Path('output.json'),
                         help="Where to write the results to. Defaults to output.json")
+    parser.add_argument('--pessimistic-interception', action='store_true',
+                        help='Use only the interception value of the first application')
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()

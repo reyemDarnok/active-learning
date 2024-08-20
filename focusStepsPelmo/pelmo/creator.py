@@ -39,7 +39,7 @@ def main():
     elif args.combination_file:
         combinations = [args.combinations]
     write_psm_files(output_dir=args.output_dir, compounds=compounds, gaps=gaps,
-                    combinations=combinations)
+                    combinations=combinations, pessimistic_interception=args.pessimistic_interception)
 
 
 def write_psm_files(output_dir: Path, pessimistic_interception: bool,
@@ -191,6 +191,8 @@ def parse_args() -> Namespace:
                         help='The directory for output files. '
                              'The files will be named {COMPOUND_FILE}-{GAP_FILE}-{MATURATION}-{DAY}.psm. '
                              'Defaults to a folder named output')
+    parser.add_argument('--pessimistic-interception', action='store_true',
+                        help='Use only the interception value of the first application')
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()

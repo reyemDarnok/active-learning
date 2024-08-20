@@ -62,7 +62,7 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
 
     logger.info('Dumping results of Pelmo runs to %s', output_file)
     rebuild_output_to_file(file=output_file, results=results,
-                           input_directories=tuple(x for x in (compound_files, gap_files, combination_dir) if x))
+                           input_directories=tuple(x for x in (compound_files, gap_files, combination_dir) if x), pessimistic_interception=pessimistic_interception)
 
 
 async def run_local_async(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None,
@@ -96,7 +96,7 @@ async def run_local_async(work_dir: Path, output_file: Path, compound_files: Pat
 
     logger.info('Dumping results of Pelmo runs to %s', output_file)
     rebuild_output_to_file(file=output_file, results=results,
-                           input_directories=tuple(x for x in (compound_files, gap_files, combination_dir) if x))
+                           input_directories=tuple(x for x in (compound_files, gap_files, combination_dir) if x), pessimistic_interception=pessimistic_interception)
 
 
 def parse_args() -> Namespace:

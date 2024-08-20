@@ -59,7 +59,7 @@ async def main():
     await run_bhpc_async(compound_file=args.compound_file, gap_file=args.gap_file, submit=args.submit,
                          output=args.output,
                          crops=args.crop, scenarios=args.scenario,
-                         notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
+                         notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run, pessimistic_interception=args.pessimistic_interception)
 
 
 def run_bhpc(submit: Path, output: Path,  pessimistic_interception: bool, compound_file: Path = None, gap_file: Path = None,
@@ -107,7 +107,7 @@ def run_bhpc(submit: Path, output: Path,  pessimistic_interception: bool, compou
         bhpc.download(session)
         rebuild_scattered_to_file(file=output, parent=submit,
                                   input_directories=tuple(x for x in (gap_file, compound_file, combination_dir) if x),
-                                  glob_pattern="psm*.d-output.json")
+                                  glob_pattern="psm*.d-output.json", pessimistic_interception=pessimistic_interception)
         bhpc.remove(session)
 
 
@@ -319,6 +319,8 @@ def parse_args() -> Namespace:
                         help="The email address which will be notified if the bhpc run finishes")
     parser.add_argument('--session-timeout', type=int, default=6,
                         help="How long should the bhpc run at most")
+    parser.add_argument('--pessimistic-interception', action='store_true',
+                        help='Use only the interception value of the first application')
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()

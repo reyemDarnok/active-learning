@@ -21,7 +21,7 @@ def main():
     logger = logging.getLogger()
     logger.debug(args)
     rebuild_scattered_to_file(file=args.output, parent=args.source, input_directories=args.input_location,
-                              glob_pattern=args.glob_pattern)
+                              glob_pattern=args.glob_pattern, pessimistic_interception=args.pessimistic_interception)
 
 
 def parse_args() -> Namespace:
@@ -35,19 +35,21 @@ def parse_args() -> Namespace:
                         help="The locations of the input files")
     parser.add_argument('-g', '--glob_pattern', default="*output.json", type=str,
                         help="The glob pattern the output files conform to")
+    parser.add_argument('--pessimistic-interception', action='store_true',
+                        help='Use only the interception value of the first application')
     args = parser.parse_args()
     args.input_location = tuple(args.input_location)
     return args
 
 
-def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Tuple[Path, ...],
-                              glob_pattern: str = "*output.json"):
+def rebuild_scattered_to_file(file: Path, parent: Path, input_directories: Tuple[Path, ...], pessimistic_interception: bool,
+                              glob_pattern: str = "*output.json" ):
     """Rebuild output in multiple locations to one location
     :param file: The final output file
     :param parent: The parent directory of the output files
     :param input_directories: Where to find the input data to connect to the output files
     :param glob_pattern: The pattern to find the output files to combine"""
-    write_results_to_file(rebuild_scattered_output(parent, input_directories, glob_pattern), file)
+    write_results_to_file(rebuild_scattered_output(parent, input_directories, glob_pattern), file, pessimistic_interception)
 
 
 async def rebuild_scattered_to_file_async(file: Path, parent: Path, input_directories: Tuple[Path, ...],
@@ -61,15 +63,16 @@ async def rebuild_scattered_to_file_async(file: Path, parent: Path, input_direct
 
 
 def rebuild_output_to_file(file: Path,
-                           results: Union[Path, Iterable[PelmoResult]], input_directories: Tuple[Path, ...]):
+                           results: Union[Path, Iterable[PelmoResult]], input_directories: Tuple[Path, ...],
+                           pessimistic_interception: bool):
     """Rebuild output in one location to one location
         :param file: The final output file
         :param input_directories: Where to find the input data to connect to the output files
         :param results: The file with the pelmo results or a list of the results"""
-    write_results_to_file(rebuild_output(results, input_directories), file)
+    write_results_to_file(rebuild_output(results, input_directories), file, pessimistic_interception)
 
 
-def write_results_to_file(results: Iterable[PECResult], file: Path):
+def write_results_to_file(results: Iterable[PECResult], file: Path, pessimistic_interception: bool):
     """Write the results to the output file in the output format indicated by the filename suffix of file"""
     output_format = file.suffix[1:]
     file.parent.mkdir(exist_ok=True, parents=True)
@@ -83,8 +86,8 @@ def write_results_to_file(results: Iterable[PECResult], file: Path):
             results_iter = iter(results)
             first_result: PECResult = next(results_iter)
             writer.writerow(first_result.get_csv_headers())
-            writer.writerow(first_result.to_list())
-            writer.writerows(r.to_list() for r in results_iter)
+            writer.writerow(first_result.to_list(pessimistic_interception))
+            writer.writerows(r.to_list(pessimistic_interception) for r in results_iter)
     else:
         raise ValueError("Could not infer format, please specify explicitly")
 
