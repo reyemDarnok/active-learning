@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/../../../../FOCUS_PELMO.664/tinytest.psm" charset="windows-1252" />
     <file url="file://$PROJECT_DIR$/examples/earlyexp-test.psm" charset="windows-1252" />
+    <file url="file://$PROJECT_DIR$/test/scan_tiny/local/samples/FOCUS/ThreadPoolExecutor-1_0/FOCUS/-6998006358837626481.run/Winter_-_cereals.run/Hamburg_-_(H).run/-6998006358837626481.psm" charset="windows-1252" />
+    <file url="file://$PROJECT_DIR$/test/scan_tiny/local/samples/FOCUS/ThreadPoolExecutor-1_0/FOCUS/3273199879873176574.run/Winter_-_cereals.run/Hamburg_-_(H).run/3273199879873176574.psm" charset="windows-1252" />
     <file url="file://$PROJECT_DIR$/test/test_psm/206395992185421351.psm" charset="windows-1252" />
     <file url="file://$PROJECT_DIR$/test/test_psm/366804678492201612.psm" charset="windows-1252" />
   </component>
