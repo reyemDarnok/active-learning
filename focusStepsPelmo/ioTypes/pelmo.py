@@ -199,7 +199,8 @@ class PECResult:
         key_dict.pop('pec')
         converted_gap = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
         gap_dict = converted_gap.asdict()
-        gap_dict['interception'] = 0
+        gap_dict['application_dates'] = list(range(3))
+        gap_dict['converted_rates'] = list(range(3))
         key_dict['gap'] = gap_dict
         return list(flatten_to_keys(key_dict)) + [f"{i}.compound_pec" for i in range(number_of_compounds)] + [
             f"{i}.compound_name" for i in range(number_of_compounds)]
@@ -210,9 +211,16 @@ class PECResult:
         key_dict.pop('pec')
         converted_gap = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
         gap_dict = converted_gap.asdict()
-        if isinstance(self.gap, GAPMachineGAP):
-            gap_dict['interception'] = self.gap.interceptions[0]
-        else:
-            gap_dict['interception'] = next(self.gap.application_data(self.scenario))[1]
+        app_dates = []
+        app_rates = []
+        app_data = self.gap.application_data(self.scenario)
+        for i in range(min(3, self.gap.number_of_applications)):
+            app = next(app_data)
+            app_dates.append(app[0])
+            app_rates.append(self.gap.rate * (100 - app[1]) / 100)
+        app_dates += [app_dates[-1]] * (3 - len(app_dates))
+        app_rates += [0] * (3 - len(app_rates))
+        gap_dict['application_dates'] = app_dates
+        gap_dict['converted_rates'] = app_rates
         key_dict['gap'] = gap_dict
         return list(flatten(key_dict)) + [pec for pec in self.pec.values()] + [name for name in self.pec.keys()]
