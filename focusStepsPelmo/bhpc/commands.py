@@ -432,11 +432,13 @@ class BHPC:
         :param retry_interval: How long between checks of the session status.
         Calculated from start of check to start of check"""
         logger = logging.getLogger()
-        before_last_check = datetime.now()
+        first_check = datetime.now()
+        before_last_check = first_check
         while not self.is_session_finished(session):
             after_last_check = datetime.now()
             sleep_interval = max(timedelta(), retry_interval - (after_last_check - before_last_check))
-            logger.debug('Sleeping for %s before the next check of session status', sleep_interval)
+            logger.debug('Sleeping for %s before the next check of session status. Total wait time is %s',
+                         sleep_interval, datetime.now(), first_check)
             time.sleep(sleep_interval.total_seconds() + sleep_interval.microseconds / 1_000_000)
             before_last_check = datetime.now()
 
