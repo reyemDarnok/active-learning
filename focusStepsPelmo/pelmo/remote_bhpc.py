@@ -62,7 +62,7 @@ async def main():
                          notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run)
 
 
-def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None,
+def run_bhpc(submit: Path, output: Path,  pessimistic_interception: bool, compound_file: Path = None, gap_file: Path = None,
              combination_dir: Path = None,
              crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop), scenarios: FrozenSet[Scenario] = frozenset(Scenario),
              notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True, bhpc: BHPC = BHPC()):
@@ -85,7 +85,7 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
     psm_file_data = generate_psm_files(compounds=Compound.from_path(compound_file) if compound_file else None,
                                        gaps=GAP.from_path(gap_file) if gap_file else None,
                                        combinations=Combination.from_path(combination_dir) if combination_dir else None,
-                                       crops=crops, scenarios=scenarios)
+                                       crops=crops, scenarios=scenarios, pessimistic_interception=pessimistic_interception)
 
     with suppress(FileNotFoundError):
         rmtree(submit)
@@ -111,7 +111,7 @@ def run_bhpc(submit: Path, output: Path, compound_file: Path = None, gap_file: P
         bhpc.remove(session)
 
 
-async def run_bhpc_async(submit: Path, output: Path, compound_file: Path = None, gap_file: Path = None,
+async def run_bhpc_async(submit: Path, output: Path, pessimistic_interception: bool, compound_file: Path = None, gap_file: Path = None,
                          combination_dir: Path = None,
                          crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
                          scenarios: FrozenSet[Scenario] = frozenset(Scenario),
@@ -136,7 +136,7 @@ async def run_bhpc_async(submit: Path, output: Path, compound_file: Path = None,
     psm_file_data = generate_psm_files(compounds=Compound.from_path(compound_file) if compound_file else None,
                                        gaps=GAP.from_path(gap_file) if gap_file else None,
                                        combinations=Combination.from_path(combination_dir) if combination_dir else None,
-                                       crops=crops, scenarios=scenarios)
+                                       crops=crops, scenarios=scenarios, pessimistic_interception=pessimistic_interception)
 
     with suppress(FileNotFoundError):
         rmtree(submit)

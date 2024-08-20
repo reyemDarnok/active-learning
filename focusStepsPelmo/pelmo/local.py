@@ -27,13 +27,14 @@ async def main():
     logger.debug(args)
     await run_local_async(work_dir=args.work_dir, compound_files=args.compound_file, gap_files=args.gap_file,
                           output_file=args.output_file, combination_dir=args.combined,
-                          crops=frozenset(args.crop), scenarios=frozenset(args.scenario), threads=args.threads)
+                          crops=frozenset(args.crop), scenarios=frozenset(args.scenario), threads=args.threads,
+                          pessimistic_interception=args.pessimistic_interception)
 
 
 def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None,
               combination_dir: Path = None,
               crops: FrozenSet[FOCUSCrop] = FOCUSCrop, scenarios: FrozenSet[Scenario] = Scenario,
-              threads: int = cpu_count() - 1):
+              threads: int = cpu_count() - 1, pessimistic_interception: bool = False):
     """Run Pelmo locally
     :param work_dir: The directory to use for Pelmos file structure
     :param output_file: The file for the summary of results
@@ -54,7 +55,7 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
     gaps = GAP.from_path(gap_files) if gap_files else None
     combinations = Combination.from_path(combination_dir) if combination_dir else None
     psm_files = generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations, crops=crops,
-                                   scenarios=scenarios)
+                                   scenarios=scenarios, pessimistic_interception=pessimistic_interception)
     logger.info('Starting to run Pelmo')
     results = run_psms(run_data=psm_files, working_dir=focus_dir,
                        max_workers=threads)
@@ -67,7 +68,7 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
 async def run_local_async(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None,
                           combination_dir: Path = None,
                           crops: FrozenSet[FOCUSCrop] = FOCUSCrop, scenarios: FrozenSet[Scenario] = Scenario,
-                          threads: int = cpu_count() - 1):
+                          threads: int = cpu_count() - 1, pessimistic_interception: bool = False):
     """Run Pelmo locally
     :param work_dir: The directory to use for Pelmos file structure
     :param output_file: The file for the summary of results
@@ -88,7 +89,7 @@ async def run_local_async(work_dir: Path, output_file: Path, compound_files: Pat
     gaps = GAP.from_path(gap_files) if gap_files else None
     combinations = Combination.from_path(combination_dir) if combination_dir else None
     psm_files = await generate_psm_files_async(compounds=compounds, gaps=gaps, combinations=combinations, crops=crops,
-                                               scenarios=scenarios)
+                                               scenarios=scenarios, pessimistic_interception=pessimistic_interception)
     logger.info('Starting to run Pelmo')
     results = run_psms(run_data=psm_files, working_dir=focus_dir,
                        max_workers=threads)
@@ -126,6 +127,8 @@ def parse_args() -> Namespace:
                         default=list(Scenario),
                         help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. "
                              "A scenario will be calculated if it is defined both here and for the crop")
+    parser.add_argument('--pessimistic-interception', action='store_true',
+                        help='Use only the interception value of the first application')
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()

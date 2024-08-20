@@ -42,7 +42,7 @@ def main():
                     combinations=combinations)
 
 
-def write_psm_files(output_dir: Path,
+def write_psm_files(output_dir: Path, pessimistic_interception: bool,
                     compounds: Iterable[Union[Path, Compound]] = None,
                     gaps: Iterable[Union[Path, Compound]] = None,
                     combinations: Iterable[Union[Path, Compound]] = None) -> int:
@@ -62,7 +62,7 @@ def write_psm_files(output_dir: Path,
         combinations = load_or_use(combinations, Combination)
     total = 0
     output_dir.mkdir(exist_ok=True, parents=True)
-    for psm_file in generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations):
+    for psm_file in generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations, pessimistic_interception=pessimistic_interception):
         total += 1
         (output_dir / f"{hash(psm_file)}.psm").write_text(psm_file[0], encoding="windows-1252")
     return total
@@ -86,8 +86,8 @@ def load_or_use(it: Iterable[Union[Path, T]], t: Type[T]) -> Generator[T, None, 
 def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
                        crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
                        scenarios: FrozenSet[Scenario] = frozenset(Scenario),
-                       combinations: Iterable[Combination] = None
-                       ) -> Generator[Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
+                       combinations: Iterable[Combination] = None,
+                       pessimistic_interception: bool = False) -> Generator[Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
     """Create the contents of psm files
     :param compounds: The compounds to combine with gaps to make psm files
     :param gaps: The gaps to combine with compounds to make psm files
@@ -103,7 +103,7 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
             psm_file_scenarios = scenarios.intersection(combination.gap.defined_scenarios)
             comment = json.dumps({"combination": hash(combination)})
             yield _generate_psm_contents(compound=combination.compound, gap=combination.gap,
-                                         comment=comment), combination.gap.modelCrop, psm_file_scenarios
+                                         comment=comment, pessimistic_interception=pessimistic_interception), combination.gap.modelCrop, psm_file_scenarios
     if compounds and gaps:
         compounds = list(compounds)
         for gap in gaps:
@@ -111,13 +111,14 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
                 for compound in compounds:
                     psm_file_scenarios = scenarios.intersection(gap.defined_scenarios)
                     comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
-                    yield _generate_psm_contents(compound, gap, comment), gap.modelCrop, psm_file_scenarios
+                    yield _generate_psm_contents(compound, gap, comment, pessimistic_interception=pessimistic_interception), gap.modelCrop, psm_file_scenarios
 
 
 async def generate_psm_files_async(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
                                    crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
                                    scenarios: FrozenSet[Scenario] = frozenset(Scenario),
-                                   combinations: Iterable[Combination] = None
+                                   combinations: Iterable[Combination] = None,
+                                   pessimistic_interception: bool = False
                                    ) -> List[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]]:
     """Create the contents of psm files
     :param compounds: The compounds to combine with gaps to make psm files
@@ -136,7 +137,8 @@ async def generate_psm_files_async(compounds: Iterable[Compound] = None, gaps: I
             comment = json.dumps({"combination": hash(combination)})
             psm_tasks.append(asyncio.create_task(
                 _generate_psm_tuple_async(compound=combination.compound, gap=combination.gap,
-                                          comment=comment, scenarios=psm_file_scenarios)
+                                          comment=comment, scenarios=psm_file_scenarios,
+                                          pessimistic_interception=pessimistic_interception)
             ))
     if compounds and gaps:
         compounds = list(compounds)
@@ -146,18 +148,20 @@ async def generate_psm_files_async(compounds: Iterable[Compound] = None, gaps: I
                     psm_file_scenarios = scenarios.intersection(gap.defined_scenarios)
                     comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
                     psm_tasks.append(asyncio.create_task(
-                        _generate_psm_tuple_async(compound, gap, comment, psm_file_scenarios)
+                        _generate_psm_tuple_async(compound, gap, comment, psm_file_scenarios,
+                                                  pessimistic_interception)
                     ))
     return [await x for x in psm_tasks]
 
 
 async def _generate_psm_tuple_async(
-        compound: Compound, gap: GAP, comment: str, scenarios: FrozenSet[Scenario]
+        compound: Compound, gap: GAP, comment: str, scenarios: FrozenSet[Scenario],
+        pessimistic_interception: bool = False
 ) -> Tuple[str, FOCUSCrop, FrozenSet[Scenario]]:
-    return _generate_psm_contents(compound, gap, comment), gap.modelCrop, scenarios
+    return _generate_psm_contents(compound, gap, comment, pessimistic_interception), gap.modelCrop, scenarios
 
 
-def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
+def _generate_psm_contents(compound: Compound, gap: GAP, comment: str, pessimistic_interception: bool = False) -> str:
     """For a given compound and gap file, generate the matching psm files 
     :param gap: The gap file to use when generating psm file
     :param compound: The compound file to use when generating psm file
@@ -166,7 +170,7 @@ def _generate_psm_contents(compound: Compound, gap: GAP, comment: str) -> str:
 
     psm_file = PsmFile.from_input(compound=compound, gap=gap)
     psm_file = replace(psm_file, comment=comment)
-    return psm_file.render()
+    return psm_file.render(pessimistic_interception)
 
 
 def parse_args() -> Namespace:

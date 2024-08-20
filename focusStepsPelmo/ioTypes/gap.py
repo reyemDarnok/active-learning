@@ -13,7 +13,7 @@ from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, F
 import pandas
 
 from focusStepsPelmo.util.conversions import excel_date_to_datetime, uncomment
-from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting, correct_type
+from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting, correct_type, HashableDict
 
 bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BBCHGW.csv',
                                                      header=0,

@@ -381,8 +381,9 @@ class PsmFile(TypeCorrecting):
                             )
         return compound, self.gap
 
-    def render(self) -> str:
+    def render(self, pessimistic_interception=False) -> str:
         """Render this psm file as a string"""
         template_data = self.asdict()
+        template_data['pessimistic_interception'] = pessimistic_interception
         rendered = psm_template.render(template_data)
         return rendered

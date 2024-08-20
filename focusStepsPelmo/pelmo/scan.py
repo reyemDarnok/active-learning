@@ -75,7 +75,7 @@ async def run_samples(combination_dir: Path, compound_dir: Path, gap_dir: Path, 
                                output=args.output_dir / f"test_data.{args.output_format}", crops=crops,
                                scenarios=scenarios,
                                notification_email=args.notification_email, session_timeout=args.session_timeout,
-                               bhpc=bhpc)
+                               bhpc=bhpc, pessimistic_interception=args.pessimistic_interception)
             ))
         logger.info("Starting to run sample set on BHPC")
         execution_tasks.append(asyncio.create_task(
@@ -83,7 +83,7 @@ async def run_samples(combination_dir: Path, compound_dir: Path, gap_dir: Path, 
                            submit=args.work_dir / 'remote' / "samples",
                            output=args.output_dir / f"samples.{args.output_format}",
                            crops=crops, scenarios=scenarios, notification_email=args.notification_email,
-                           session_timeout=args.session_timeout, bhpc=bhpc)
+                           session_timeout=args.session_timeout, bhpc=bhpc, pessimistic_interception=args.pessimistic_interception)
         ))
     elif args.run == 'local':
         logger.info("Starting local calculation")
@@ -94,7 +94,7 @@ async def run_samples(combination_dir: Path, compound_dir: Path, gap_dir: Path, 
                                 combination_dir=test_set_location,
                                 output_file=args.output_dir / f"test_data.{args.output_format}", crops=crops,
                                 scenarios=scenarios,
-                                threads=args.threads)
+                                threads=args.threads, pessimistic_interception=args.pessimistic_interception)
             ))
         logger.info("Starting to run sample set locally")
         execution_tasks.append(asyncio.create_task(
@@ -103,7 +103,7 @@ async def run_samples(combination_dir: Path, compound_dir: Path, gap_dir: Path, 
                             combination_dir=combination_dir,
                             output_file=args.output_dir / f"samples.{args.output_format}", crops=crops,
                             scenarios=scenarios,
-                            threads=args.threads)
+                            threads=args.threads, pessimistic_interception=args.pessimistic_interception)
         ))
     for task in execution_tasks:
         await task
@@ -561,6 +561,8 @@ def parse_args() -> Namespace:
                         help="How far a point has to be from the test set to be allowed in the sample")
     parser.add_argument('--no-run-test-set', action="store_false", default=True, dest="run_test_set",
                         help="Don't run the test set")
+    parser.add_argument('--pessimistic-interception', action='store_true',
+                        help='Use only the interception value of the first application')
     test_set_group = parser.add_argument_group('Test Set')
     test_set = test_set_group.add_mutually_exclusive_group()
     test_set.add_argument('--make-test-set', action="store_true", default=False,

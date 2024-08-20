@@ -1,5 +1,6 @@
 {# Setup variables -#}
 {% set name_scenario = name_scenario | default(True) -%}
+{% set interception = -1 -%}
 {# Write section -#}
 {% for scenario in current_gap.defined_scenarios -%}
     {# Header -#}
@@ -12,6 +13,9 @@
     {{'<number of application location>\n' -}}
     {# List of applications -#}
     {% for application_event in current_gap.application_data(scenario) -%}
+        {% if not pessimistic_interception or interception == -1 -%}
+            {% set interception = application_event[1] -%}
+        {% endif -%}
         {% include "psm-fragments/application.j2" -%}
     {% endfor -%}
 {% endfor -%}
