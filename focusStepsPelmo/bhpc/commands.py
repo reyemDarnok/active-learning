@@ -438,7 +438,7 @@ class BHPC:
             after_last_check = datetime.now()
             sleep_interval = max(timedelta(), retry_interval - (after_last_check - before_last_check))
             logger.debug('Sleeping for %s before the next check of session status. Total wait time is %s',
-                         sleep_interval, datetime.now(), first_check)
+                         sleep_interval, datetime.now() - first_check)
             time.sleep(sleep_interval.total_seconds() + sleep_interval.microseconds / 1_000_000)
             before_last_check = datetime.now()
 
