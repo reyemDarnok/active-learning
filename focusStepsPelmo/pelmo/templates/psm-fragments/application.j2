@@ -2,7 +2,7 @@
 {% if application.type.value == 4 -%}
     {%- set app_rate = current_gap.rate_in_kg -%}
 {%- else -%}
-    {%- set app_rate = current_gap.rate_in_kg * (100 - interception) / 100 -%}
+    {%- set app_rate = current_gap.rate_in_kg * (100 - ns.interception) / 100 -%}
 {%- endif -%}
 {%- set app_rate = ('%.7f' % app_rate).rstrip('0').rstrip('.') -%}
 {%- set lower_depth = ('%.7f' % application.lower_depth).rstrip('0').rstrip('.') -%}
@@ -17,7 +17,7 @@
 {{'   '}}{{ app_rate -}}
 {{'    '}}{{ upper_depth -}}
 {{'    '}}{{ lower_depth -}}
-{{'    '}}{{ "%d" % interception  -}}
+{{'    '}}{{ "%d" % ns.interception  -}}
 {{'    '}}{{ ffield -}}
 {{'    '}}{{frpex -}}
 {{'    '}}{{time -}}
