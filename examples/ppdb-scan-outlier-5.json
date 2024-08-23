@@ -17,20 +17,8 @@
         "metabolite": {
           "metabolites": [],
           "molarMass": 300,
-          "water_solubility": {
-            "type": "log_normal",
-            "parameters": {
-              "mu": 1.8,
-              "sigma": 1
-            }
-          },
-          "vapor_pressure": {
-            "type": "log_normal",
-            "parameters": {
-              "mu": -4.5,
-              "sigma": 1.5
-            }
-          },
+          "water_solubility": 80,
+          "vapor_pressure": 0.0001,
           "reference_temperature": 20,
           "koc": {
             "type": "random",
