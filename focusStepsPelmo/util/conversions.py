@@ -5,6 +5,7 @@ from dataclasses import asdict, is_dataclass
 from datetime import datetime, timedelta
 from enum import Enum
 from json import JSONEncoder
+from math import floor, log10
 from pathlib import Path
 from typing import Any, Generator, Iterable, List, TypeVar, Union, Dict, Tuple
 
@@ -146,3 +147,9 @@ def uncomment(file: Path, comment_char: str = '#') -> Generator[str, None, None]
         for line in raw:
             if line.rstrip() and line.lstrip()[0] not in comment_char:
                 yield line
+
+def round_property(to_change, name: str, ndigits: int = 1):
+    object.__setattr__(to_change, name, round(to_change.__getattribute__(name), ndigits))
+
+def round_property_sig(to_change, name, sig_digits: int = 1):
+    object.__setattr__(to_change, name, round(to_change.__getattribute__(name), sig_digits - int(floor(log10(abs(to_change.__getattribute__(name))))) - 1))

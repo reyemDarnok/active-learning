@@ -3,11 +3,13 @@
 import json
 from collections import UserList
 from dataclasses import dataclass, field
+from math import floor, log10
 from pathlib import Path
 from typing import Generator, List, Optional, Tuple, Dict
 
 import pandas
 
+from focusStepsPelmo.util.conversions import round_property, round_property_sig
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
@@ -23,6 +25,12 @@ class DT50(TypeCorrecting):
     sediment: float
     """DT50 in sediment in days"""
 
+    def __post_init__(self):
+        super().__post_init__()
+        round_property(self, 'system', 2)
+        round_property(self, 'soil', 2)
+        round_property(self, 'surfaceWater', 2)
+        round_property(self, 'sediment', 2)
 
 @dataclass(frozen=True)
 class MetaboliteDescription(TypeCorrecting):
@@ -31,6 +39,11 @@ class MetaboliteDescription(TypeCorrecting):
     """How much of all dt50 forms this metabolite. Needs to be between 0 and 1. Unitless"""
     metabolite: 'Compound'
     """The Compound that forms"""
+
+    def __post_init__(self):
+        super().__post_init__()
+        round_property(self, 'formation_fraction', 4)
+
 
 
 @dataclass(frozen=True)
@@ -64,6 +77,12 @@ class Compound(TypeCorrecting):
         # To ensure a stable, unique name for a compound that has no name given
         if self.name == '':
             object.__setattr__(self, 'name', f"Compound {hash(self)}")
+        round_property(self, 'freundlich', 5)
+        round_property(self, 'koc', 2)
+        round_property(self, 'plant_uptake', 4)
+        round_property_sig(self, 'vapor_pressure', 2)
+        round_property(self, 'water_solubility', 4)
+
 
     def metabolite_description_by_name(self, name: str) -> Optional[MetaboliteDescription]:
         """Given a name, find the MetaboliteDescription for the Metabolite with that name
