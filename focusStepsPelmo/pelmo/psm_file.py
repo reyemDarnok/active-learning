@@ -192,7 +192,7 @@ class PsmCompound:
     """molar mass in g/mol"""
     adsorption: PsmAdsorption
     degradations: List[DegradationData]
-    volatilizations: Tuple[Volatilization, Volatilization]  # TODO rename volatilization
+    volatilizations: Tuple[Volatilization, Volatilization]
     plant_uptake: float = 0.5
     degradation_type: DegradationType = DegradationType.FACTORS
     name: str = "Unknown name"
@@ -221,7 +221,8 @@ class PsmCompound:
         degradations += [DegradationData(rate=full_rate * remaining_degradation_fraction, target="BR/CO2")]
         volatizations = expand_volatilization_regulatory(Volatilization(solubility=compound.water_solubility,
                                                                         vapor_pressure=compound.vapor_pressure,
-                                                                        temperature=compound.reference_temperature))
+                                                                        temperature=compound.reference_temperature,
+                                                                        henry=compound.henry))
 
         position = compound.model_specific_data.get('pelmo', {}).get('position')
         return PsmCompound(molar_mass=compound.molarMass,

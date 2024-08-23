@@ -51,10 +51,6 @@ class Compound(TypeCorrecting):
     """A Compound definition"""
     molarMass: float
     """molar mass in g/mol"""
-    water_solubility: float
-    """The water solubility in mg/L"""
-    vapor_pressure: float
-    """The vaporization pressure in Pa"""
     reference_temperature: float
     """The temperature the other values have been measured at in °C"""
     koc: float
@@ -65,6 +61,12 @@ class Compound(TypeCorrecting):
     """DT50 behaviours"""
     plant_uptake: float = 0
     """Fraction of plant uptake. Needs to between 0 and 1. Unitless"""
+    water_solubility: Optional[float] = None
+    """The water solubility in mg/L"""
+    vapor_pressure: Optional[float] = None
+    """The vaporization pressure in Pa"""
+    henry: Optional[float] = None
+    """Henry constant in J / mol"""
     name: Optional[str] = field(hash=False, default='')  # str hash is not stable
     """The compounds name. Used only for labelling purposes"""
     model_specific_data: Dict = field(compare=False, hash=False, default_factory=dict)
@@ -80,8 +82,21 @@ class Compound(TypeCorrecting):
         round_property(self, 'freundlich', 5)
         round_property(self, 'koc', 2)
         round_property(self, 'plant_uptake', 4)
-        round_property_sig(self, 'vapor_pressure', 2)
-        round_property(self, 'water_solubility', 4)
+        if self.vapor_pressure is not None and self.water_solubility is not None and self.henry is None:
+            object.__setattr__(self, 'henry', self.vapor_pressure * self.molarMass / self.water_solubility)
+        elif self.henry is not None:
+            if self.vapor_pressure is not None and self.water_solubility is None:
+                object.__setattr__(self, 'water_solubility', self.vapor_pressure * self.molarMass / self.henry)
+            elif self.water_solubility is not None and self.vapor_pressure is None:
+                object.__setattr__(self, 'vapor_pressure', self.henry * self.water_solubility / self.molarMass)
+        else:
+            raise ValueError('Either the Henry Constant or both of Vapor Pressure and Water Solubility are required')
+        if self.vapor_pressure is not None:
+            round_property_sig(self, 'vapor_pressure', 2)
+        if self.water_solubility is not None:
+            round_property(self, 'water_solubility', 4)
+        if self.henry is not None:
+            round_property_sig(self, 'henry', 3)
 
 
     def metabolite_description_by_name(self, name: str) -> Optional[MetaboliteDescription]:
