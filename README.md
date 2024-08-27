@@ -41,6 +41,8 @@ and if you are using Powershell you can simply copy-paste the credentials into t
 If you do not do so or the provided Credentials are invalid or expire during execution,
 the script will request them on the command line. There you can then copy-paste the credentials,
 even if you are not using Powershell, and the script will use these during its further execution.
+The same credential request mechanism will also trigger if the provided credentials expire so that new, valid, 
+credentials can be provided.
 
 # Components
 
@@ -71,7 +73,7 @@ uses its own bundled executable, regardless of whether is installed or not.
 
 This script runs the defined runs on the BHPC. This primarily makes sense for larger runs as a single PELMO run requires
 about 30 CPU seconds and a bhpc instance requires about 10 minutes to start and is billed for at least an hour. For
-larger runs however the BHPC can start several 96 core machines, which will greatly reduce the calculation time over
+larger runs however, the BHPC can start several 96 core machines, which will greatly reduce the calculation time over
 smaller instances and, as long as the time remains above one our, reduce the cost as larger ec2 instances have less
 proportional overhead while maintaining the same cost per core.
 
@@ -171,8 +173,12 @@ Several of the inputs are json files. These follow the following, nested schema:
 ```json
 {
     "molarMass": float,
-    "volatility": Volatility,
-    "sorption": Sorption,
+    "water_solubility": float, 
+    "vaporization_pressure": Optional[float],
+    "reference_temperature": Optional[float],
+    "henry": Optional[float],
+    "koc": float,
+    "freundlich": float
     "degradation": Degradation,
     "plant_uptake": float,
     "name": Optional[str],
@@ -180,25 +186,7 @@ Several of the inputs are json files. These follow the following, nested schema:
     "model_specific_data": Dict
 }
 ```
-
-### Volatility
-
-```json
-{
-  "water_solubility": float,
-  "vaporization_pressure": float,
-  "reference_temperature": float
-}
-```
-
-### Sorption
-
-```json
-{
-  "koc": float,
-  "freundlich": float
-}
-```
+Either henry or both of vaporization_pressure and water_solubility have to be specified
 
 ### Degradation
 
