@@ -3,7 +3,7 @@ This Repository aims to automate interacting with FOCUS PELMO
 # Execution
 
 Here follow some example executions of the scripts in the repository. These are all executed from the project root.
-Most of the command line arguments used here also have short forms and/or useful defaults, a normal invocation of the
+Most of the command line arguments used here also have   short forms and/or useful defaults, a normal invocation of the
 command may be significantly shorter.
 
 ```commandline
