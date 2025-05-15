@@ -57,7 +57,7 @@ class SessionDescription(TypeCorrecting):
         :return: An object describing the session described by the bhpc_message"""
         lines = bhpc_message.splitlines()
         lines = lines[3:]  # remove headings
-        submit_files = []
+        submit_files: List[SubmitFileStatus] = []
         for line in lines:
             if line.startswith('-'):
                 break
@@ -72,7 +72,7 @@ class SessionDescription(TypeCorrecting):
 
 
 @contextlib.contextmanager
-def pushd(new_dir):
+def pushd(new_dir: Path):
     """Emulates the behavior of pushd/popd.
     During the context the current working directory will be new_dir,
     and after closing the working directory will be restored to its old value.
@@ -128,15 +128,14 @@ class SessionSummary(TypeCorrecting):
     """If the session is running or has finished, how many jobs are in finished state"""
 
     def __post_init__(self):
-        if self.initialized in ('N/A', '-'):
+        # still in init, type hints are not yet correct
+        if self.initialized in ('N/A', '-'): # type: ignore
             self.initialized = None
-        if self.started in ('N/A', '-'):
+        if self.started in ('N/A', '-'): # type: ignore
             self.started = None
-        if self.finished in ('N/A', '-'):
+        if self.finished in ('N/A', '-'): # type: ignore
             self.finished = None
-        if self.elapsed_time and type(self.elapsed_time) == str:
-            # still in init, type hints are not yet correct
-            # noinspection PyUnresolvedReferences
+        if self.elapsed_time and type(self.elapsed_time) == str: # type: ignore
             parts = self.elapsed_time.split(':')
             self.elapsed_time = timedelta(hours=int(parts[0]), minutes=int(parts[1]), seconds=int(parts[2]))
 
@@ -159,7 +158,7 @@ class BHPCState(TypeCorrecting):
     def from_bhpc_message(cls, bhpc_message: str) -> 'BHPCState':
         """Parse a bhpc message from a string into a BHPCState object"""
         section = BHPCListSections.PREAMBLE
-        sessions = []
+        sessions: List[SessionSummary] = []
         for line in bhpc_message.splitlines():
             if section == BHPCListSections.PREAMBLE:
                 if line.startswith('|'):
@@ -169,7 +168,8 @@ class BHPCState(TypeCorrecting):
             elif section == BHPCListSections.TABLE_ENTRIES:
                 if line.startswith('|'):
                     parts = [x.strip() for x in line.split('|')]
-                    sessions.append(SessionSummary(*parts[1:-1]))
+                    sessions.append(SessionSummary(*parts[1:-1])) # type: ignore
+                    # SessionSummary post_init will fix types
                 else:
                     section = BHPCListSections.ACTIVE_SESSION_COUNT
             elif section == BHPCListSections.ACTIVE_SESSION_COUNT:
@@ -182,7 +182,9 @@ class BHPC:
     """A connector to the BHPC. Manages credentials but relies on the bhpc exe being installed"""
 
     def __init__(self, request_auth_data_when_missing: bool = True, request_auth_data_when_invalid: bool = True,
-                 bhpc_exe: Path = Path('C:\\_AWS', 'actualVersion', 'bhpc.exe'), auth_data: Dict = os.environ):
+                 bhpc_exe: Path = Path('C:\\_AWS', 'actualVersion', 'bhpc.exe'), auth_data: Dict[str, 
+                                                                                                 str] = os.environ # type: ignore Environ can be used as dict
+                                                                                                 ): 
         self.ca_bundle: Path = Path('ca-certificates.crt')
         self.default_region: str = "eu-central-1"
         self.no_proxy: str = ".bayer.biz"
@@ -201,7 +203,7 @@ class BHPC:
         and any other lines"""
         logger = logging.getLogger()
         lines = copy_paste.splitlines()
-        variables = {}
+        variables: Dict[str,str] = {}
         for line in lines:
             logger.debug({"status": "listing lines", "line": line})
             if line.startswith("$Env:"):
@@ -253,10 +255,11 @@ class BHPC:
         """Validates if this object has the credentials necessary to connect to the BHCP
         :param check_online: If this is False, only check if all necessary values are set. If this is True,
         also attempt to actually connect to the BHPC with a status command, which may take several seconds"""
-        if self.key_id is None or self.key is None \
-                or self.session_token is None \
-                or self.proxy is None or self.no_proxy is None \
-                or self.default_region is None or self.ca_bundle is None:
+        if (self.key_id is None or self.key is None 
+                or self.session_token is None 
+                or self.proxy is None or self.no_proxy is None # type: ignore validating type input
+                or self.default_region is None or self.ca_bundle is None # type: ignore validating type input
+                ):
             return False
         if check_online:
             try:
@@ -292,10 +295,10 @@ class BHPC:
             else:
                 return False
 
-    def start_session(self, submit_folder: Path, submit_file_regex=r'.+\.sub',
-                      session_name_prefix: str = "Unknown session", session_name_suffix: str = None,
+    def start_session(self, submit_folder: Path, submit_file_regex: str =r'.+\.sub',
+                      session_name_prefix: str = "Unknown session", session_name_suffix: Optional[str] = None,
                       machines: int = 1, cores: int = 2, multithreading: bool = False,
-                      notification_email: str = None, session_timeout: int = 6) -> str:
+                      notification_email: Optional[str] = None, session_timeout: int = 6) -> str:
         """Starts a session, that is `upload`s and `run`s a new session
         :param submit_folder: Where to find the submit files that make up the session. This directory will be searched
         recursively
@@ -323,13 +326,13 @@ class BHPC:
         logger.debug('Session %s is now running on the BHPC', session)
         return session
 
-    async def start_session_async(self, **kwargs) -> str:
+    async def start_session_async(self, **kwargs: Dict[str, Any]) -> str:
         """Starts a session, that is `upload`s and `run`s a new session
         Takes the same arguments as :start_session
         :return: The name of the session that was started"""
         return self.start_session(**kwargs)
 
-    def upload(self, submit_folder: Path, session: str, submit_file_regex=r'.+\.sub'):
+    def upload(self, submit_folder: Path, session: str, submit_file_regex: str =r'.+\.sub'):
         """Upload a session to the BHPC. DOES NOT START THE ACTUAL CALCULATION, THAT'S run
         :param submit_folder: Where to find the submit files that make up the session. This directory will be searched
         recursively
@@ -347,13 +350,13 @@ class BHPC:
         # TODO Error handling session already exists
         # TODO Error handling no submit files found
 
-    async def upload_async(self, **kwargs):
+    async def upload_async(self, **kwargs: Dict[str, Any]):
         """Upload a session to the BHPC. DOES NOT START THE ACTUAL CALCULATION, THAT'S run.
         Takes the same arguments as upload"""
         self.upload(**kwargs)
 
     def run(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
-            notification_email: str = None, session_timeout: int = 6):
+            notification_email: Optional[str] = None, session_timeout: int = 6):
         """Starts a session
         :param session: The name of the session to start
         :param machines: How many machines to use to run the jobs. Prefer increasing cores first,
@@ -384,7 +387,7 @@ class BHPC:
                                  f"Initialize that session with the upload command first")
 
     async def run_async(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
-                        notification_email: str = None, session_timeout: int = 6) -> Coroutine[Any, Any, None]:
+                        notification_email: Optional[str] = None, session_timeout: int = 6) -> Coroutine[Any, Any, None]:
         """Starts a session. Takes the same arguments as run.
         :return: A coroutine that awaits the end of the session if run. Whether this coroutine runs has no influence on
         the behaviour of the running session on the bhpc"""
@@ -407,7 +410,9 @@ class BHPC:
                 logger.info('Finished wait for the completion of %s', session)
                 self._execute_bhpc_command(['download', session])
                 return True
-                # TODO report missing files if not waiting
+            else:
+                self._execute_bhpc_command(['download', session])
+                return not self.is_session_finished(session)
         except KeyboardInterrupt as e:
             if wait_until_finished:
                 logger.warning("Download wait interrupted by interactive user")
@@ -421,7 +426,7 @@ class BHPC:
             else:
                 raise e
 
-    async def download_async(self, **kwargs) -> bool:
+    async def download_async(self, **kwargs: Dict[str, Any]) -> bool:
         """Download the results of a session. Note that the results are placed in the path of the original sub file.
         Takes the same arguments as download"""
         return self.download(**kwargs)
@@ -461,7 +466,7 @@ class BHPC:
         self._execute_bhpc_command(["remove", session], 'yes' if kill else 'no')
         return kill
 
-    async def remove_async(self, **kwargs) -> bool:
+    async def remove_async(self, **kwargs: Dict[str, Any]) -> bool:
         """Removes a session. Takes the same arguments as remove"""
         return self.remove(**kwargs)
 
@@ -485,7 +490,7 @@ class BHPC:
         """Check if a session is finished"""
         return self.is_session_finished(session)
 
-    def get_session_status(self, session) -> SessionDescription:
+    def get_session_status(self, session: str) -> SessionDescription:
         """Show the status of a single session"""
         stdout, _ = self._execute_bhpc_command(["show", session])
         session_description = SessionDescription.from_bhpc_message(stdout)
@@ -493,11 +498,11 @@ class BHPC:
         logger.debug({"action": "Fetched description of session %s" % session, "data": session_description})
         return session_description
 
-    async def get_session_status_async(self, session) -> SessionDescription:
+    async def get_session_status_async(self, session: str) -> SessionDescription:
         """Show the status of a single session"""
         return self.get_session_status(session)
 
-    def show(self, session) -> SessionDescription:
+    def show(self, session: str) -> SessionDescription:
         """Show the status of a single session. Alias for get_session_status"""
         return self.get_session_status(session)
 
