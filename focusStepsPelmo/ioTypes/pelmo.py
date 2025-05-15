@@ -1,17 +1,18 @@
 """A file for Pelmo specific datatypes"""
+from datetime import datetime
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Union
 
 from focusStepsPelmo.ioTypes.compound import Compound
-from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, AbsoluteConstantGAP, GAPMachineGAP
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, AbsoluteConstantGAP
 from focusStepsPelmo.util.conversions import flatten_to_keys, flatten
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 
 
 # noinspection SpellCheckingInspection
-def lookup_crop_file_name(crop) -> str:
+def lookup_crop_file_name(crop: FOCUSCrop) -> str:
     """A lookup that translates FOCUSCrops to their names in the Pelmo file structure
     :param crop: The crop to use
     :return: The string that pelmo uses in its filenames to represent the crop"""
@@ -165,7 +166,7 @@ class PelmoResult(TypeCorrecting):
         return hash(tuple([self.scenario, self.crop,
                            tuple(tuple([tuple(ord(c) for c in key), value]) for key, value in self.pec.items())]))
 
-    def _asdict(self):
+    def _asdict(self) -> Dict[str, Union[str, Dict[str, float]]]:
         # noinspection PyProtectedMember
         return {"psm_comment": self.psm_comment,
                 "scenario": self.scenario.name,
@@ -216,8 +217,8 @@ class PECResult:
         key_dict.pop('pec')
         converted_gap = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
         gap_dict = converted_gap.asdict()
-        app_dates = []
-        app_rates = []
+        app_dates: List[datetime] = []
+        app_rates: List[float] = []
         app_data = self.gap.application_data(self.scenario)
         app_interception = -1
         for i in range(self.gap.number_of_applications):
