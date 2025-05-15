@@ -330,7 +330,7 @@ class BHPC:
         """Starts a session, that is `upload`s and `run`s a new session
         Takes the same arguments as :start_session
         :return: The name of the session that was started"""
-        return self.start_session(**kwargs)
+        return self.start_session(**kwargs) # type: ignore
 
     def upload(self, submit_folder: Path, session: str, submit_file_regex: str =r'.+\.sub'):
         """Upload a session to the BHPC. DOES NOT START THE ACTUAL CALCULATION, THAT'S run
@@ -353,7 +353,7 @@ class BHPC:
     async def upload_async(self, **kwargs: Dict[str, Any]):
         """Upload a session to the BHPC. DOES NOT START THE ACTUAL CALCULATION, THAT'S run.
         Takes the same arguments as upload"""
-        self.upload(**kwargs)
+        self.upload(**kwargs) # type: ignore
 
     def run(self, session: str, machines: int = 1, cores: int = 2, multithreading: bool = False,
             notification_email: Optional[str] = None, session_timeout: int = 6):
@@ -429,7 +429,7 @@ class BHPC:
     async def download_async(self, **kwargs: Dict[str, Any]) -> bool:
         """Download the results of a session. Note that the results are placed in the path of the original sub file.
         Takes the same arguments as download"""
-        return self.download(**kwargs)
+        return self.download(**kwargs) # type: ignore
 
     def wait_on_session(self, session: str, retry_interval: timedelta = timedelta(seconds=60)):
         """Runs until the session has finished. Primarily intended to ensure the correct BHPC state
@@ -468,7 +468,7 @@ class BHPC:
 
     async def remove_async(self, **kwargs: Dict[str, Any]) -> bool:
         """Removes a session. Takes the same arguments as remove"""
-        return self.remove(**kwargs)
+        return self.remove(**kwargs) # type: ignore
 
     def list(self) -> BHPCState:
         """List the status of the BHPC"""
