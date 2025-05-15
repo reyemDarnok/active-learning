@@ -8,9 +8,10 @@ from datetime import datetime, timedelta
 from difflib import SequenceMatcher
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet, Optional, Union
+from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, FrozenSet, Optional, Type, Union
 
 import pandas
+from pandera.typing import Series
 
 from focusStepsPelmo.util.conversions import excel_date_to_datetime, uncomment
 from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting, correct_type
@@ -372,7 +373,7 @@ class GAP(ABC, TypeCorrecting):
             raise TypeError("Missing 'type' in to_parse definition")
         if 'arguments' not in to_parse.keys():
             raise TypeError("Missing 'arguments' in to_parse definition")
-        types: Dict[str, type[GAP]] = {
+        types: Dict[str, Type[GAP]] = {
             "relative": RelativeGAP,
             "absolute": AbsoluteConstantGAP,
             "scenario": AbsoluteScenarioGAP,
@@ -734,7 +735,7 @@ class GAPMachineGAP(GAP):
 
 # parameters are used in pandas query, which PyCharm does not notice
 # noinspection PyUnusedLocal
-def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Series[Any]:
+def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> Series[Any]:
     """Given a BBCH, Scenario and crop, find the first valid entry in the application table
     :param bbch: The BBCH for the lookup. Needs to be in the range [0,99]
     :param scenario: The scenario for the lookup. Must be defined for the given crop
@@ -749,7 +750,7 @@ def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Se
 
 # parameters are used in pandas query, which PyCharm does not notice
 # noinspection PyUnusedLocal
-def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pandas.Series[Any]:
+def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> Series[Any]:
     """Given a date, Scenario and crop, find the first valid entry in the application table
     :param date: The date for the lookup. Needs to be in the winter of 2001 or the summer of 2002
     :param scenario: The scenario for the lookup. Must be defined for the given crop

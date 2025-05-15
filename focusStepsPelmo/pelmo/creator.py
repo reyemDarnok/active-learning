@@ -6,7 +6,7 @@ import logging
 from argparse import ArgumentParser, Namespace
 from dataclasses import replace
 from pathlib import Path
-from typing import Generator, Iterable, Type, TypeVar, Union, Tuple, FrozenSet, List
+from typing import Generator, Iterable, Optional, Type, TypeVar, Union, Tuple, FrozenSet, List
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader
 
@@ -38,14 +38,14 @@ def main():
         combinations = args.combination_file.rglob("*.json")
     elif args.combination_file:
         combinations = [args.combinations]
-    write_psm_files(output_dir=args.output_dir, compounds=compounds, gaps=gaps,
-                    combinations=combinations, pessimistic_interception=args.pessimistic_interception)
+    write_psm_files(output_dir=args.output_dir, compounds=compounds, gaps=gaps, # type: ignore
+                    combinations=combinations, pessimistic_interception=args.pessimistic_interception) # type: ignore
 
 
 def write_psm_files(output_dir: Path, pessimistic_interception: bool,
-                    compounds: Iterable[Union[Path, Compound]] = None,
-                    gaps: Iterable[Union[Path, Compound]] = None,
-                    combinations: Iterable[Union[Path, Compound]] = None) -> int:
+                    compounds: Optional[Iterable[Union[Path, Compound]]] = None,
+                    gaps: Optional[Iterable[Union[Path, GAP]]] = None,
+                    combinations: Optional[Iterable[Union[Path, Combination]]] = None) -> int:
     """Writes psm files to the output_dir. psm files are named after the hash of their content, which as string hashes
     are not stable due to security considerations in python that do not matter for this script.
     Set the env var PYTHONHASHSEED for stable hashes.
@@ -62,7 +62,7 @@ def write_psm_files(output_dir: Path, pessimistic_interception: bool,
         combinations = load_or_use(combinations, Combination)
     total = 0
     output_dir.mkdir(exist_ok=True, parents=True)
-    for psm_file in generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations, pessimistic_interception=pessimistic_interception):
+    for psm_file in generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations, pessimistic_interception=pessimistic_interception): # type: ignore
         total += 1
         (output_dir / f"{hash(psm_file)}.psm").write_text(psm_file[0], encoding="windows-1252")
     return total
@@ -80,13 +80,13 @@ def load_or_use(it: Iterable[Union[Path, T]], t: Type[T]) -> Generator[T, None, 
         if isinstance(element, t):
             yield element
         else:
-            yield from t.from_path(element)
+            yield from t.from_path(element) # type: ignore
 
 
-def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
+def generate_psm_files(compounds: Optional[Iterable[Compound]] = None, gaps: Optional[Iterable[GAP]] = None,
                        crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
                        scenarios: FrozenSet[Scenario] = frozenset(Scenario),
-                       combinations: Iterable[Combination] = None,
+                       combinations: Optional[Iterable[Combination]] = None,
                        pessimistic_interception: bool = False) -> Generator[Tuple[str, FOCUSCrop, FrozenSet[Scenario]], None, None]:
     """Create the contents of psm files
     :param compounds: The compounds to combine with gaps to make psm files
@@ -114,10 +114,10 @@ def generate_psm_files(compounds: Iterable[Compound] = None, gaps: Iterable[GAP]
                     yield _generate_psm_contents(compound, gap, comment, pessimistic_interception=pessimistic_interception), gap.modelCrop, psm_file_scenarios
 
 
-async def generate_psm_files_async(compounds: Iterable[Compound] = None, gaps: Iterable[GAP] = None,
+async def generate_psm_files_async(compounds: Optional[Iterable[Compound]] = None, gaps: Optional[Iterable[GAP]] = None,
                                    crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
                                    scenarios: FrozenSet[Scenario] = frozenset(Scenario),
-                                   combinations: Iterable[Combination] = None,
+                                   combinations: Optional[Iterable[Combination]] = None,
                                    pessimistic_interception: bool = False
                                    ) -> List[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]]:
     """Create the contents of psm files
@@ -130,7 +130,7 @@ async def generate_psm_files_async(compounds: Iterable[Compound] = None, gaps: I
     the intersection of the scenarios defined by the gap and the scenarios passed into the function
     :return: The contents of the psm files"""
     assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
-    psm_tasks = []
+    psm_tasks: List[asyncio.Task[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]]] = []
     if combinations:
         for combination in combinations:
             psm_file_scenarios = scenarios.intersection(combination.gap.defined_scenarios)

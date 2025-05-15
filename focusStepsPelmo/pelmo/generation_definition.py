@@ -70,15 +70,15 @@ class Definition(ABC):
         TODO tests"""
         if isinstance(to_parse, (dict, UserDict)):
             if 'type' in to_parse.keys() and 'parameters' in to_parse.keys():
-                definition = TemplateDefinition.parse(to_parse)
+                definition = TemplateDefinition.parse(to_parse) # type: ignore
             else:
-                definition = DictDefinition(to_parse)
+                definition = DictDefinition(to_parse) # type: ignore
         elif isinstance(to_parse, (list, tuple, UserList)):
-            definition = ListDefinition(to_parse)
+            definition = ListDefinition(to_parse) # type: ignore
         else:
             definition = LiteralDefinition(to_parse)
         if definition.is_static:
-            return LiteralDefinition(definition.make_sample())
+            return LiteralDefinition(definition.make_sample()) # type: ignore
         else:
             return definition
 
