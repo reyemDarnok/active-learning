@@ -231,7 +231,9 @@ def parse_pelmo_result(run_dir: Path) -> Dict[str, float]:
         else:
             compound_pec = chem_file.stem.split('_')[1]
         chem_plm = ChemPLM(chem_file)
-        m1_chem_mass = [year[m1_compartment].leaching_output for year in chem_plm.horizons][6:]
+
+        # for some extemely high values that don't normally appear pelmo capitulates and stops recording the values, treat these values as infinite
+        m1_chem_mass = [year[m1_compartment].leaching_output if len(year) >= m1_compartment else float('inf') for year in chem_plm.horizons][6:]
         mean_chem_mass = []
         for index in range(0, len(m1_chem_mass), pecs_per_application_period):
             mean_chem_mass.append(
