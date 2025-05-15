@@ -13,9 +13,9 @@ from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, F
 import pandas
 
 from focusStepsPelmo.util.conversions import excel_date_to_datetime, uncomment
-from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting, correct_type, HashableDict
+from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting, correct_type
 
-bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BBCHGW.csv',
+bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BBCHGW.csv', # type: ignore
                                                      header=0,
                                                      dtype={'Location': 'category', 'Crop': 'category',
                                                             'Requested BBCH Code': 'byte',
@@ -298,7 +298,7 @@ class GAP(ABC, TypeCorrecting):
     """The time between applications in years. Use this to indicate years without applications"""
     number_of_applications: int = 1
     """How often will be applied"""
-    interval: timedelta = 1
+    interval: timedelta = timedelta(days=1)
     """What is the minimum interval between applications"""
     model_specific_data: Dict[str, Any] = field(default_factory=dict, hash=False, compare=False)
     """Any data that only specific models care about will be stored here"""
@@ -346,7 +346,7 @@ class GAP(ABC, TypeCorrecting):
         """A conversion of the application rate into kg"""
         return self.rate / 1000
 
-    def asdict(self) -> Dict:
+    def asdict(self) -> Dict[str, Union[str, Dict[str, Union[str, float, int]]]]:
         """Represents this object as a dictionary"""
         return {
             "type": self._type,
@@ -364,7 +364,7 @@ class GAP(ABC, TypeCorrecting):
         pass
 
     @staticmethod
-    def parse(to_parse: Dict) -> 'GAP':
+    def parse(to_parse: Dict[str, Any]) -> 'GAP':
         """Parses a dictionary of parameters into a GAP
         :param to_parse: The dictionary containing the GAP definition. Must have 'type' and 'arguments' as keys
         :return: The GAP subclass defined by to_parse"""
@@ -372,7 +372,7 @@ class GAP(ABC, TypeCorrecting):
             raise TypeError("Missing 'type' in to_parse definition")
         if 'arguments' not in to_parse.keys():
             raise TypeError("Missing 'arguments' in to_parse definition")
-        types = {
+        types: Dict[str, type[GAP]] = {
             "relative": RelativeGAP,
             "absolute": AbsoluteConstantGAP,
             "scenario": AbsoluteScenarioGAP,
@@ -385,15 +385,15 @@ class GAP(ABC, TypeCorrecting):
         """Parse all GAPS from an Excel file
         :param excel_file: The file to parse
         :return: All gaps defined in the file"""
-        gaps = pandas.read_excel(io=excel_file, sheet_name="GAP Properties")
-        for _, row in gaps.iterrows():
+        gaps = pandas.read_excel(io=excel_file, sheet_name="GAP Properties") # type: ignore
+        for _, row in gaps.iterrows(): # type: ignore
             yield RelativeGAP(
-                name=row['Example GAP'],
-                modelCrop=row['Model Crop'],
-                rate=row['Rate'],
-                number_of_applications=row['Number'],
-                interval=row['Interval'],
-                bbch=row['BBCH']
+                name=row['Example GAP'], # type: ignore
+                modelCrop=row['Model Crop'], # type: ignore
+                rate=row['Rate'], # type: ignore
+                number_of_applications=row['Number'], # type: ignore
+                interval=row['Interval'], # type: ignore
+                bbch=row['BBCH'] # type: ignore
             )
 
     @staticmethod
@@ -416,7 +416,7 @@ class GAP(ABC, TypeCorrecting):
             with file.open() as f:
                 json_content = json.load(f)
                 if isinstance(json_content, (list, UserList)):
-                    yield from (GAP.parse(element) for element in json_content)
+                    yield from (GAP.parse(element) for element in json_content) # type: ignore
                 else:
                     yield GAP.parse(json_content)
         elif file.suffix == '.xlsx':
@@ -424,8 +424,8 @@ class GAP(ABC, TypeCorrecting):
         elif file.suffix == '.gap':
             yield from GAP.from_gap_machine(file)
 
-    @staticmethod
-    def from_gap_machine(file: Path) -> Generator['GAP', None, None]:
+    @classmethod
+    def from_gap_machine(cls, file: Path) -> Generator['GAP', None, None]:
         """Create GAPs from the export of the gap machine (go/gap-prod)"""
         yield from GAPMachineGAP.from_gap_machine(file)
 
@@ -446,7 +446,7 @@ class MultiGAP(GAP):
     def _dict_args(self) -> Dict[str, Any]:
         return {"timings": [{"type": timing._type,
                              "arguments": {key: value
-                                           for key, value in timing.asdict()['arguments'].items()
+                                           for key, value in timing.asdict()['arguments'].items() # type: ignore
                                            if key not in self._get_common_dict().keys()
                                            or value != self._get_common_dict()[key]}}
                             for timing in self.timings]}
@@ -461,15 +461,15 @@ class MultiGAP(GAP):
 
     def __post_init__(self):
         init_dict = self._get_common_dict()
-        corrected_timings = tuple()
+        corrected_timings: Tuple[GAP, ...] = tuple()
         for timing in self.timings:
-            if isinstance(timing, GAP):
+            if isinstance(timing, GAP): # type: ignore
                 corrected_timings += tuple([timing])
             else:
                 # We are initialising - assume only a dict of values was
                 # provided that has to be parsed to a final result
                 # noinspection PyTypeChecker
-                timing_init: Dict = timing
+                timing_init: Dict[str, Any] = timing
                 init_dict_copy = init_dict.copy()
                 init_dict_copy.update(timing_init['arguments'])
                 timing_init['arguments'] = init_dict_copy
@@ -498,13 +498,13 @@ class RelativeGAP(GAP):
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
         application_line = bbch_to_data_row(self.bbch, scenario,
                                             self.modelCrop.bbch_application_name[self.season])
-        time_in_year = application_line['Recommended Application date']
-        time_and_interception = tuple()
+        time_in_year: datetime = application_line['Recommended Application date']
+        time_and_interception: List[Tuple[datetime, float]] = []
         for index in range(self.number_of_applications):
             application_time = time_in_year + self.interval * index
             application_line = date_to_data_row(application_time, scenario, self.modelCrop.bbch_application_name[0])
             interception = application_line['Crop Interception(%)']
-            time_and_interception += tuple([tuple([application_time, interception])])
+            time_and_interception.append((application_time, interception))
         for year in range(1, 6 + 20 * self.apply_every_n_years + 1, self.apply_every_n_years):
             for appl_date, interception in time_and_interception:
                 appl_date = datetime(year=year, month=appl_date.month, day=appl_date.day)
@@ -527,7 +527,7 @@ class AbsoluteConstantGAP(GAP):
         return {"time_in_year": self.time_in_year.isoformat()}
 
     def application_data(self, scenario: Scenario) -> Generator[Tuple[datetime, float], None, None]:
-        time_and_interception: Tuple[Tuple[datetime, float]] = tuple()
+        time_and_interception: List[Tuple[datetime, float]] = []
         for index in range(self.number_of_applications):
             application_time = self.time_in_year + self.interval * index
             try:
@@ -535,7 +535,7 @@ class AbsoluteConstantGAP(GAP):
             except IndexError:
                 application_line = date_to_data_row(application_time, scenario, self.modelCrop.bbch_application_name[1])
             interception = application_line['Crop Interception(%)']
-            time_and_interception += tuple([tuple([application_time, interception])])
+            time_and_interception.append((application_time, interception))
         for year in range(1, 6 + 20 * self.apply_every_n_years + 1, self.apply_every_n_years):
             for appl_date, interception in time_and_interception:
                 appl_date = datetime(year=year, month=appl_date.month, day=appl_date.day)
@@ -544,7 +544,7 @@ class AbsoluteConstantGAP(GAP):
     def __post_init__(self):
         date = None
         if isinstance(self.time_in_year, dict):
-            date = datetime(**self.time_in_year)
+            date = datetime(**self.time_in_year) # type: ignore
         elif isinstance(self.time_in_year, (int, float)):
             date = datetime.fromtimestamp(self.time_in_year)
         elif isinstance(self.time_in_year, str):
@@ -581,7 +581,7 @@ class AbsoluteScenarioGAP(GAP):
     """A GAP for specifying the day of the year to apply for each GAP individually.
     Behaves similar to the MultiGAP, replacing its List with a Dict[Scenario, GAP] that elides the type determination
     and fixes the type to AbsoluteConstantGAP"""
-    scenarios: Dict[Scenario, Dict] = field(
+    scenarios: Dict[Scenario, Dict[str, Any]] = field(
         default_factory=lambda: {}, hash=False)
     """A mapping from scenarios to Constant GAPs"""
 
@@ -600,7 +600,7 @@ class AbsoluteScenarioGAP(GAP):
                     for key, value in self._scenario_gaps[scenario].asdict().items()
                     if key not in self._get_common_dict().keys() or self._get_common_dict()[key] != value
                 }
-                for scenario, gap in self._scenario_gaps.items()
+                for scenario, _ in self._scenario_gaps.items()
             }
         }
 
@@ -637,9 +637,9 @@ class AbsoluteScenarioGAP(GAP):
 
 @dataclass(frozen=True)
 class GAPMachineGAP(GAP):
-    first_season: Dict[Scenario, datetime] = field(default_factory=dict)
+    first_season: Dict[Scenario, datetime] = field(default_factory=dict) # type: ignore defaultfactory is not specific enough
     """A mapping from scenario to first application date for the first_season"""
-    second_season: Dict[Scenario, datetime] = field(default_factory=dict)
+    second_season: Dict[Scenario, datetime] = field(default_factory=dict) # type: ignore defaultfactory is not specific enough
     """A mapping from scenario to first application date for the second_season"""
     interceptions: Tuple[float, ...] = tuple()
     """The interceptions for the application series"""
@@ -701,30 +701,30 @@ class GAPMachineGAP(GAP):
 
         for row in gap_file_reader:
             row: Dict[str, Union[str, List[str]]]
-            model_crop = FOCUSCrop.parse(row['FOCUS Crop used'])
-            gap_name = row['PMT ID']
-            rate = float(row['Rate per treatment: '])
+            model_crop = FOCUSCrop.parse(row['FOCUS Crop used']) # type: ignore in typecorrecting parser
+            gap_name: str = row['PMT ID'] # type: ignore in typecorrecting parser
+            rate = float(row['Rate per treatment: ']) # type: ignore in typecorrecting parser
             if row['Repeat-Mode'] == "every 3 years":
                 period_between_applications = 3
             elif row['Repeat-Mode'] == "every 2 years":
                 period_between_applications = 2
             else:
                 period_between_applications = 1
-            number = int(row['Max total # of apps'])
-            interval = timedelta(days=float(row['Appl. interval']))
+            number = int(row['Max total # of apps']) # type: ignore in typecorrecting parser
+            interval = timedelta(days=float(row['Appl. interval'])) # type: ignore in typecorrecting parser
 
             # dates are in Lotus123 (and Excel) reckoning, meaning days since 30.12.1899
-            first_season = {}
+            first_season: Dict[Scenario, datetime] = {}
             for scenario in Scenario:
                 scenario_name = "1-" + scenario
                 if row[scenario_name]:
-                    first_season[Scenario(scenario)] = excel_date_to_datetime(int(row[scenario_name]))
+                    first_season[Scenario(scenario)] = excel_date_to_datetime(int(row[scenario_name])) # type: ignore in typecorrecting parser
 
-            second_season = {}
+            second_season: Dict[Scenario, datetime] = {}
             for scenario in Scenario:
                 scenario_name = "2-" + scenario
                 if row[scenario_name]:
-                    second_season[Scenario(scenario)] = excel_date_to_datetime(int(row[scenario_name]))
+                    second_season[Scenario(scenario)] = excel_date_to_datetime(int(row[scenario_name])) # type: ignore in typecorrecting parser
             interceptions = row['interceptions']
             yield cls(modelCrop=model_crop, rate=rate, apply_every_n_years=period_between_applications,
                       number_of_applications=number, interval=interval, model_specific_data={}, name=gap_name,
@@ -734,32 +734,32 @@ class GAPMachineGAP(GAP):
 
 # parameters are used in pandas query, which PyCharm does not notice
 # noinspection PyUnusedLocal
-def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Series:
+def bbch_to_data_row(bbch: int, scenario: Scenario, crop_name: str) -> pandas.Series[Any]:
     """Given a BBCH, Scenario and crop, find the first valid entry in the application table
     :param bbch: The BBCH for the lookup. Needs to be in the range [0,99]
     :param scenario: The scenario for the lookup. Must be defined for the given crop
     :param crop_name: The name of the crop
     :return: A pandas series containing the following values:
     Location,Crop,Requested BBCH Code,Allocated BBCH Code,Recommended Application date,Crop Interception(%)"""
-    scenario_name = scenario.replace("â", "a").replace("ü", "u")
-    return bbch_application.query('Location == @scenario_name '
-                                  '& Crop == @crop_name'
+    scenario_name = scenario.replace("â", "a").replace("ü", "u") # type: ignore - pandas magic usesd it in query
+    return bbch_application.query('Location == @scenario_name ' # type: ignore
+                                  '& Crop == @crop_name' 
                                   '& `Requested BBCH Code` == @bbch').iloc[0]
 
 
 # parameters are used in pandas query, which PyCharm does not notice
 # noinspection PyUnusedLocal
-def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pandas.Series:
+def date_to_data_row(date: datetime, scenario: Scenario, crop_name: str) -> pandas.Series[Any]:
     """Given a date, Scenario and crop, find the first valid entry in the application table
     :param date: The date for the lookup. Needs to be in the winter of 2001 or the summer of 2002
     :param scenario: The scenario for the lookup. Must be defined for the given crop
     :param crop_name: The name of the crop
     :return: A pandas series containing the following values:
     Location,Crop,Requested BBCH Code,Allocated BBCH Code,Recommended Application date,Crop Interception(%)"""
-    scenario_name = scenario.replace("â", "a").replace("ü", "u")
+    scenario_name = scenario.replace("â", "a").replace("ü", "u") # type: ignore
     filtered_frame: pandas.DataFrame = bbch_application.query('Location == @scenario_name '
                                                               '& Crop == @crop_name'
                                                               '& `Recommended Application date` >= '
                                                               '@date'
                                                               )
-    return filtered_frame.sort_values(by=['Recommended Application date']).iloc[0]
+    return filtered_frame.sort_values(by=['Recommended Application date']).iloc[0] # type: ignore

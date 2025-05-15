@@ -3,7 +3,7 @@ import json
 from collections import UserList
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Generator, Dict
+from typing import Any, Generator, Dict
 
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP
@@ -16,7 +16,7 @@ class Combination(TypeCorrecting):
     gap: GAP
     compound: Compound
 
-    def asdict(self) -> Dict:
+    def asdict(self) -> Dict[str, Dict[str, Any]]:
         """Represent self as a dictionary - the dataclasses.asdict method chokes on NamedTuples in gap"""
         return {"gap": self.gap.asdict(),
                 "compound": asdict(self.compound)}
@@ -42,7 +42,7 @@ class Combination(TypeCorrecting):
             with file.open() as f:
                 json_content = json.load(f)
                 if isinstance(json_content, (list, UserList)):
-                    yield from (Combination(**element) for element in json_content)
+                    yield from (Combination(**element) for element in json_content) # type: ignore
                 else:
                     yield Combination(**json_content)
         if file.suffix == '.xlsx':
