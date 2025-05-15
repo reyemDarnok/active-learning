@@ -3,9 +3,8 @@
 import json
 from collections import UserList
 from dataclasses import dataclass, field
-from math import floor, log10
 from pathlib import Path
-from typing import Generator, List, Optional, Tuple, Dict
+from typing import Any, Generator, List, Optional, Tuple, Dict
 
 import pandas
 
@@ -69,7 +68,7 @@ class Compound(TypeCorrecting):
     """Henry constant in J / mol"""
     name: Optional[str] = field(hash=False, default='')  # str hash is not stable
     """The compounds name. Used only for labelling purposes"""
-    model_specific_data: Dict = field(compare=False, hash=False, default_factory=dict)
+    model_specific_data: Dict[str, Any] = field(compare=False, hash=False, default_factory=dict)
     """Some data only of interest to specific models"""
     metabolites: Tuple[MetaboliteDescription, ...] = field(default_factory=tuple)
     """The compounds metabolites"""
@@ -103,7 +102,7 @@ class Compound(TypeCorrecting):
         """Given a name, find the MetaboliteDescription for the Metabolite with that name
         :param name: The name of the Metabolite to find
         :return: The MetaboliteDescription for the degradation from self to the Metabolite named name"""
-        if self.metabolites is not None:
+        if self.metabolites:
             for met_des in self.metabolites:
                 if met_des.metabolite.name == name:
                     return met_des
@@ -114,32 +113,32 @@ class Compound(TypeCorrecting):
         """Parse an Excel file and find all compounds defined in it
         :param excel_file: The Excel File to parse
         :return: The Compounds in the file"""
-        compounds = pandas.read_excel(io=excel_file, sheet_name="Compound Properties")
-        compounds['Pelmo Position'].fillna('', inplace=True)
-        metabolite_relationships = pandas.read_excel(io=excel_file, sheet_name="Metabolite Relationships")
+        compounds = pandas.read_excel(io=excel_file, sheet_name="Compound Properties")  
+        compounds['Pelmo Position'].fillna('', inplace=True) # type: ignore
+        metabolite_relationships = pandas.read_excel(io=excel_file, sheet_name="Metabolite Relationships") # type: ignore
         compound_list = [
-            Compound(name=row['Name'], molarMass=row['Molar Mass'],
-                     water_solubility=row['Water Solubility'],
-                     vapor_pressure=row['Vapor Pressure'],
-                     reference_temperature=row['Temperature'],
-                     koc=row['Koc'], freundlich=row['Freundlich'],
-                     plant_uptake=row['Plant Uptake'],
-                     dt50=DT50(system=row['DT50 System'],
-                               soil=row['DT50 Soil'],
-                               sediment=row['DT50 Sediment'],
-                               surfaceWater=row['DT50 Surface Water']),
+            Compound(name=row['Name'], molarMass=row['Molar Mass'], # type: ignore
+                     water_solubility=row['Water Solubility'],# type: ignore
+                     vapor_pressure=row['Vapor Pressure'],# type: ignore
+                     reference_temperature=row['Temperature'],# type: ignore
+                     koc=row['Koc'], freundlich=row['Freundlich'],# type: ignore
+                     plant_uptake=row['Plant Uptake'], # type: ignore
+                     dt50=DT50(system=row['DT50 System'], # type: ignore
+                               soil=row['DT50 Soil'], # type: ignore
+                               sediment=row['DT50 Sediment'], # type: ignore
+                               surfaceWater=row['DT50 Surface Water']),# type: ignore
                      model_specific_data={'pelmo': {'position': row['Pelmo Position'] if row['Pelmo Position'] else None
                                                     }
                                           }
                      )
-            for _, row in compounds.iterrows()
+            for _, row in compounds.iterrows() # type: ignore
         ]
         parents = [compound for compound in compound_list if
                    compound.name not in metabolite_relationships['Metabolite'].values]
-        for _, row in metabolite_relationships.iterrows():
-            parent: Compound = next(filter(lambda c: c.name == row['Parent'], compound_list))
-            metabolite: Compound = next(filter(lambda c: c.name == row['Metabolite'], compound_list))
-            met_des = MetaboliteDescription(formation_fraction=row['Formation Fraction'], metabolite=metabolite)
+        for _, row in metabolite_relationships.iterrows(): # type: ignore
+            parent: Compound = next(filter(lambda c: c.name == row['Parent'], compound_list)) # type: ignore
+            metabolite: Compound = next(filter(lambda c: c.name == row['Metabolite'], compound_list)) # type: ignore
+            met_des = MetaboliteDescription(formation_fraction=row['Formation Fraction'], metabolite=metabolite) # type: ignore
             object.__setattr__(parent, 'metabolites', parent.metabolites + (met_des,))
         return parents
 
@@ -163,7 +162,7 @@ class Compound(TypeCorrecting):
             with file.open() as f:
                 json_content = json.load(f)
                 if isinstance(json_content, (list, UserList)):
-                    yield from (Compound(**element) for element in json_content)
+                    yield from (Compound(**element) for element in json_content) # type: ignore
                 else:
                     yield Compound(**json_content)
         if file.suffix == '.xlsx':
