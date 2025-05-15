@@ -115,20 +115,24 @@ class ChemHorizon:
     current_storage: float
     storage_in_neq_domain: float
 
+    @staticmethod
+    def _add_e_notation(num_str: str) -> str:
+        return re.sub(r"(?P<pre>\d)(?P<post>[+-]\d)", r"\g<pre>E\g<post>", num_str)
+
     def __init__(self, line: str):
         """Expects a single line of the CHEM.PLM from a horizon segment"""
         segments = line.split()
         self.horizon = int(segments[0])
         self.compartment = int(segments[1])
-        self.soil_application = float(segments[2])  # might be bool, is written as 1.000/0.0000 value
-        self.previous_storage = float(segments[3])
-        self.leaching_input = float(segments[4])
-        self.decay = float(segments[5])
-        self.gas_diffusion = float(segments[6])
-        self.plant_uptake = float(segments[7])
-        self.leaching_output = float(segments[8])
-        self.current_storage = float(segments[9])
-        self.storage_in_neq_domain = float(segments[10])
+        self.soil_application = float(self._add_e_notation(segments[2]))  # might be bool, is written as 1.000/0.0000 value
+        self.previous_storage = float(self._add_e_notation(segments[3]))
+        self.leaching_input = float(self._add_e_notation(segments[4]))
+        self.decay = float(self._add_e_notation(segments[5]))
+        self.gas_diffusion = float(self._add_e_notation(segments[6]))
+        self.plant_uptake = float(self._add_e_notation(segments[7]))
+        self.leaching_output = float(self._add_e_notation(segments[8]))
+        self.current_storage = float(self._add_e_notation(segments[9]))
+        self.storage_in_neq_domain = float(self._add_e_notation(segments[10]))
 
 
 @dataclass()
