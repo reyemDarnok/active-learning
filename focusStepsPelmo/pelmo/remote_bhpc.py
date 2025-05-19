@@ -30,7 +30,7 @@ jinja_env = Environment(loader=PackageLoader('focusStepsPelmo.pelmo'),
 T = TypeVar('T')
 
 
-def split_into_batches(iterable: Iterable[T], batch_size=1, fillvalue: T = None) -> Generator[List[T], None, None]:
+def split_into_batches(iterable: Iterable[T], batch_size=1, fillvalue: T = None) -> Iterable[Tuple[T, ...]]:
     """Lazily split a Sequence into a Generator of equally sized slices of the sequence.
     The last slice may be smaller if the sequence does not evenly divide into the batch size
     :param iterable: The iterable to split. Will be lazily evaluated
@@ -62,8 +62,8 @@ async def main():
                          notification_email=args.notification_email, session_timeout=args.session_timeout, run=args.run, pessimistic_interception=args.pessimistic_interception)
 
 
-def run_bhpc(submit: Path, output: Path,  pessimistic_interception: bool, compound_file: Path = None, gap_file: Path = None,
-             combination_dir: Path = None,
+def run_bhpc(submit: Path, output: Path,  pessimistic_interception: bool, compound_file: Optional[Path] = None, gap_file: Optional[Path] = None,
+             combination_dir: Optional[Path] = None,
              crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop), scenarios: FrozenSet[Scenario] = frozenset(Scenario),
              notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True, bhpc: BHPC = BHPC()):
     """Run Pelmo on the bhpc
@@ -111,8 +111,8 @@ def run_bhpc(submit: Path, output: Path,  pessimistic_interception: bool, compou
         bhpc.remove(session)
 
 
-async def run_bhpc_async(submit: Path, output: Path, pessimistic_interception: bool, compound_file: Path = None, gap_file: Path = None,
-                         combination_dir: Path = None,
+async def run_bhpc_async(submit: Path, output: Path, pessimistic_interception: bool, compound_file: Optional[Path] = None, gap_file: Optional[Path] = None,
+                         combination_dir: Optional[Path] = None,
                          crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
                          scenarios: FrozenSet[Scenario] = frozenset(Scenario),
                          notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True,

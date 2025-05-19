@@ -326,7 +326,7 @@ class BHPC:
         logger.debug('Session %s is now running on the BHPC', session)
         return session
 
-    async def start_session_async(self, **kwargs: Dict[str, Any]) -> str:
+    async def start_session_async(self, **kwargs: Any) -> str:
         """Starts a session, that is `upload`s and `run`s a new session
         Takes the same arguments as :start_session
         :return: The name of the session that was started"""
@@ -426,7 +426,7 @@ class BHPC:
             else:
                 raise e
 
-    async def download_async(self, **kwargs: Dict[str, Any]) -> bool:
+    async def download_async(self, **kwargs: Any) -> bool:
         """Download the results of a session. Note that the results are placed in the path of the original sub file.
         Takes the same arguments as download"""
         return self.download(**kwargs) # type: ignore
@@ -466,7 +466,7 @@ class BHPC:
         self._execute_bhpc_command(["remove", session], 'yes' if kill else 'no')
         return kill
 
-    async def remove_async(self, **kwargs: Dict[str, Any]) -> bool:
+    async def remove_async(self, **kwargs: Any) -> bool:
         """Removes a session. Takes the same arguments as remove"""
         return self.remove(**kwargs) # type: ignore
 
