@@ -7,7 +7,7 @@ from contextlib import suppress
 from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import rmtree
-from typing import FrozenSet, Optional, Type, Union
+from typing import Awaitable, Coroutine, FrozenSet, Optional, Type, Union
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
@@ -68,7 +68,7 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Optional[Path] 
 async def run_local_async(work_dir: Path, output_file: Path, compound_files: Optional[Path] = None, gap_files: Optional[Path] = None,
                           combination_dir: Optional[Path] = None,
                           crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop), scenarios: FrozenSet[Scenario] = frozenset(Scenario),
-                          threads: int = cpu_count() - 1, pessimistic_interception: bool = False):
+                          threads: int = cpu_count() - 1, pessimistic_interception: bool = False) -> None:
     """Run Pelmo locally
     :param work_dir: The directory to use for Pelmos file structure
     :param output_file: The file for the summary of results

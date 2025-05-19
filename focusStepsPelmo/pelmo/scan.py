@@ -196,17 +196,20 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     with suppress(FileNotFoundError):
         rmtree(output_dir)
     output_dir.mkdir(parents=True)
-    definition = Definition.parse(definition)
+    parsed_definition = Definition.parse(definition)
     if test_set_path:
-        test_set = set(definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
+        test_set = set(parsed_definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
                        for c in load_test_set(test_set_path))
         logger.info('Loaded test set')
     else:
         test_set = set()
-    pool = ThreadPoolExecutor(max_workers=cpu_count() - 1)
+    cpus = cpu_count()
+    if cpus is None:
+        cpus = 2
+    pool = ThreadPoolExecutor(max_workers=cpus - 1)
     logger.info('Initialized Thread Pool')
     pool.map(make_single_sample,
-             repeat_n_times(definition, sample_size),
+             repeat_n_times(parsed_definition, sample_size),
              repeat_n_times(test_set, sample_size),
              repeat_n_times(output_dir, sample_size),
              repeat_n_times(test_set_buffer, sample_size))
@@ -230,15 +233,15 @@ async def create_samples_in_dirs_async(definition: Dict, output_dir: Path, sampl
     with suppress(FileNotFoundError):
         rmtree(output_dir)
     output_dir.mkdir(parents=True)
-    definition = Definition.parse(definition)
+    parsed_definition = Definition.parse(definition)
     if test_set_path:
-        test_set = set(definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
+        test_set = set(parsed_definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
                        for c in load_test_set(test_set_path))
         logger.info('Loaded test set')
     else:
         test_set = set()
     await asyncio.gather(*(
-        write_single_sample_async(definition, test_set, output_dir, test_set_buffer) for _ in range(sample_size)
+        write_single_sample_async(parsed_definition, test_set, output_dir, test_set_buffer) for _ in range(sample_size)
     ))
 
 
@@ -271,7 +274,7 @@ async def write_single_sample_async(definition: Definition, test_set: Set[Tuple[
     make_single_sample(definition, test_set, output_dir, test_set_buffer)
 
 
-def load_test_set(location: Path) -> Generator[Dict, None, None]:
+def load_test_set(location: Path) -> Generator[Combination, None, None]:
     """Loads Combinations from the given Path
     :param location: The directory containing the Combinations as jsons
     :return: A generator yielding combinations in location.
@@ -365,9 +368,9 @@ def create_samples(definition: Definition) -> Generator[Combination, None, None]
 
 
 def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Path, gap_dir: Optional[Path] = None,
-                bbch: Iterable[int] = None, rate: Iterable[float] = None,
-                dt50: Iterable[float] = None, koc: Iterable[float] = None, freundlich: Iterable[float] = None,
-                plant_uptake: Iterable[float] = None) -> None:
+                bbch: Sequence[int] = [], rate: Sequence[float] = [],
+                dt50: Sequence[float] = [], koc: Sequence[float] = [], freundlich: Sequence[float] = [],
+                plant_uptake: Sequence[float] = []) -> None:
     """Creates compound and gap jsons for a parameter matrix
     :param template_gap: The gap to use as a template for parameters that are not in the matrix
     :param template_compound: The compound to use as a template for parameters that are not in the matrix
@@ -411,9 +414,9 @@ async def span_to_dir_async(**kwargs):
 
 
 def span(template_gap: GAP, template_compound: Compound,
-         bbch: Iterable[int] = None, rate: Iterable[float] = None,
-         dt50: Iterable[float] = None, koc: Iterable[float] = None, freundlich: Iterable[float] = None,
-         plant_uptake: Iterable[float] = None) -> Generator[Tuple[GAP, Compound], None, None]:
+         bbch: Sequence[int] = [], rate: Sequence[float] = [],
+         dt50: Sequence[float] = [], koc: Sequence[float] = [], freundlich: Sequence[float] = [],
+         plant_uptake: Sequence[float] = []) -> Generator[Tuple[GAP, Compound], None, None]:
     """Creates compound and gap combinations from a matrix
     :param template_gap: The gap to use as a template for parameters that are not in the matrix
     :param template_compound: The compound to use as a template for parameters that are not in the matrix
@@ -429,7 +432,7 @@ def span(template_gap: GAP, template_compound: Compound,
             yield gap, compound
 
 
-def span_gap(template_gaps: Union[GAP, Iterable[GAP]], bbch: Optional[Sequence[int]],
+def span_gap(template_gaps: Union[GAP, Sequence[GAP]], bbch: Optional[Sequence[int]],
              rate: Optional[Sequence[float]]) -> Generator[GAP, None, None]:
     """Creates gaps from a template and a matrix
     :param template_gaps: The gaps to use as templates. If an iterable, the matrix will be applied to each element
@@ -439,17 +442,18 @@ def span_gap(template_gaps: Union[GAP, Iterable[GAP]], bbch: Optional[Sequence[i
     """
     # Do nothing if template_gaps is iterable, make it a single item list if it's a single gap
     try:
-        _ = iter(template_gaps)
+        _ = iter(template_gaps) # type: ignore - this might fail because of the type - thats why it's in the try block
+        gaps_gen: Generator[GAP, None, None] = (gap for gap in template_gaps) # type: ignore - this might fail because of the type - thats why it's in the try block
     except TypeError:
-        template_gaps = [template_gaps]
+        gaps_gen: Generator[GAP, None, None] = (template_gaps for _ in range(1)) # type: ignore - only reached if template_gaps wasn't a sequence
     logger = logging.getLogger()
-    if bbch is not None:
+    if bbch:
         logger.info('Spanning over bbch values')
-        template_gaps = span_bbch(template_gaps, bbch)
-    if rate is not None:
+        gaps_gen = span_bbch(gaps_gen, bbch)
+    if rate:
         logger.info('Spanning over rate values')
-        template_gaps = span_rate(template_gaps, rate)
-    return template_gaps
+        gaps_gen = span_rate(gaps_gen, rate)
+    return gaps_gen
 
 
 def span_bbch(gaps: Iterable[GAP], bbchs: Sequence[int]) -> Generator[GAP, None, None]:
@@ -484,22 +488,23 @@ def span_compounds(template_compounds: Union[Compound, Iterable[Compound]], dt50
     # Do nothing if template_compounds is iterable, make it a single item list if it's a single compound
     logger = logging.getLogger()
     try:
-        _ = iter(template_compounds)
+        _ = iter(template_compounds) # type: ignore - this might fail because of the type - thats why it's in the try block
+        compound_gen: Generator[Compound, None, None] = (compound for compound in template_compounds) # type: ignore - this might fail because of the type - thats why it's in the try block
     except TypeError:
-        template_compounds = [template_compounds]
-    if dt50 is not None:
+        compound_gen: Generator[Compound, None, None] = (template_compounds for _ in range(1)) # type: ignore only reachable if template_compounds isnt a list
+    if dt50:
         logger.info('Spanning over dt50 values')
-        template_compounds = span_dt50(template_compounds, dt50)
-    if koc is not None:
+        compound_gen = span_dt50(compound_gen, dt50)
+    if koc:
         logger.info('Spanning over koc values')
-        template_compounds = span_koc(template_compounds, koc)
-    if freundlich is not None:
+        compound_gen = span_koc(compound_gen, koc)
+    if freundlich:
         logger.info('Spanning over freundlich values')
-        template_compounds = span_freundlich(template_compounds, freundlich)
-    if plant_uptake is not None:
+        compound_gen = span_freundlich(compound_gen, freundlich)
+    if plant_uptake:
         logger.info('Spanning over plant uptake values')
-        template_compounds = span_plant_uptake(template_compounds, plant_uptake)
-    return template_compounds
+        compound_gen = span_plant_uptake(compound_gen, plant_uptake)
+    return compound_gen
 
 
 def span_dt50(compounds: Iterable[Compound], dt50s: Sequence[float]) -> Generator[Compound, None, None]:
@@ -581,7 +586,10 @@ def parse_args() -> Namespace:
                                            help="Where to run Pelmo. The script will only generate files "
                                                 "but not run anything if this is not specified")
     local_parser = run_subparsers.add_parser("local", help="Run Pelmo locally")
-    local_parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1,
+    cpus = cpu_count()
+    if cpus is None:
+        cpus = 2
+    local_parser.add_argument('-t', '--threads', type=int, default=cpus - 1,
                               help="The maximum number_of_applications of threads for Pelmo. Defaults to cpu_count - 1")
     bhpc_parser = run_subparsers.add_parser("bhpc", help="Run Pelmo on the bhpc")
     bhpc_parser.add_argument('--notification-email', type=str, default=None,
