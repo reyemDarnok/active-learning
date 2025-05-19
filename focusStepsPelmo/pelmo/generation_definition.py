@@ -4,7 +4,7 @@ import random
 import sys
 from abc import ABC, abstractmethod
 from collections import UserDict, UserList
-from typing import Any, Tuple, Dict, List
+from typing import Any, Generic, Tuple, Dict, List, Type, TypeVar
 
 
 def normalize_hash_feature(hashable: Any) -> float:
@@ -34,8 +34,8 @@ def normalize_feature(value: float, lower_bound: float, upper_bound: float) -> f
         return 0
     return ((value - lower_bound) / (upper_bound - lower_bound)) * 2 - 1
 
-
-class Definition(ABC):
+T = TypeVar("T")
+class Definition(ABC, Generic[T]):
     """An abstract parent class for a definition of a random object generation."""
 
     @property
@@ -47,13 +47,13 @@ class Definition(ABC):
         pass
 
     @abstractmethod
-    def make_sample(self) -> Any:
+    def make_sample(self) -> T:
         """Generate a single object from this definition
         :return: The generated object"""
         pass
 
     @abstractmethod
-    def make_vector(self, obj: Any) -> Tuple[float, ...]:
+    def make_vector(self, obj: T) -> Tuple[float, ...]:
         """Create a tuple of floats describing the random choices taken in generating obj
         :param obj: An object generated from this definition
         :return: A tuple of floats in the range [-1,1]. While the length of the tuple differs between Definitions,
@@ -61,7 +61,7 @@ class Definition(ABC):
         pass
 
     @staticmethod
-    def parse(to_parse: Any) -> 'Definition':
+    def parse(to_parse: Any) -> 'Definition[T]':
         """Parse a description of a definition into a tree of Definition objects. If some objects in the tree do not
         change between invocations of make_sample they will be transformed into LiteralDefinition objects to improve
         performance
@@ -70,20 +70,22 @@ class Definition(ABC):
         TODO tests"""
         if isinstance(to_parse, (dict, UserDict)):
             if 'type' in to_parse.keys() and 'parameters' in to_parse.keys():
-                definition = TemplateDefinition.parse(to_parse) # type: ignore
+                refined: Dict[str, Any] = to_parse # type: ignore
+                definition = TemplateDefinition[T].parse(refined)
             else:
-                definition = DictDefinition(to_parse) # type: ignore
+                refined: Dict[Any, Any] = to_parse
+                definition = DictDefinition[Any, Any](refined)
         elif isinstance(to_parse, (list, tuple, UserList)):
-            definition = ListDefinition(to_parse) # type: ignore
+            definition: Definition[T] = ListDefinition(to_parse)
         else:
-            definition = LiteralDefinition(to_parse)
+            definition: Definition[T] = LiteralDefinition(to_parse)
         if definition.is_static:
-            return LiteralDefinition(definition.make_sample()) # type: ignore
+            return LiteralDefinition[T](definition.make_sample())
         else:
             return definition
 
 
-class LiteralDefinition(Definition):
+class LiteralDefinition(Definition[T]):
     """A definition for a literal value
     >>> test = LiteralDefinition({"some": "value"})
     >>> test.is_static
@@ -94,7 +96,7 @@ class LiteralDefinition(Definition):
     ()
     """
 
-    def __init__(self, value: Any):
+    def __init__(self, value: T):
         """
         :param value: The value this definition represents
         """
@@ -104,14 +106,15 @@ class LiteralDefinition(Definition):
     def is_static(self) -> bool:
         return True
 
-    def make_sample(self) -> Any:
+    def make_sample(self) -> T:
         return self.value
 
-    def make_vector(self, obj: Any) -> Tuple[float, ...]:
+    def make_vector(self, obj: T) -> Tuple[float, ...]:
         return tuple()
 
-
-class DictDefinition(Definition):
+K = TypeVar("K")
+V = TypeVar("V")
+class DictDefinition(Definition[Dict[K, V]]):
     """A definition for a dictionary
     >>> test = DictDefinition({"key": {"type": "choices", "parameters": {"options": [1]}}})
     >>> test.is_static
@@ -124,13 +127,13 @@ class DictDefinition(Definition):
     >>> static_test.is_static
     True"""
 
-    def __init__(self, definition: Dict):
-        self.definition = {key: Definition.parse(value) for key, value in definition.items()}
+    def __init__(self, definition: Dict[K, V]):
+        self.definition: Dict[K, Definition[V]] = {key: Definition.parse(value) for key, value in definition.items()}
 
-    def make_sample(self) -> Dict:
+    def make_sample(self) -> Dict[K, V]:
         return {key: value.make_sample() for key, value in self.definition.items()}
 
-    def make_vector(self, obj: Dict) -> Tuple[float, ...]:
+    def make_vector(self, obj: Dict[Any, Any]) -> Tuple[float, ...]:
         return tuple(val
                      for key, key_definition in self.definition.items()
                      for val in key_definition.make_vector(obj[key]))
@@ -143,7 +146,7 @@ class DictDefinition(Definition):
         return True
 
 
-class ListDefinition(Definition):
+class ListDefinition(Definition[List[T]]):
     """ A definition for a List
     >>> test = ListDefinition([{"type": "choices", "parameters": {"options": [1]}},
     ... {"type": "choices", "parameters": {"options": [2]}}])
@@ -157,8 +160,8 @@ class ListDefinition(Definition):
     >>> static_test.is_static
     True"""
 
-    def __init__(self, definition: List):
-        self.definition = [Definition.parse(value) for value in definition]
+    def __init__(self, definition: List[Any]):
+        self.definition: List[Definition[T]] = [Definition.parse(value) for value in definition]
 
     @property
     def is_static(self) -> bool:
@@ -167,20 +170,20 @@ class ListDefinition(Definition):
                 return False
         return True
 
-    def make_sample(self) -> List:
+    def make_sample(self) -> List[T]:
         return [value.make_sample() for value in self.definition]
 
-    def make_vector(self, obj: List) -> Tuple[float, ...]:
+    def make_vector(self, obj: List[T]) -> Tuple[float, ...]:
         return tuple(val
                      for item, item_definition in zip(obj, self.definition)
                      for val in item_definition.make_vector(item))
 
 
-class TemplateDefinition(Definition, ABC):
+class TemplateDefinition(Definition[T], ABC):
     """The root definition for templates in the definitions"""
 
     @staticmethod
-    def parse(to_parse: Dict[str, Any]) -> 'Definition':
+    def parse(to_parse: Dict[str, Any]) -> 'TemplateDefinition[T]':
         """Find the proper template requested by to_parse and instantiate it
         :param to_parse: The template definition
         :return: The definition for the template
@@ -196,11 +199,11 @@ class TemplateDefinition(Definition, ABC):
         >>> t = TemplateDefinition.parse({"type": "copies", "parameters": {"minimum": 0, "maximum": 2, "value": 4}})
         >>> isinstance(t, CopiesDefinition)
         True"""
-        types = {
-            'choices': ChoicesDefinition,
+        types: Dict[str, type[TemplateDefinition[T]]] = {
+            'choices': ChoicesDefinition[T], # type: ignore pylance does not understand this type chooser
             'steps': StepsDefinition,
             'random': RandomDefinition,
-            'copies': CopiesDefinition,
+            'copies': CopiesDefinition[T],
             'log_normal': LogNormalDefinition
         }
         return types[to_parse['type']](**to_parse['parameters'])
@@ -210,7 +213,7 @@ class TemplateDefinition(Definition, ABC):
         return False
 
 
-class LogNormalDefinition(TemplateDefinition):
+class LogNormalDefinition(TemplateDefinition[float]):
     def __init__(self, mu: float, sigma: float):
         self.mu = mu
         self.sigma = sigma
@@ -222,7 +225,7 @@ class LogNormalDefinition(TemplateDefinition):
         return (min(-1.0, max(1.0, (math.log10(obj) - self.mu) / self.sigma / 3)),)
 
 
-class ChoicesDefinition(TemplateDefinition):
+class ChoicesDefinition(TemplateDefinition[T]):
     """ A definition for the choices template. It takes a list of options as a parameter and randomly chooses one
     when generating a sample. If the chosen option itself is again a template it will also be evaluated
     >>> import random
@@ -238,20 +241,20 @@ class ChoicesDefinition(TemplateDefinition):
     >>> test.make_sample()
     1.025010755222667"""
 
-    def __init__(self, options: List):
-        self.options = [Definition.parse(option) for option in options]
+    def __init__(self, options: List[Any]):
+        self.options: List[Definition[T]] = [Definition.parse(option) for option in options]
 
-    def make_sample(self) -> Any:
+    def make_sample(self) -> T:
         return random.choice(self.options).make_sample()
 
-    def make_vector(self, obj: Any) -> Tuple[float]:
+    def make_vector(self, obj: T) -> Tuple[float]:
         for index, option in enumerate(self.options):
             if option.is_static and obj == option.make_sample():
                 return (normalize_feature(index, 0, len(self.options) - 1),)
         return (0,)
 
 
-class StepsDefinition(TemplateDefinition):
+class StepsDefinition(TemplateDefinition[float]):
     # noinspection GrazieInspection
     """A definition for the steps template. It takes a range definition and a scale factor as arguments and generates
         a random value from these when making a sample."""
@@ -286,7 +289,7 @@ class StepsDefinition(TemplateDefinition):
         return (normalize_feature(obj / self.scale_factor, self.start, self.stop),)
 
 
-class RandomDefinition(TemplateDefinition):
+class RandomDefinition(TemplateDefinition[float]):
     """ A Definition for a random value. When making a sample, the random float can either be creating uniformly along
     the unit scaling or the log unit scaling
     >>> import random
@@ -327,7 +330,7 @@ class RandomDefinition(TemplateDefinition):
         self.log_random = log_random
 
 
-class CopiesDefinition(TemplateDefinition):
+class CopiesDefinition(TemplateDefinition[List[T]]):
     """A Definition for copies of a value. If the value is itself a template, it will be evaluated for each copy
     generated when making a sample
     >>> import random
@@ -349,12 +352,12 @@ class CopiesDefinition(TemplateDefinition):
     def __init__(self, minimum: int, maximum: int, value: Any):
         self.minimum = minimum
         self.maximum = maximum
-        self.value = Definition.parse(value)
+        self.value: Definition[T] = Definition.parse(value)
 
-    def make_sample(self) -> List:
+    def make_sample(self) -> List[T]:
         return [self.value.make_sample() for _ in range(random.randint(self.minimum, self.maximum))]
 
-    def make_vector(self, obj: List) -> Tuple[float, float]:
+    def make_vector(self, obj: List[T]) -> Tuple[float, float]:
         number = normalize_feature(len(obj), self.minimum, self.maximum)
         values = normalize_hash_feature(tuple(self.value.make_vector(copy) for copy in obj))
         return values, number

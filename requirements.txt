@@ -4,4 +4,4 @@ numpy~=1.21
 graphviz
 MarkupSafe~=2.1.5
 matplotlib
-pandera
+pandera[pandas]
