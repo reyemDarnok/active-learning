@@ -59,7 +59,7 @@ async def rebuild_scattered_to_file_async(file: Path, parent: Path, input_direct
     :param parent: The parent directory of the output files
     :param input_directories: Where to find the input data to connect to the output files
     :param glob_pattern: The pattern to find the output files to combine"""
-    rebuild_scattered_to_file(file, parent, input_directories, glob_pattern)
+    rebuild_scattered_to_file(file, parent, input_directories, glob_pattern=glob_pattern, pessimistic_interception=False)
 
 
 def rebuild_output_to_file(file: Path,
@@ -117,11 +117,11 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
             compound_hash = input_data_hashes['compound']
             gap_hash = input_data_hashes['gap']
             logger.debug({"compound_file": compound_hash, "gap_file": gap_hash})
-            compound = get_obj_by_hash(h=compound_hash, file_roots=input_directories)
-            gap = get_obj_by_hash(h=gap_hash, file_roots=input_directories)
+            compound: Compound = get_obj_by_hash(h=compound_hash, file_roots=input_directories) # type: ignore - retrieving by hash would need a hash collision to yield something other than a this class
+            gap: GAP = get_obj_by_hash(h=gap_hash, file_roots=input_directories) # type: ignore - retrieving by hash would need a hash collision to yield something other than a this class
         elif 'combination' in input_data_hashes.keys():
             combination_hash = input_data_hashes['combination']
-            combination = get_obj_by_hash(h=combination_hash, file_roots=input_directories)
+            combination: Combination = get_obj_by_hash(h=combination_hash, file_roots=input_directories) # type: ignore - retrieving by hash would need a hash collision to yield something other than a this class
             compound = combination.compound
             gap = combination.gap
         else:
