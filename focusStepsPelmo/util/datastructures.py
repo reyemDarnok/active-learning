@@ -4,7 +4,7 @@ import sys
 import typing
 from collections import OrderedDict, UserDict
 from enum import Enum
-from typing import Any, Dict, Iterator, List, Optional, Protocol, Type, TypeAlias, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Optional, Protocol, Type, TypeVar, Union
 
 T = TypeVar('T')
 K = TypeVar('K')
@@ -15,8 +15,7 @@ class SupportsDunderLT(Protocol[_T_contra]):
 
 class SupportsDunderGT(Protocol[_T_contra]):
     def __gt__(self, other: _T_contra, /) -> bool: ...
-SupportsRichComparison: TypeAlias = Union[SupportsDunderLT[Any], SupportsDunderGT[Any]]
-K_sortable = TypeVar('K_sortable', bound=SupportsRichComparison) # type: ignore - from source in python
+K_sortable = TypeVar('K_sortable', bound=Union[SupportsDunderLT[Any], SupportsDunderGT[Any]]) # type: ignore - from source in python
 
 class RSDict(OrderedDict[K_sortable, V]):
     """Dict ordered by reverse order of keys"""
@@ -116,80 +115,80 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
                     else:
                         return tuple(input_value) # type: ignore 
                 except TypeError:  # input_value is not iterable
-                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                        type_args: List[Type[Any]] = t.__args__
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar): # type: ignore
+                        type_args: List[Type[Any]] = t.__args__ # type: ignore
                         if len(type_args) == 1 or (len(type_args) == 2 and type_args[1] == Ellipsis):
-                            return (correct_type(input_value, type_args[0]),)
+                            return (correct_type(input_value, type_args[0]),) # type: ignore
                     else:
-                        return (input_value,)
+                        return (input_value,) # type: ignore
             elif origin == set:
                 if not input_value:
-                    return set()
+                    return set() # type: ignore
                 try:
-                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                        type_args = t.__args__
-                        return {correct_type(x, type_args[0]) for x in input_value}
-                    else:
-                        return set(input_value)
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar): # type: ignore
+                        type_args = t.__args__ # type: ignore
+                        return {correct_type(x, type_args[0]) for x in input_value} # type: ignore
+                    else:    
+                        return set(input_value) # type: ignore
                 except TypeError:
-                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                        type_args = t.__args__
-                        return {correct_type(input_value, type_args[0])}
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar): # type: ignore
+                        type_args = t.__args__ # type: ignore
+                        return {correct_type(input_value, type_args[0])} # type: ignore
                     else:
-                        return {input_value}
+                        return {input_value} # type: ignore
             elif origin == frozenset:
                 if not input_value:
-                    return frozenset()
+                    return frozenset() # type: ignore
                 try:
-                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                        type_args = t.__args__
-                        return frozenset(correct_type(x, type_args[0]) for x in input_value)
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar): # type: ignore
+                        type_args = t.__args__ # type: ignore
+                        return frozenset(correct_type(x, type_args[0]) for x in input_value) # type: ignore
                     else:
-                        return frozenset(input_value)
+                        return frozenset(input_value) # type: ignore
                 except TypeError:
-                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                        type_args = t.__args__
-                        return frozenset({correct_type(input_value, type_args[0])})
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar): # type: ignore
+                        type_args = t.__args__ # type: ignore
+                        return frozenset({correct_type(input_value, type_args[0])}) # type: ignore
                     else:
-                        return frozenset({input_value})
+                        return frozenset({input_value}) # type: ignore
             elif origin == list:
                 if not input_value:
-                    return list()
+                    return list() # type: ignore
                 try:
-                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                        return [correct_type(x, t.__args__[0]) for x in input_value]
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar): # type: ignore
+                        return [correct_type(x, t.__args__[0]) for x in input_value] # type: ignore
                     else:
-                        return list(input_value)
+                        return list(input_value) # type: ignore
                 except TypeError:  # input_value is not iterable
-                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                        return [correct_type(input_value, t.__args__[0])]
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar): # type: ignore
+                        return [correct_type(input_value, t.__args__[0])] # type: ignore
                     else:
-                        return [input_value]
-            elif origin == dict:
+                        return [input_value] # type: ignore
+            elif origin == dict: 
                 if not input_value:
-                    return {}
+                    return {} # type: ignore
                 access_keys = input_value.keys()
                 correct_keys = input_value.keys()
                 if hasattr(t, '__args__'):
-                    type_args = t.__args__
+                    type_args = t.__args__ # type: ignore
                     if not isinstance(type_args[0], TypeVar):
                         correct_keys = (correct_type(key, type_args[0]) for key in access_keys)
                     if not isinstance(type_args[1], TypeVar):
-                        return {correct_key: correct_type(input_value[access_key], type_args[1])
+                        return {correct_key: correct_type(input_value[access_key], type_args[1]) # type: ignore
                                 for correct_key, access_key in zip(correct_keys, access_keys)}
-                return {key: input_value[key] for key in access_keys}
-            elif t._name is None:
-                return None
+                return {key: input_value[key] for key in access_keys} # type: ignore
+            elif t._name is None: # type: ignore
+                return None # type: ignore
             else:
                 # noinspection PyProtectedMember
-                raise NotImplementedError('Type Correction for %s' % t._name)
+                raise NotImplementedError('Type Correction for %s' % t._name) # type: ignore
         # After the typing evaluation because isinstance errors if given a type hint as class instead of returning False
         if isinstance(input_value, t):
             return input_value
         if input_value is None:
-            return None
+            return None # type: ignore
         if hasattr(t, 'parse'):
-            return t.parse(input_value)
+            return t.parse(input_value) # type: ignore
         # noinspection PyBroadException
         try:
             return t(**input_value)
@@ -200,6 +199,6 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
                 return t[input_value]
             except KeyError:
                 return t(input_value)
-        return t(input_value)
+        return t(input_value) # type: ignore
     except Exception as e:
         raise TypeError(f"Could not convert {input_value} to type {t}") from e
