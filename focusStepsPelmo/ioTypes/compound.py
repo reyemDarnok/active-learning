@@ -60,15 +60,15 @@ class Compound(TypeCorrecting):
     """DT50 behaviours"""
     plant_uptake: float = 0
     """Fraction of plant uptake. Needs to between 0 and 1. Unitless"""
-    water_solubility: Optional[float] = None
+    water_solubility: float = None # type: ignore - will be calculated if not given
     """The water solubility in mg/L"""
-    vapor_pressure: Optional[float] = None
+    vapor_pressure: float = None # type: ignore - will be calculated if not given
     """The vaporization pressure in Pa"""
-    henry: Optional[float] = None
+    henry: float = None # # type: ignore - will be calculated if not given
     """Henry constant in J / mol"""
-    name: Optional[str] = field(hash=False, default='')  # str hash is not stable
+    name: str = field(hash=False, default='')  # str hash is not stable
     """The compounds name. Used only for labelling purposes"""
-    model_specific_data: Dict[str, Any] = field(compare=False, hash=False, default_factory=dict)
+    model_specific_data: Dict[str, Any] = field(compare=False, hash=False, default_factory=dict) # type: ignore - #TODO annotate correctly
     """Some data only of interest to specific models"""
     metabolites: Tuple[MetaboliteDescription, ...] = field(default_factory=tuple)
     """The compounds metabolites"""
@@ -98,7 +98,7 @@ class Compound(TypeCorrecting):
             round_property_sig(self, 'henry', 3)
 
 
-    def metabolite_description_by_name(self, name: str) -> Optional[MetaboliteDescription]:
+    def metabolite_description_by_name(self, name: str) -> MetaboliteDescription:
         """Given a name, find the MetaboliteDescription for the Metabolite with that name
         :param name: The name of the Metabolite to find
         :return: The MetaboliteDescription for the degradation from self to the Metabolite named name"""
@@ -106,14 +106,14 @@ class Compound(TypeCorrecting):
             for met_des in self.metabolites:
                 if met_des.metabolite.name == name:
                     return met_des
-        return None
+        raise ValueError(f"{name} is not a metabolite of {self.name}")
 
     @staticmethod
     def from_excel(excel_file: Path) -> List['Compound']:
         """Parse an Excel file and find all compounds defined in it
         :param excel_file: The Excel File to parse
         :return: The Compounds in the file"""
-        compounds = pandas.read_excel(io=excel_file, sheet_name="Compound Properties")  
+        compounds = pandas.read_excel(io=excel_file, sheet_name="Compound Properties") # type: ignore
         compounds['Pelmo Position'].fillna('', inplace=True) # type: ignore
         metabolite_relationships = pandas.read_excel(io=excel_file, sheet_name="Metabolite Relationships") # type: ignore
         compound_list = [

@@ -4,30 +4,41 @@ import sys
 import typing
 from collections import OrderedDict, UserDict
 from enum import Enum
-from typing import Any, Dict, List, Optional, Type, TypeVar, Union
+from typing import Any, Dict, Iterator, List, Optional, Protocol, Type, TypeAlias, TypeVar, Union
 
+T = TypeVar('T')
+K = TypeVar('K')
+V = TypeVar('V')
+_T_contra = TypeVar("_T_contra", contravariant=True)
+class SupportsDunderLT(Protocol[_T_contra]):
+    def __lt__(self, other: _T_contra, /) -> bool: ...
 
-class RSDict(UserDict):
+class SupportsDunderGT(Protocol[_T_contra]):
+    def __gt__(self, other: _T_contra, /) -> bool: ...
+SupportsRichComparison: TypeAlias = Union[SupportsDunderLT[Any], SupportsDunderGT[Any]]
+K_sortable = TypeVar('K_sortable', bound=SupportsRichComparison) # type: ignore - from source in python
+
+class RSDict(OrderedDict[K_sortable, V]):
     """Dict ordered by reverse order of keys"""
 
-    def __init__(self, source: Optional[Dict] = None):
+    def __init__(self, source: Optional[Dict[K_sortable, V]] = None):
         if source is None:
-            source = {}
+            source = dict[K_sortable, V]()
         key_order = reversed(sorted(source.keys()))
-        data = OrderedDict()
+        data: OrderedDict[K_sortable, V] = OrderedDict()
         for key in key_order:
             data[key] = source[key]
         super().__init__(data)
 
 
-class HashableDict(UserDict):
+class HashableDict(UserDict[K, V]):
     """A Dict that supports hashing. Note that using it as keys and then changing it will have unpredictable effects"""
 
     def __hash__(self):
         return hash(frozenset(self.items()))
 
 
-class HashableRSDict(RSDict):
+class HashableRSDict(RSDict[K_sortable, V]):
     """A hashable version of RSDict. Note that using it as keys and then changing it will have unpredictable effects"""
 
     def __hash__(self):
@@ -52,13 +63,12 @@ class TypeCorrecting:
             object.__setattr__(self, attr, correct_type(self.__getattribute__(attr), t))
 
 
-T = TypeVar('T')
 
 
 class NoValidStrategyException(Exception):
     """There were several strategies for an operation specified but none worked"""
 
-    def __init__(self, *args, strategy_exceptions: List[Exception]):
+    def __init__(self, *args: Any, strategy_exceptions: List[Exception]):
         super().__init__(*args)
         self.strategy_exceptions = strategy_exceptions
 
@@ -68,19 +78,18 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
     Coerce the input_value into a value of type t. Respects all typing annotations with simple constructors
     """
     try:
-        if t == typing.Any:
+        if t == typing.Any: # type: ignore - t comes from type annotations -> may well be any
             return input_value
         if hasattr(t, '__origin__'):  # Typing with Type Vars
-            origin = t.__origin__
+            origin: Type[Any] = t.__origin__ # type: ignore - we know that __origin__ is always type information
             # noinspection PyProtectedMember
             if origin == Union:
-                if type(None) in t.__args__:
+                if type(None) in t.__args__: # type: ignore - every union has information which types are in the union
                     if input_value is None:
-                        return None
-                    elif isinstance(input_value, str) and str not in t.__args__:
-                        return None
-                exceptions = []
-                for union_type in t.__args__:
+                        return None # type: ignore - if we reach here, None is a valic value of T
+                exceptions: List[Exception] = []
+                union_types: List[Type[Any]] = t.__args__ # type: ignore 
+                for union_type in union_types:
                     try:
                         return correct_type(input_value, union_type)
                     except Exception as e:
@@ -89,26 +98,26 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
                                                strategy_exceptions=exceptions)
             elif origin == tuple:
                 if not input_value:
-                    return tuple()
+                    raise TypeError(f"Missing values for tuple construction")
                 try:
-                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                        type_args = t.__args__
-                        result = tuple()
-                        last_type = type_args[-2] if len(type_args) > 1 else type_args[1]
-                        for value, value_type in itertools.zip_longest(input_value, type_args, fillvalue=last_type):
+                    if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar): # type: ignore 
+                        type_args: List[Type[Any]] = t.__args__ # type: ignore 
+                        result: List[Any] = list()
+                        last_type: Type[Any] = type_args[-2] if len(type_args) > 1 else type_args[1] # type: ignore 
+                        for value, value_type in itertools.zip_longest(input_value, type_args, fillvalue=last_type): # type: ignore 
                             if value_type != Ellipsis:
-                                result += (correct_type(value, value_type),)
+                                result.append(correct_type(value, value_type)) # type: ignore 
                             else:
                                 if value == last_type:
                                     break  # Ellipsis is not taken, i.e. a tuple of one or more ints has one int
                                 else:
-                                    result += (correct_type(value, last_type),)
-                        return result
+                                    result.append(correct_type(value, last_type)) # type: ignore 
+                        return tuple(result) # type: ignore 
                     else:
-                        return tuple(input_value)
+                        return tuple(input_value) # type: ignore 
                 except TypeError:  # input_value is not iterable
                     if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar):
-                        type_args = t.__args__
+                        type_args: List[Type[Any]] = t.__args__
                         if len(type_args) == 1 or (len(type_args) == 2 and type_args[1] == Ellipsis):
                             return (correct_type(input_value, type_args[0]),)
                     else:

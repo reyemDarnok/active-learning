@@ -7,7 +7,7 @@ from contextlib import suppress
 from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import rmtree
-from typing import FrozenSet
+from typing import FrozenSet, Optional, Type, Union
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
@@ -31,9 +31,9 @@ async def main():
                           pessimistic_interception=args.pessimistic_interception)
 
 
-def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None,
-              combination_dir: Path = None,
-              crops: FrozenSet[FOCUSCrop] = FOCUSCrop, scenarios: FrozenSet[Scenario] = Scenario,
+def run_local(work_dir: Path, output_file: Path, compound_files: Optional[Path] = None, gap_files: Optional[Path] = None,
+              combination_dir: Optional[Path] = None,
+              crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop), scenarios: FrozenSet[Scenario] = frozenset(Scenario),
               threads: int = cpu_count() - 1, pessimistic_interception: bool = False):
     """Run Pelmo locally
     :param work_dir: The directory to use for Pelmos file structure
@@ -65,9 +65,9 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Path = None, ga
                            input_directories=tuple(x for x in (compound_files, gap_files, combination_dir) if x), pessimistic_interception=pessimistic_interception)
 
 
-async def run_local_async(work_dir: Path, output_file: Path, compound_files: Path = None, gap_files: Path = None,
-                          combination_dir: Path = None,
-                          crops: FrozenSet[FOCUSCrop] = FOCUSCrop, scenarios: FrozenSet[Scenario] = Scenario,
+async def run_local_async(work_dir: Path, output_file: Path, compound_files: Optional[Path] = None, gap_files: Optional[Path] = None,
+                          combination_dir: Optional[Path] = None,
+                          crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop), scenarios: FrozenSet[Scenario] = frozenset(Scenario),
                           threads: int = cpu_count() - 1, pessimistic_interception: bool = False):
     """Run Pelmo locally
     :param work_dir: The directory to use for Pelmos file structure

@@ -73,10 +73,10 @@ class Definition(ABC, Generic[T]):
                 refined: Dict[str, Any] = to_parse # type: ignore
                 definition = TemplateDefinition[T].parse(refined)
             else:
-                refined: Dict[Any, Any] = to_parse
-                definition = DictDefinition[Any, Any](refined)
+                refined: Dict[Any, Any] = to_parse # type: ignore
+                definition = DictDefinition(refined) # type: ignore
         elif isinstance(to_parse, (list, tuple, UserList)):
-            definition: Definition[T] = ListDefinition(to_parse)
+            definition: Definition[T] = ListDefinition(to_parse) # type: ignore
         else:
             definition: Definition[T] = LiteralDefinition(to_parse)
         if definition.is_static:

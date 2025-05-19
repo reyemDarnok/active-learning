@@ -232,8 +232,8 @@ class PsmCompound:
                            position=position)
 
 
-PsmCompound.empty = PsmCompound(molar_mass=0, adsorption=PsmAdsorption(koc=0, freundlich=1), degradations=[],
-                                volatilizations=(Volatilization(), Volatilization()))
+PsmCompound.empty = PsmCompound(molar_mass=0, adsorption=PsmAdsorption(koc=0, freundlich=1), degradations=[], # type: ignore - this is a monkeypatch
+                                volatilizations=(Volatilization(), Volatilization())) 
 
 
 def expand_volatilization_regulatory(volatilization: Volatilization) -> Tuple[Volatilization, Volatilization]:

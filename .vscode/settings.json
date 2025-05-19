@@ -1,5 +1,10 @@
 {
     "python.venvPath": "venv",
-    "python.analysis.inlayHints.functionReturnTypes": false,
-    "python.analysis.inlayHints.pytestParameters": false
+    "python.analysis.inlayHints.functionReturnTypes": true,
+    "python.analysis.inlayHints.pytestParameters": false,
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.inlayHints.callArgumentNames": "partial",
+    "python.analysis.typeEvaluation.strictDictionaryInference": false,
+    "python.analysis.typeEvaluation.strictListInference": true,
+    "python.analysis.typeEvaluation.strictSetInference": true
 }
