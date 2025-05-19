@@ -4,6 +4,7 @@ import logging
 import platform
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
+from typing import Optional
 
 
 class JsonFormatter(logging.Formatter):
@@ -16,7 +17,7 @@ class JsonFormatter(logging.Formatter):
     """
 
     # noinspection PyMissingConstructor
-    def __init__(self, fmt_dict: dict = None, time_format: str = "%Y-%m-%dT%H:%M:%S", msec_format: str = "%s.%03dZ"):
+    def __init__(self, fmt_dict: Optional[dict] = None, time_format: str = "%Y-%m-%dT%H:%M:%S", msec_format: str = "%s.%03dZ"):
         self.fmt_dict = fmt_dict if fmt_dict is not None else {"message": "message"}
         self.default_time_format = time_format
         self.default_msec_format = msec_format
@@ -28,7 +29,7 @@ class JsonFormatter(logging.Formatter):
         """
         return "asctime" in self.fmt_dict.values()
 
-    def formatMessage(self, record) -> dict:
+    def formatMessage(self, record) -> dict: # type: ignore mismatch is intentional
         """
         Overwritten to return a dictionary of the relevant LogRecord attributes instead of a string. 
         KeyError is raised if an unknown attribute is provided in the fmt_dict. 
