@@ -43,9 +43,15 @@ async def main():
     logger.info("Finished generating compounds")
 
     if not crops:
-        crops = file_span_params.pop('crop', frozenset(FOCUSCrop))
+        if 'crops' in file_span_params:
+            crops = frozenset(FOCUSCrop.parse(c) for c in file_span_params['crops'])
+        else:
+            crops = frozenset(FOCUSCrop)
     if not scenarios:
-        scenarios = file_span_params.pop('scenario', frozenset(Scenario))
+        if 'scenarios' in file_span_params['scenarios']:
+            scenarios = frozenset(Scenario[s] for s in file_span_params['scenarios'])
+        else:
+            scenarios = frozenset(Scenario)
 
     await run_samples(combination_dir, compound_dir, gap_dir, crops, scenarios, test_set_location, args)
 
@@ -139,7 +145,7 @@ async def create_input_samples(args, combination_dir, compound_dir, gap_dir, sam
             ))
         elif args.input_format == 'csv':
             with args.template_gap.open() as gap_file:
-                template_gap = GAP(**json.load(gap_file))
+                template_gap = GAP.parse(**json.load(gap_file))
             with args.template_compound.open() as compound_file:
                 template_compound = Compound(**json.load(compound_file))
             rows = csv.reader(input_file)
