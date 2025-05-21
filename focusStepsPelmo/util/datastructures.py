@@ -97,7 +97,7 @@ def correct_type(input_value: Any, t: Type[T]) -> T:
                                                strategy_exceptions=exceptions)
             elif origin == tuple:
                 if not input_value:
-                    raise TypeError(f"Missing values for tuple construction")
+                    return tuple() # type: ignore
                 try:
                     if hasattr(t, '__args__') and not isinstance(t.__args__[0], TypeVar): # type: ignore 
                         type_args: List[Type[Any]] = t.__args__ # type: ignore 
