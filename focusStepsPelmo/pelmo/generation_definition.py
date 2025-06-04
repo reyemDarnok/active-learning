@@ -1,10 +1,13 @@
 """A file for methods to generate objects from probabilistic definitions"""
+import logging
 import math
 import random
 import sys
 from abc import ABC, abstractmethod
 from collections import UserDict, UserList
 from typing import Any, Generic, Tuple, Dict, List, Type, TypeVar
+
+import numpy
 
 
 def normalize_hash_feature(hashable: Any) -> float:
@@ -134,9 +137,13 @@ class DictDefinition(Definition[Dict[K, V]]):
         return {key: value.make_sample() for key, value in self.definition.items()}
 
     def make_vector(self, obj: Dict[Any, Any]) -> Tuple[float, ...]:
-        return tuple(val
-                     for key, key_definition in self.definition.items()
-                     for val in key_definition.make_vector(obj[key]))
+        try:
+            return tuple(val
+                        for key, key_definition in self.definition.items()
+                        for val in key_definition.make_vector(obj[key]))
+        except:
+            print(obj)
+            raise
 
     @property
     def is_static(self) -> bool:
@@ -219,10 +226,14 @@ class LogNormalDefinition(TemplateDefinition[float]):
         self.sigma = sigma
 
     def make_sample(self) -> float:
-        return random.lognormvariate(self.mu * math.log(10), self.sigma * math.log(10))
+        return numpy.random.lognormal(mean=self.mu * math.log(10), sigma=self.sigma * math.log(10))
 
     def make_vector(self, obj: float) -> Tuple[float, ...]:
-        return (min(-1.0, max(1.0, (math.log10(obj) - self.mu) / self.sigma / 3)),)
+        if obj != 0:
+            return (min(-1.0, max(1.0, (math.log10(obj) - self.mu) / self.sigma / 3)),)
+        else:
+            logging.getLogger().warn("LogNormalDefinition produced 0")
+            return (0,)
 
 
 class ChoicesDefinition(TemplateDefinition[T]):

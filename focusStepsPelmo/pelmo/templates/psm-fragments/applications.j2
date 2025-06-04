@@ -1,6 +1,6 @@
 {{'<APPLICATION>\n' -}}
 {{' ' -}}
-{{ '{0: <2}'.format((gap.defined_scenarios | length ) + 1) -}}
+{{ '{0: <2}'.format((gap.defined_scenarios.intersection(requested_scenarios) | length ) + 1) -}}
 {{'    0    0    <number of locations absolute app/relative app>\n' -}}
 {% with current_gap = dummy_gap -%}
     {% with name_scenario = False -%}

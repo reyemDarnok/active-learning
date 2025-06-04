@@ -1,5 +1,4 @@
 """File for methods relating to scanning parameter matrices"""
-import asyncio
 import csv
 import json
 import logging
@@ -18,15 +17,15 @@ from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, RelativeGAP
 from focusStepsPelmo.pelmo.generation_definition import Definition
-from focusStepsPelmo.pelmo.local import run_local_async
-from focusStepsPelmo.pelmo.remote_bhpc import run_bhpc_async
+from focusStepsPelmo.pelmo.local import run_local
+from focusStepsPelmo.pelmo.remote_bhpc import run_bhpc
 from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
 from focusStepsPelmo.util.datastructures import correct_type
 from focusStepsPelmo.util.iterable_helper import repeat_n_times
 
 
-async def main():
+def main():
     """entry point for calling this script from the command line"""
     args = parse_args()
     logger = logging.getLogger()
@@ -37,8 +36,7 @@ async def main():
     test_set_location = args.test_set_location if args.test_set_location else args.work_dir / 'test_data'
     crops = frozenset(args.crop)
     scenarios = frozenset(args.scenario)
-    sample_creation_tasks = []
-    file_span_params = await create_input_samples(args, combination_dir, compound_dir, gap_dir, sample_creation_tasks,
+    file_span_params = create_input_samples(args, combination_dir, compound_dir, gap_dir,
                                                   test_set_location)
     logger.info("Finished generating compounds")
 
@@ -53,10 +51,10 @@ async def main():
         else:
             scenarios = frozenset(Scenario)
 
-    await run_samples(combination_dir, compound_dir, gap_dir, crops, scenarios, test_set_location, args)
+    run_samples(combination_dir, compound_dir, gap_dir, crops, scenarios, test_set_location, args)
 
 
-async def run_samples(combination_dir: Path, compound_dir: Path, gap_dir: Path, crops: FrozenSet[FOCUSCrop],
+def run_samples(combination_dir: Path, compound_dir: Path, gap_dir: Path, crops: FrozenSet[FOCUSCrop],
                       scenarios: FrozenSet[Scenario], test_set_location: Path,
                       args):
     """Run a selection of samples.
@@ -70,52 +68,47 @@ async def run_samples(combination_dir: Path, compound_dir: Path, gap_dir: Path, 
     logger = logging.getLogger()
     crops = correct_type(crops, FrozenSet[FOCUSCrop])
     scenarios = correct_type(scenarios, FrozenSet[Scenario])
-    execution_tasks = []
+    pool = ThreadPoolExecutor(thread_name_prefix="orchestrators")
     if args.run == 'bhpc':
         bhpc = BHPC()
         logger.info("Starting deployment to BHPC")
         if args.run_test_set:
             logger.info("Starting to run test set on BHPC")
-            execution_tasks.append(asyncio.create_task(
-                run_bhpc_async(combination_dir=test_set_location, submit=args.work_dir / 'remote' / "test_data",
+            pool.submit(run_bhpc, combination_dir=test_set_location, submit=args.work_dir / 'remote' / "test_data",
                                output=args.output_dir / f"test_data.{args.output_format}", crops=crops,
                                scenarios=scenarios,
                                notification_email=args.notification_email, session_timeout=args.session_timeout,
-                               bhpc=bhpc, pessimistic_interception=args.pessimistic_interception)
-            ))
+                               bhpc=bhpc, pessimistic_interception=args.pessimistic_interception
+            )
         logger.info("Starting to run sample set on BHPC")
-        execution_tasks.append(asyncio.create_task(
-            run_bhpc_async(compound_file=compound_dir, gap_file=gap_dir, combination_dir=combination_dir,
+        pool.submit(run_bhpc, compound_file=compound_dir, gap_file=gap_dir, combination_dir=combination_dir,
                            submit=args.work_dir / 'remote' / "samples",
                            output=args.output_dir / f"samples.{args.output_format}",
                            crops=crops, scenarios=scenarios, notification_email=args.notification_email,
-                           session_timeout=args.session_timeout, bhpc=bhpc, pessimistic_interception=args.pessimistic_interception)
-        ))
+                           session_timeout=args.session_timeout, bhpc=bhpc, pessimistic_interception=args.pessimistic_interception
+        )
+        
     elif args.run == 'local':
         logger.info("Starting local calculation")
         if args.run_test_set:
             logger.info("Starting to run test set locally")
-            execution_tasks.append(asyncio.create_task(
-                run_local_async(work_dir=args.work_dir / 'local' / "test_data",
+            run_local(work_dir=args.work_dir / 'local' / "test_data",
                                 combination_dir=test_set_location,
                                 output_file=args.output_dir / f"test_data.{args.output_format}", crops=crops,
                                 scenarios=scenarios,
-                                threads=args.threads, pessimistic_interception=args.pessimistic_interception)
-            ))
+                                threads=args.threads, pessimistic_interception=args.pessimistic_interception
+                )
         logger.info("Starting to run sample set locally")
-        execution_tasks.append(asyncio.create_task(
-            run_local_async(work_dir=args.work_dir / 'local' / "samples", compound_files=compound_dir,
+        run_local( work_dir=args.work_dir / 'local' / "samples", compound_files=compound_dir,
                             gap_files=gap_dir,
                             combination_dir=combination_dir,
                             output_file=args.output_dir / f"samples.{args.output_format}", crops=crops,
                             scenarios=scenarios,
                             threads=args.threads, pessimistic_interception=args.pessimistic_interception)
-        ))
-    for task in execution_tasks:
-        await task
 
+    pool.shutdown()
 
-async def create_input_samples(args, combination_dir, compound_dir, gap_dir, sample_creation_tasks, test_set_location):
+def create_input_samples(args, combination_dir, compound_dir, gap_dir, test_set_location) -> Dict[str, list[str]]:
     """Create samples from the definition"""
     file_span_params = {}
     with args.input_file.open() as input_file:
@@ -134,15 +127,12 @@ async def create_input_samples(args, combination_dir, compound_dir, gap_dir, sam
             elif 'rate' in input_dict.keys():
                 input_dict = {'gap': input_dict, 'compound': compound}
             if args.make_test_set:
-                sample_creation_tasks.append(asyncio.create_task(
-                    create_samples_in_dirs_async(definition=input_dict, output_dir=test_set_location,
+                create_samples_in_dirs(definition=input_dict, output_dir=test_set_location,
                                                  sample_size=args.test_set_size)
-                ))
-            sample_creation_tasks.append(asyncio.create_task(
-                create_samples_in_dirs_async(definition=input_dict, output_dir=combination_dir,
+            create_samples_in_dirs( definition=input_dict, output_dir=combination_dir,
                                              sample_size=args.sample_size,
                                              test_set_path=test_set_location, test_set_buffer=args.test_set_buffer)
-            ))
+
         elif args.input_format == 'csv':
             with args.template_gap.open() as gap_file:
                 template_gap = GAP.parse(**json.load(gap_file))
@@ -150,16 +140,13 @@ async def create_input_samples(args, combination_dir, compound_dir, gap_dir, sam
                 template_compound = Compound(**json.load(compound_file))
             rows = csv.reader(input_file)
             file_span_params = {row[0]: [x.strip() for x in row[1:]] for row in rows}
-            sample_creation_tasks.append(asyncio.create_task(
-                span_to_dir_async(template_gap=template_gap, template_compound=template_compound,
+            
+            span_to_dir(template_gap=template_gap, template_compound=template_compound,
                                   compound_dir=compound_dir,
                                   gap_dir=gap_dir,
-                                  **file_span_params)
-            ))
+                                  **file_span_params) # type: ignore
         else:
             raise ValueError("Cannot infer input format, please specify explicitly")
-    for task in sample_creation_tasks:
-        await task
     return file_span_params
 
 
@@ -199,14 +186,14 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     parsed_definition = Definition.parse(definition)
     if test_set_path:
         test_set = set(parsed_definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
-                       for c in load_test_set(test_set_path))
+                    for c in load_test_set(test_set_path))
         logger.info('Loaded test set')
     else:
         test_set = set()
     cpus = cpu_count()
     if cpus is None:
         cpus = 2
-    pool = ThreadPoolExecutor(max_workers=cpus - 1)
+    pool = ThreadPoolExecutor(max_workers=cpus - 1, thread_name_prefix="create_samples")
     logger.info('Initialized Thread Pool')
     pool.map(make_single_sample,
              repeat_n_times(parsed_definition, sample_size),
@@ -217,33 +204,6 @@ def create_samples_in_dirs(definition: Dict, output_dir: Path, sample_size: int,
     pool.shutdown()
 
 
-async def create_samples_in_dirs_async(definition: Dict, output_dir: Path, sample_size: int,
-                                       test_set_path: Optional[Path] = None,
-                                       test_set_buffer: float = 0.1):
-    """
-    Create sample Combinations in output_dir
-    :param definition: defines the structure of the samples
-    :param output_dir: The path to write the samples to
-    :param sample_size: How many samples to generate
-    :param test_set_path: Where to load an existing test set from. Don't load a test set if this is None
-    :param test_set_buffer: How far any point in the sample has to be from the test set
-    (Euclidean distance between features normalised to [-1,1] range)
-    """
-    logger = logging.getLogger()
-    with suppress(FileNotFoundError):
-        rmtree(output_dir)
-    output_dir.mkdir(parents=True)
-    parsed_definition = Definition.parse(definition)
-    if test_set_path:
-        test_set = set(parsed_definition.make_vector(json.loads(json.dumps(c, cls=EnhancedJSONEncoder)))
-                       for c in load_test_set(test_set_path))
-        logger.info('Loaded test set')
-    else:
-        test_set = set()
-    await asyncio.gather(*(
-        write_single_sample_async(parsed_definition, test_set, output_dir, test_set_buffer) for _ in range(sample_size)
-    ))
-
 
 def make_single_sample(definition: Definition, test_set: Set[Tuple[float, ...]], output_dir: Path,
                        test_set_buffer: float):
@@ -253,25 +213,23 @@ def make_single_sample(definition: Definition, test_set: Set[Tuple[float, ...]],
     :param output_dir: The directory to write the sample to
     :param test_set_buffer: How far to stay away from the test_set. Uses Euclidean distance between the sample features
     and the test features, the individual features being mapped to the tuple [-1;1]"""
-    while True:
+    if not test_set:
         combination_dict = definition.make_sample()
-        current_vector = definition.make_vector(combination_dict)
-        if not test_set or _shortest_distance_to_set(current_vector, test_set) > test_set_buffer:
-            combination = Combination(**combination_dict)
-            with (output_dir / f"{hash(combination)}.json").open('w') as fp:
-                json.dump(combination, fp, cls=EnhancedJSONEncoder)
-            break
-
-
-async def write_single_sample_async(definition: Definition, test_set: Set[Tuple[float, ...]], output_dir: Path,
-                                    test_set_buffer: float):
-    """Create a single sample
-    :param definition: The definition for the sample to create
-    :param test_set: The test_set to avoid. May be empty
-    :param output_dir: The directory to write the sample to
-    :param test_set_buffer: How far to stay away from the test_set. Uses Euclidean distance between the sample features
-    and the test features, the individual features being mapped to the tuple [-1;1]"""
-    make_single_sample(definition, test_set, output_dir, test_set_buffer)
+        combination = Combination(**combination_dict)
+        with (output_dir / f"{hash(combination)}.json").open('w') as fp:
+            json.dump(combination, fp, cls=EnhancedJSONEncoder)
+    else:
+        while True:
+            combination_dict = definition.make_sample()
+            current_vector = definition.make_vector(combination_dict)
+            distance = _shortest_distance_to_set(current_vector, test_set)
+            if distance > test_set_buffer:
+                combination = Combination(**combination_dict)
+                with (output_dir / f"{hash(combination)}.json").open('w') as fp:
+                    json.dump(combination, fp, cls=EnhancedJSONEncoder)
+                break
+            else:
+                logging.getLogger().debug("Discarded sample for being to close to the test set. Sample was %s", combination_dict)
 
 
 def load_test_set(location: Path) -> Generator[Combination, None, None]:
@@ -396,21 +354,6 @@ def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Pa
     for compound in span_compounds(template_compound, dt50, koc, freundlich, plant_uptake):
         with (compound_dir / f"compound-{hash(compound)}.json").open('w') as fp:
             json.dump(compound, fp, cls=EnhancedJSONEncoder)
-
-
-async def span_to_dir_async(**kwargs):
-    """Creates compound and gap jsons for a parameter matrix
-    :param template_gap: The gap to use as a template for parameters that are not in the matrix
-    :param template_compound: The compound to use as a template for parameters that are not in the matrix
-    :param compound_dir: The directory to write the resulting compound files to
-    :param gap_dir: The directory to write the resulting gap files to. Defaults to compound_dir if not set
-    :param bbch: The BBCH values in the matrix
-    :param rate: The application rate values in the matrix
-    :param dt50: The DT50 values in the matrix
-    :param koc: The koc values in the matrix
-    :param freundlich: The freundlich values in the matrix
-    :param plant_uptake: The plant uptake values in the matrix"""
-    span_to_dir(**kwargs)
 
 
 def span(template_gap: GAP, template_compound: Compound,
@@ -610,4 +553,4 @@ def parse_args() -> Namespace:
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    main()

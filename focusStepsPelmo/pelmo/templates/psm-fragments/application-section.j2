@@ -1,7 +1,7 @@
 {# Setup variables -#}
 {% set name_scenario = name_scenario | default(True) -%}
 {# Write section -#}
-{% for scenario in current_gap.defined_scenarios -%}
+{% for scenario in current_gap.defined_scenarios.intersection(requested_scenarios) -%}
     {# Header -#}
     {{ "%03d" % (current_gap.application_data(scenario) | list | length) -}}
     {% if name_scenario -%}
