@@ -86,7 +86,6 @@ def run_bhpc(submit: Path, output: Path,  pessimistic_interception: bool, compou
                                        gaps=GAP.from_path(gap_file) if gap_file else None,
                                        combinations=Combination.from_path(combination_dir) if combination_dir else None,
                                        crops=crops, scenarios=scenarios, pessimistic_interception=pessimistic_interception)
-    psm_file_data = (fut.result() for fut in psm_file_data)
 
     with suppress(FileNotFoundError):
         rmtree(submit)
@@ -117,7 +116,7 @@ async def run_bhpc_async(submit: Path, output: Path, pessimistic_interception: b
                          crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
                          scenarios: FrozenSet[Scenario] = frozenset(Scenario),
                          notification_email: Optional[str] = None, session_timeout: int = 6, run: bool = True,
-                         bhpc: BHPC = BHPC()) -> None:
+                         bhpc: BHPC = BHPC()):
     """Run Pelmo on the bhpc
     :param submit: Where to write the files uploaded to the BHPC locally
     :param output: Where to write the output files
@@ -138,7 +137,7 @@ async def run_bhpc_async(submit: Path, output: Path, pessimistic_interception: b
                                        gaps=GAP.from_path(gap_file) if gap_file else None,
                                        combinations=Combination.from_path(combination_dir) if combination_dir else None,
                                        crops=crops, scenarios=scenarios, pessimistic_interception=pessimistic_interception)
-    psm_file_data = (fut.result() for fut in psm_file_data)
+
     with suppress(FileNotFoundError):
         rmtree(submit)
     logger.info('Generating sub files for bhpc')
@@ -165,9 +164,8 @@ async def run_bhpc_async(submit: Path, output: Path, pessimistic_interception: b
                                             glob_pattern="psm*.d-output.json")
         )
         await download_task
-        remove_task = bhpc.remove_async(session=session)
+        await bhpc.remove_async(session=session)
         await rebuild_output_task
-        await remove_task
 
 
 def zip_common_directories(target: Path):

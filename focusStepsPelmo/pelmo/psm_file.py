@@ -4,7 +4,7 @@ import math
 from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum, auto
-from typing import Dict, FrozenSet, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader, Template
 
@@ -383,10 +383,9 @@ class PsmFile(TypeCorrecting):
                             )
         return compound, self.gap
 
-    def render(self, pessimistic_interception=False, scenarios: FrozenSet[Scenario] = frozenset(Scenario)) -> str:
+    def render(self, pessimistic_interception=False) -> str:
         """Render this psm file as a string"""
         template_data = self.asdict()
         template_data['pessimistic_interception'] = pessimistic_interception
-        template_data['requested_scenarios'] = scenarios
         rendered = psm_template.render(template_data)
         return rendered
