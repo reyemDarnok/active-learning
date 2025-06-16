@@ -1,0 +1,27 @@
+Apples                  apples
+Beans (field)           fbeans
+Beans (vegetables)      vbeans
+Bush berries            bushb
+Cabbage                 cabbag
+Carrots                 carrot
+Cotton                  cotton
+Citrus                  citrus
+Grass and alfalfa       grass
+Linseed                 linse
+Maize                   maize
+Oilseed rape (summer)   rapesu
+Oilseed rape (winter)   rapewi
+Onions                  onions
+Peas (animals)          peas
+Potatoes                potato
+Soybeans                soyb
+Spring cereals          scerea
+Strawberries            strawb
+Sugar beets             sbeets
+Sunflower               sunflo
+Tobacco                 tobacc
+Tomatoes                tomato
+Vines                   vines
+Winter cereals          wcerea
+Individual crop         indiv
+No crop (fallow)        bare_soil

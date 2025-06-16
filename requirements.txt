@@ -6,3 +6,5 @@ MarkupSafe~=2.1.5
 matplotlib
 pandera[pandas]
 graphviz
+modAL
+sklearn

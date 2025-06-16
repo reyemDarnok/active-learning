@@ -1,0 +1,460 @@
+1
+ ***********************************
+ *                                 *
+ *   PESTICIDE LEACHING MODEL      *
+ *   PELMO 5.0, DEC 2020           *
+ *   FOCUSPELMO 6.6.4              *
+ *                                 *
+ *                                 *
+ ***********************************
+
+
+ DEVELOPED BY:
+       U.S. ENVIRONMENTAL PROTECTION AGENCY
+       OFFICE OF REASEARCH AND DEVELOPMENT
+       ATHENS ENVIRONMENTAL RESEARCH LABORATORY
+       ATHENS, GA.  30613
+       404-546-3138
+  AND
+       ANDERSON-NICHOLS
+       2666 EAST BAYSHORE RD.
+       PALO ALTO, CA.  94303
+  AND
+       FRAUNHOFER INSTITUTE
+       POSTFACH 1260
+       D-57377 SCHMALLENBERG
+       Tel + 49-2972-302-317
+  AND
+       SLFA Neustadt,
+       DEPARTMENT ECOLOGY
+       D-67435 NEUSTADT/WSTR.
+       Tel ++ 49-6321-671-422
+
+
+  PELMO 5.0,       DEC 2020
+
+
+***************HYDROLOGY DATAS**************
+
+          FOCUS GW Simulation: 6 warming-up years
+
+
+          YEAR   1: Ver 4 Ch穰eaudun scenario (48.05 N, 1.38 E))     Year:01    
+          YEAR   2: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:02    
+          YEAR   3: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:03    
+          YEAR   4: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:04    
+          YEAR   5: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:05    
+          YEAR   6: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:06    
+          YEAR   7: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:07    
+          YEAR   8: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:08    
+          YEAR   9: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:09    
+          YEAR  10: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:10    
+          YEAR  11: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:11    
+          YEAR  12: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:12    
+          YEAR  13: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:13    
+          YEAR  14: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:14    
+          YEAR  15: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:15    
+          YEAR  16: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:16    
+          YEAR  17: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:17    
+          YEAR  18: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:18    
+          YEAR  19: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:19    
+          YEAR  20: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:20    
+          YEAR  21: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:21    
+          YEAR  22: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:22    
+          YEAR  23: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:23    
+          YEAR  24: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:24    
+          YEAR  25: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:25    
+          YEAR  26: Ver 4 Chフeaudun scenario (48.05 N, 1.38 E))     Year:26    
+
+
+
+ HYDROLOGY AND SEDIMENT RELATED PARAMETERS
+ -----------------------------------------
+
+Variable time step
+
+IF AVAILABLE, PAN EVAPORATION DATA ARE USED.
+
+
+  LATTITUDE OF THE LOCATION:  48.00
+
+ CROPNAME                                        GENERAL       Winter Cereals
+
+ PAN COEFFICIENT FOR EVAPORATION (NO CROP)            1.000         1.000    
+ PAN COEFFICIENT FOR EVAPORATION (MID  SEASON)        1.100         1.100    
+ PAN COEFFICIENT FOR EVAPORATION (LATE SEASON)       0.3000        0.3000    
+ FLAG FOR ET (0=EVAP,1=TEMP,2=EVAP/TEMP)                  2
+ DEPTH TO WHICH ET IS COMPUTED YEAR-ROUND [CM]        20.00    
+
+ MONTHLY DAYLIGHT HOURS
+    MONTH     DAY HOURS      MONTH     DAY HOURS      MONTH     DAY HOURS
+    JAN.       8.591         FEB.       9.856         MAR.       11.67    
+    APR.       13.63         MAY        15.14         JUNE       15.81    
+    JULY       15.45         AUG.       14.14         SEP.       12.26    
+    OCT.       10.32         NOV.       8.821         DEC.       8.186    
+
+ SNOW MELT COEFFICIENT [CM/DEG-C-DAY]                0.4600    
+ INITIAL CROP NUMBER                                      8
+ INITIAL CROP CONDITION                                   1
+
+
+
+
+NO CALCULATION OF RUNOFF EVENTS
+ CROP INFORMATION
+ ----------------
+
+        MAXIMUM                                             IRRIGATION PERENNIAL           SURFACE
+        INTERCEPT.MAXIMUM     MINIMUM   MAXIMUM             FLG(0=NO)  CROP                CONDITION                               USLE COVER MANAGEMENT
+ CROP   POTENTIAL ROOT DEPTH   LAI       LAI      WEIGHT    (1=CANOPY) (0=NO)              AFTER        AMC         RUNOFF CURVE NUMBERS     "C" FACTOR
+ NUMBER   [CM]      [CM]       [-]       [-]      [KG/M**2]  2=DRIP)  (1=YES)              HARVEST                FALLOW     CROP  RESIDUE   FALLOW  CROP    RESIDUE   EXT. COEFF.  SPRING POINT
+
+                                                                                                          I           80       63       80
+    8     0.0000     80.00    0.0000     3.800    0.0000        0         0                    3         II           91       80       91   1.0000  1.0000  1.0000     0.39000
+                                                                                                        III           96       91       96
+
+
+
+
+    CROP ROTATION INFORMATION
+    -------------------------
+
+    CROP                                 EMERGENCE              MATURATION           SENESCENCE            HARVEST
+    NUMBER                                 DATE                 DATE                 DATE                  DATE
+
+    Winter Cereals                       26 OCT.,   1          31 MAY ,   2          20 JUNE,   2          15 JULY,   2
+    Winter Cereals                       26 OCT.,   2          31 MAY ,   3          20 JUNE,   3          15 JULY,   3
+    Winter Cereals                       26 OCT.,   3          31 MAY ,   4          20 JUNE,   4          15 JULY,   4
+    Winter Cereals                       26 OCT.,   4          31 MAY ,   5          20 JUNE,   5          15 JULY,   5
+    Winter Cereals                       26 OCT.,   5          31 MAY ,   6          20 JUNE,   6          15 JULY,   6
+    Winter Cereals                       26 OCT.,   6          31 MAY ,   7          20 JUNE,   7          15 JULY,   7
+    Winter Cereals                       26 OCT.,   7          31 MAY ,   8          20 JUNE,   8          15 JULY,   8
+    Winter Cereals                       26 OCT.,   8          31 MAY ,   9          20 JUNE,   9          15 JULY,   9
+    Winter Cereals                       26 OCT.,   9          31 MAY ,  10          20 JUNE,  10          15 JULY,  10
+    Winter Cereals                       26 OCT.,  10          31 MAY ,  11          20 JUNE,  11          15 JULY,  11
+    Winter Cereals                       26 OCT.,  11          31 MAY ,  12          20 JUNE,  12          15 JULY,  12
+    Winter Cereals                       26 OCT.,  12          31 MAY ,  13          20 JUNE,  13          15 JULY,  13
+    Winter Cereals                       26 OCT.,  13          31 MAY ,  14          20 JUNE,  14          15 JULY,  14
+    Winter Cereals                       26 OCT.,  14          31 MAY ,  15          20 JUNE,  15          15 JULY,  15
+    Winter Cereals                       26 OCT.,  15          31 MAY ,  16          20 JUNE,  16          15 JULY,  16
+    Winter Cereals                       26 OCT.,  16          31 MAY ,  17          20 JUNE,  17          15 JULY,  17
+    Winter Cereals                       26 OCT.,  17          31 MAY ,  18          20 JUNE,  18          15 JULY,  18
+    Winter Cereals                       26 OCT.,  18          31 MAY ,  19          20 JUNE,  19          15 JULY,  19
+    Winter Cereals                       26 OCT.,  19          31 MAY ,  20          20 JUNE,  20          15 JULY,  20
+    Winter Cereals                       26 OCT.,  20          31 MAY ,  21          20 JUNE,  21          15 JULY,  21
+    Winter Cereals                       26 OCT.,  21          31 MAY ,  22          20 JUNE,  22          15 JULY,  22
+    Winter Cereals                       26 OCT.,  22          31 MAY ,  23          20 JUNE,  23          15 JULY,  23
+    Winter Cereals                       26 OCT.,  23          31 MAY ,  24          20 JUNE,  24          15 JULY,  24
+    Winter Cereals                       26 OCT.,  24          31 MAY ,  25          20 JUNE,  25          15 JULY,  25
+    Winter Cereals                       26 OCT.,  25          31 MAY ,  26          20 JUNE,  26          15 JULY,  26
+    Winter Cereals                       26 OCT.,  26          31 MAY ,  27          20 JUNE,  27          15 JULY,  27
+    Winter Cereals                       26 OCT.,  27          31 MAY ,  28          20 JUNE,  28          15 JULY,  28
+    Winter Cereals                       26 OCT.,  28          31 MAY ,  29          20 JUNE,  29          15 JULY,  29
+    Winter Cereals                       26 OCT.,  29          31 MAY ,  30          20 JUNE,  30          15 JULY,  30
+    Winter Cereals                       26 OCT.,  30          31 MAY ,  31          20 JUNE,  31          15 JULY,  31
+    Winter Cereals                       26 OCT.,  31          31 MAY ,  32          20 JUNE,  32          15 JULY,  32
+    Winter Cereals                       26 OCT.,  32          31 MAY ,  33          20 JUNE,  33          15 JULY,  33
+    Winter Cereals                       26 OCT.,  33          31 MAY ,  34          20 JUNE,  34          15 JULY,  34
+    Winter Cereals                       26 OCT.,  34          31 MAY ,  35          20 JUNE,  35          15 JULY,  35
+    Winter Cereals                       26 OCT.,  35          31 MAY ,  36          20 JUNE,  36          15 JULY,  36
+    Winter Cereals                       26 OCT.,  36          31 MAY ,  37          20 JUNE,  37          15 JULY,  37
+    Winter Cereals                       26 OCT.,  37          31 MAY ,  38          20 JUNE,  38          15 JULY,  38
+    Winter Cereals                       26 OCT.,  38          31 MAY ,  39          20 JUNE,  39          15 JULY,  39
+    Winter Cereals                       26 OCT.,  39          31 MAY ,  40          20 JUNE,  40          15 JULY,  40
+    Winter Cereals                       26 OCT.,  40          31 MAY ,  41          20 JUNE,  41          15 JULY,  41
+    Winter Cereals                       26 OCT.,  41          31 MAY ,  42          20 JUNE,  42          15 JULY,  42
+    Winter Cereals                       26 OCT.,  42          31 MAY ,  43          20 JUNE,  43          15 JULY,  43
+    Winter Cereals                       26 OCT.,  43          31 MAY ,  44          20 JUNE,  44          15 JULY,  44
+    Winter Cereals                       26 OCT.,  44          31 MAY ,  45          20 JUNE,  45          15 JULY,  45
+    Winter Cereals                       26 OCT.,  45          31 MAY ,  46          20 JUNE,  46          15 JULY,  46
+    Winter Cereals                       26 OCT.,  46          31 MAY ,  47          20 JUNE,  47          15 JULY,  47
+    Winter Cereals                       26 OCT.,  47          31 MAY ,  48          20 JUNE,  48          15 JULY,  48
+    Winter Cereals                       26 OCT.,  48          31 MAY ,  49          20 JUNE,  49          15 JULY,  49
+    Winter Cereals                       26 OCT.,  49          31 MAY ,  50          20 JUNE,  50          15 JULY,  50
+    Winter Cereals                       26 OCT.,  50          31 MAY ,  51          20 JUNE,  51          15 JULY,  51
+    Winter Cereals                       26 OCT.,  51          31 MAY ,  52          20 JUNE,  52          15 JULY,  52
+    Winter Cereals                       26 OCT.,  52          31 MAY ,  53          20 JUNE,  53          15 JULY,  53
+    Winter Cereals                       26 OCT.,  53          31 MAY ,  54          20 JUNE,  54          15 JULY,  54
+    Winter Cereals                       26 OCT.,  54          31 MAY ,  55          20 JUNE,  55          15 JULY,  55
+    Winter Cereals                       26 OCT.,  55          31 MAY ,  56          20 JUNE,  56          15 JULY,  56
+    Winter Cereals                       26 OCT.,  56          31 MAY ,  57          20 JUNE,  57          15 JULY,  57
+    Winter Cereals                       26 OCT.,  57          31 MAY ,  58          20 JUNE,  58          15 JULY,  58
+    Winter Cereals                       26 OCT.,  58          31 MAY ,  59          20 JUNE,  59          15 JULY,  59
+    Winter Cereals                       26 OCT.,  59          31 MAY ,  60          20 JUNE,  60          15 JULY,  60
+    Winter Cereals                       26 OCT.,  60          31 MAY ,  61          20 JUNE,  61          15 JULY,  61
+    Winter Cereals                       26 OCT.,  61          31 MAY ,  62          20 JUNE,  62          15 JULY,  62
+    Winter Cereals                       26 OCT.,  62          31 MAY ,  63          20 JUNE,  63          15 JULY,  63
+    Winter Cereals                       26 OCT.,  63          31 MAY ,  64          20 JUNE,  64          15 JULY,  64
+    Winter Cereals                       26 OCT.,  64          31 MAY ,  65          20 JUNE,  65          15 JULY,  65
+    Winter Cereals                       26 OCT.,  65          31 MAY ,  66          20 JUNE,  66          15 JULY,  66
+    Winter Cereals                       26 OCT.,  66          31 MAY ,  67          20 JUNE,  67          15 JULY,  67
+    Winter Cereals                       26 OCT.,  67          31 MAY ,  67          20 JUNE,  67          15 JULY,  67
+    Winter Cereals                       26 OCT.,  68          31 MAY ,  68          20 JUNE,  68          15 JULY,  68
+    Winter Cereals                       26 OCT.,  69          31 MAY ,  69          20 JUNE,  69          15 JULY,  69
+    Winter Cereals                       26 OCT.,  70          31 MAY ,  70          20 JUNE,  70          15 JULY,  70
+    Winter Cereals                       26 OCT.,  71          31 MAY ,  71          20 JUNE,  71          15 JULY,  71
+    Winter Cereals                       26 OCT.,  72          31 MAY ,  72          20 JUNE,  72          15 JULY,  72
+    Winter Cereals                       26 OCT.,  73          31 MAY ,  73          20 JUNE,  73          15 JULY,  73
+    Winter Cereals                       26 OCT.,  74          31 MAY ,  74          20 JUNE,  74          15 JULY,  74
+    Winter Cereals                       26 OCT.,  75          31 MAY ,  75          20 JUNE,  75          15 JULY,  75
+    Winter Cereals                       26 OCT.,  76          31 MAY ,  76          20 JUNE,  76          15 JULY,  76
+    Winter Cereals                       26 OCT.,  77          31 MAY ,  77          20 JUNE,  77          15 JULY,  77
+    Winter Cereals                       26 OCT.,  78          31 MAY ,  78          20 JUNE,  78          15 JULY,  78
+    Winter Cereals                       26 OCT.,  79          31 MAY ,  79          20 JUNE,  79          15 JULY,  79
+    Winter Cereals                       26 OCT.,  80          31 MAY ,  80          20 JUNE,  80          15 JULY,  80
+    Winter Cereals                       26 OCT.,  81          31 MAY ,  81          20 JUNE,  81          15 JULY,  81
+    Winter Cereals                       26 OCT.,  82          31 MAY ,  82          20 JUNE,  82          15 JULY,  82
+    Winter Cereals                       26 OCT.,  83          31 MAY ,  83          20 JUNE,  83          15 JULY,  83
+    Winter Cereals                       26 OCT.,  84          31 MAY ,  84          20 JUNE,  84          15 JULY,  84
+    Winter Cereals                       26 OCT.,  85          31 MAY ,  85          20 JUNE,  85          15 JULY,  85
+    Winter Cereals                       26 OCT.,  86          31 MAY ,  86          20 JUNE,  86          15 JULY,  86
+    Winter Cereals                       26 OCT.,  87          31 MAY ,  87          20 JUNE,  87          15 JULY,  87
+    Winter Cereals                       26 OCT.,  88          31 MAY ,  88          20 JUNE,  88          15 JULY,  88
+    Winter Cereals                       26 OCT.,  89          31 MAY ,  89          20 JUNE,  89          15 JULY,  89
+    Winter Cereals                       26 OCT.,  90          31 MAY ,  90          20 JUNE,  90          15 JULY,  90
+    Winter Cereals                       26 OCT.,  91          31 MAY ,  91          20 JUNE,  91          15 JULY,  91
+    Winter Cereals                       26 OCT.,  92          31 MAY ,  92          20 JUNE,  92          15 JULY,  92
+    Winter Cereals                       26 OCT.,  93          31 MAY ,  93          20 JUNE,  93          15 JULY,  93
+    Winter Cereals                       26 OCT.,  94          31 MAY ,  94          20 JUNE,  94          15 JULY,  94
+    Winter Cereals                       26 OCT.,  95          31 MAY ,  95          20 JUNE,  95          15 JULY,  95
+    Winter Cereals                       26 OCT.,  96          31 MAY ,  96          20 JUNE,  96          15 JULY,  96
+    Winter Cereals                       26 OCT.,  97          31 MAY ,  97          20 JUNE,  97          15 JULY,  97
+    Winter Cereals                       26 OCT.,  98          31 MAY ,  98          20 JUNE,  98          15 JULY,  98
+    Winter Cereals                       26 OCT.,  99          31 MAY ,  99          20 JUNE,  99          15 JULY,  99
+    Winter Cereals                       26 OCT., 100          31 MAY , 100          20 JUNE, 100          15 JULY, 100
+    Winter Cereals                       26 OCT., 101          31 MAY , 101          20 JUNE, 101          15 JULY, 101
+    Winter Cereals                       26 OCT., 102          31 MAY , 102          20 JUNE, 102          15 JULY, 102
+    Winter Cereals                       26 OCT., 103          31 MAY , 103          20 JUNE, 103          15 JULY, 103
+    Winter Cereals                       26 OCT., 104          31 MAY , 104          20 JUNE, 104          15 JULY, 104
+    Winter Cereals                       26 OCT., 105          31 MAY , 105          20 JUNE, 105          15 JULY, 105
+    Winter Cereals                       26 OCT., 106          31 MAY , 106          20 JUNE, 106          15 JULY, 106
+    Winter Cereals                       26 OCT., 107          31 MAY , 107          20 JUNE, 107          15 JULY, 107
+    Winter Cereals                       26 OCT., 108          31 MAY , 108          20 JUNE, 108          15 JULY, 108
+    Winter Cereals                       26 OCT., 109          31 MAY , 109          20 JUNE, 109          15 JULY, 109
+    Winter Cereals                       26 OCT., 110          31 MAY , 110          20 JUNE, 110          15 JULY, 110
+    Winter Cereals                       26 OCT., 111          31 MAY , 111          20 JUNE, 111          15 JULY, 111
+    Winter Cereals                       26 OCT., 112          31 MAY , 112          20 JUNE, 112          15 JULY, 112
+    Winter Cereals                       26 OCT., 113          31 MAY , 113          20 JUNE, 113          15 JULY, 113
+    Winter Cereals                       26 OCT., 114          31 MAY , 114          20 JUNE, 114          15 JULY, 114
+    Winter Cereals                       26 OCT., 115          31 MAY , 115          20 JUNE, 115          15 JULY, 115
+    Winter Cereals                       26 OCT., 116          31 MAY , 116          20 JUNE, 116          15 JULY, 116
+    Winter Cereals                       26 OCT., 117          31 MAY , 117          20 JUNE, 117          15 JULY, 117
+    Winter Cereals                       26 OCT., 118          31 MAY , 118          20 JUNE, 118          15 JULY, 118
+    Winter Cereals                       26 OCT., 119          31 MAY , 119          20 JUNE, 119          15 JULY, 119
+    Winter Cereals                       26 OCT., 120          31 MAY , 120          20 JUNE, 120          15 JULY, 120
+
+
+
+     MECHANICAL TREATMENTS
+     ---------------------
+
+     NO         DATE                DEPTH[CM]
+
+
+
+
+          *** PARAMETERS OF ACTIVE SUBSTANCE (                                        )***
+          *************************************
+
+                    PESTICIDE           UPPER INCORP.       LOWER INCORP.
+    APPLICATION     APPLIED             DEPTH               DEPTH               FFIELD
+    DATE            [KG/HA]             [CM]                [CM]                [-]
+
+    17 APR.,   1    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,   1    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,   2    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,   2    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,   3    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,   3    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,   4    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,   4    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,   5    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,   5    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,   6    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,   6    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,   7    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,   7    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,   8    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,   8    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,   9    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,   9    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  10    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  10    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  11    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  11    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  12    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  12    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  13    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  13    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  14    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  14    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  15    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  15    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  16    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  16    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  17    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  17    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  18    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  18    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  19    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  19    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  20    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  20    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  21    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  21    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  22    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  22    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  23    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  23    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  24    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  24    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  25    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  25    0.2500E-01          0.0000              0.0000              0.0000    
+    17 APR.,  26    0.5000E-01          0.0000              0.0000              0.0000    
+     1 MAY ,  26    0.2500E-01          0.0000              0.0000              0.0000    
+
+
+
+    PLANT PESTICIDE PARAMETERS
+    --------------------------
+    CROP INTERCEPTION:          1
+    (1=SOIL(NO), 2=LINEAR, 3=EXPONENTIAL, 4=MANUAL)
+
+
+      VOLATILIZATION PARAMETERS OF ACTIVE SUBSTANCE
+      --------------------------------------------
+          Henry-CONSTANT AT  19.5 deg C [Pa*m3/mole]       0.4600E-03
+          HENRY-CONSTANT AT  20.5 deg C [Pa*m3/mole]       0.4600E-03
+          -------------------------------------
+          Q10-Factor for Henry's constant:                      1.000
+
+          DIFFUSION COEFF.AIR [cm2/d]                       4303.    
+          DEPTH OF SURFACE LAYER FOR VOLATILIZATION [CM]   0.1000    
+          HENRY CONSTANT AT  19.5 deg C [-]                0.1891E-06
+          HENRY CONSTANT AT  20.5 deg C [-]                0.1884E-06
+
+          MOLMAS  [g/mol]                                   300.0    
+
+
+
+      PLANT UPTAKE OF ACTIVE SUBSTANCE
+      --------------------------------
+          PLANT UPTAKE FACTOR (-)                          0.0000    
+
+
+    TRANSFORMATION PARAMETERS
+    -------------------------
+
+          DegT50 of the compound (d) at 20 ｰC at pF 2:      30.00
+
+          TRANSFORM.   TRANSFORM.       TEMP.      Q10    MOISTURE-DURING-STUDY   MOISTURE  REL. TRANSFORM    FORMATION
+              TO     in EQ.Domaine   OF STUDY    VALUE    ABSOLUTE   RELATIVE    EXPONENT  IN NEQ DOMAIN      FACTOR
+                        [/DAY]          [C]        [-]        [%]        [%]        [-]          [-]          [-]
+            BR/CO2       0.2310E-01       20.00     2.580     0.0000      100.0      0.7000      0.0000       1.000    
+
+
+    SORPTION PARAMETERS
+    -------------------
+
+      --PARAMETERS TO CALCULATE KD-VALUES WITH KOC--
+          KOC [CM**3/G]                                                 49.21    
+          FREUNDLICH-SORPTION EXPONENT 1/n                             0.9206    
+          [PEARL] FACTOR DESCRIBING NON-EQ-SITES EQ-SITES (-):         0.0000    
+          [PEARL] DESORPTION RATE [1/D]:                               0.0000    
+
+          MIN. CONC FOR FREUNDLICH-SORPTION [襾/L]                     0.1000E-19
+          ESTIMATED MOISTURE FOR AIR DRIED SOIL(m3/m3):                0.2530E-01
+          RESULTING REL. CHANGE OF SORPTION COEFF. (-):                 100.0    
+
+
+    DEPTH DEPENDEND SORPTION AND TRANSFORMATION PARAMETERS
+    ------------------------------------------------------
+
+          HORIZON   KOC       KD       FR-EXP      TRANSFORMATION RATE TO
+                                                      BR/CO2 
+                   [CM**3/G]  [CM**3/G]     [-]      [/DAY] 
+           1         49.21    0.6840     0.9206     0.2310E-01
+           2         49.21    0.4577     0.9206     0.1155E-01
+           3         49.21    0.3445     0.9206     0.1155E-01
+           4         49.21    0.1476     0.9206     0.6931E-02
+           5         49.21    0.1476     0.9206     0.0000    
+           6         49.21    0.1329     0.9206     0.0000    
+           7         49.21    0.1033     0.9206     0.0000    
+ (C  
+ Ver 4 Ch穰eaudun                                                                                                                                                
+
+ Ver 4 Ch穰eaudun, winter cereals                                                                                                                                
+
+
+
+
+ GENERAL SOIL INFORMATION
+ ------------------------
+
+ CORE DEPTH [CM]                                      260.0    
+ TOTAL HORIZONS IN CORE                                   7
+ TOTAL COMPARTMENTS IN CORE                              52
+ DPFLAG FLAG                (0=DISP.COEFF.1=DISP.LENGTH)  1
+ THETA FLAG                 (0=INPUT,1=PRZM 2=PELMO)      0
+ PARTITION COEFFICIENT FLAG (0=INPUT,1=CALCULATED)        1
+ BULK DENSITY FLAG          (0=INPUT,1=CALCULATED)        0
+ SOIL HYDRAULICS MODULE                                   free drainage                           
+ COMPARTMENT DEPTH FLAG (0=const,1=depth dep.)            0
+
+
+
+ SOIL HORIZON INFORMATION
+ ------------------------
+
+                               INITIAL             FIELD     WILTING
+                               SOIL                CAPACITY  POINT
+                     BULK      WATER     DRAINAGE  WATER     WATER     DISPERSION ORGANIC    BIODEG.    PH
+           THICKNESS DENSITY   CONTENT   PARAMETER CONTENT   CONTENT   LENGTH     CARBON     FACTOR
+  HORIZON  [CM]      [G/CM**3] [CM/CM]   [/DAY]    [CM/CM]   [CM/CM]   [CM]         [%]       [-]      [-]
+  -------------------------------------------------------------------------------------------------------------
+    1       25.0000    1.3000    0.3740    0.1970    0.3740    0.2530    5.0000    1.3900    1.0000    8.0000
+    2       25.0000    1.4100    0.3720    0.1950    0.3720    0.2350    5.0000    0.9300    0.5000    8.1000
+    3       10.0000    1.4100    0.3720    0.2130    0.3720    0.2350    5.0000    0.7000    0.5000    8.2000
+    4       40.0000    1.3700    0.3860    0.2650    0.3860    0.1850    5.0000    0.3000    0.3000    8.5000
+    5       20.0000    1.3700    0.3860    0.2650    0.3860    0.1850    5.0000    0.3000    0.0000    8.5000
+    6       70.0000    1.4100    0.4170    0.2960    0.4170    0.1160    5.0000    0.2700    0.0000    8.5000
+    7       70.0000    1.4900    0.3620    0.2050    0.3620    0.1760    5.0000    0.2100    0.0000    8.3000
+
+
+ OUTPUT FILE PARAMETERS
+ ----------------------
+
+ OUTPUT    TIME STEP    LAYER FREQ
+
+   WATR      YEAR             1
+   PEST      YEAR             1
+   CONC      YEAR             1
+
+
+ Total number of layers in the top meter:                   21
+
+
+
+ PLOT FILE INFORMATION
+ ---------------------
+
+ NUMBER OF PLOTTING VARIABLES            15
+
+
+ TIMSER NAME        MODE                DEPTH(CM) ARGUMENT  CONSTANT  SUBSTANCE
+
+ LEAC               TSER                 100.      21       0.1000E+10  MET A1
+ PFLX               TSER                 100.      21       0.1000E+06  MET A1
+ INFL               TSER                 100.      22        1.000      PESTIC
+ RUNF               TSER                   0.       1        1.000      PESTIC
+ THET               TSER                   0.       1        1.000      PESTIC
+ THET               TSER                  30.       7        1.000      PESTIC
+ TEMP               TSER                   0.       1        1.000      PESTIC
+ TEMP               TSER                  30.       7        1.000      PESTIC
+ TPAP               TSER                   0.       1       0.1000E+06  PESTIC
+ TDKF               TSER                   0.       1       0.1000E+06  PESTIC
+ TUPF               TSER                   0.       1       0.1000E+06  PESTIC
+ TPST               TSER                   5.       2       0.1000E+07  PESTIC
+ PFLX               TSER                 100.      21       0.1000E+06  PESTIC
+ RFLX               TSER                   0.       1       0.1000E+06  PESTIC
+ LEAC               TSER                 100.      21       0.1000E+10  PESTIC

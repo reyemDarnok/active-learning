@@ -1,0 +1,9 @@
+C	CH	Châteaudun
+H	HA	Hamburg
+J	JO	Jokioinen
+K	KR	Kremsmünster
+N	OK	Okehampton
+P	PI	Piacenza
+O	PO	Porto
+S	SE	Sevilla
+T	TH	Thiva
