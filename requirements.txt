@@ -8,3 +8,4 @@ pandera[pandas]
 graphviz
 modAL
 scikit-learn
+scipy
