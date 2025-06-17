@@ -12,7 +12,16 @@ def split_into_data_and_label(dataset):
     label = dataset[pecs].copy()
     for column in label:
         label[column] = label[column].apply(lambda x: math.log10(x))
-    return data, numpy.ravel(label)
+    return data, label['parent.pec']
+
+def split_into_data_and_label_raw(dataset):
+    #pecs = dataset.columns[dataset.columns.str.endswith('.pec')]
+    pecs = ["0.compound_pec"]
+    data = dataset.drop(pecs, axis=1)
+    label = dataset[pecs].copy()
+    for column in label:
+        label[column] = label[column].apply(lambda x: math.log10(x))
+    return data, label["0.compound_pec"]
 
 def GP_regression_std(regressor, X, n_instances=1):
     _, std = regressor.predict(X, return_std=True)

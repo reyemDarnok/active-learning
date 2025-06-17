@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Tuple
+from typing import Dict, Optional, Tuple
 import pandas
 from matplotlib import pyplot as plt
 import math
@@ -10,7 +10,7 @@ def limit_column(column: pandas.Series, whisker_size: float = 4) -> Tuple[float,
     upper = min(column.max(), column.quantile(0.75) + (column.quantile(0.75) - column.quantile(0.5)) * whisker_size)
     return lower, upper
 
-def describe(column_name: str, to_describe: pandas.DataFrame, save_dir, save_to, range: Tuple[float, float]=None, whisker_size: float = 4,
+def describe(column_name: str, to_describe: pandas.DataFrame, save_dir, save_to, range: Optional[Tuple[float, float]]=None, whisker_size: float = 4,
             ):
     column = to_describe[column_name]
     #fontsize = 28
@@ -18,7 +18,7 @@ def describe(column_name: str, to_describe: pandas.DataFrame, save_dir, save_to,
         range = limit_column(column, whisker_size)
     print(column_name)
     print('Unmodified')
-    print(column.describe(datetime_is_numeric=True))
+    print(column.describe(datetime_is_numeric=True)) # type: ignore
     axes = column.plot(use_index=True, kind='hist', bins=40, range=range)
     axes.set_title(column_name)
     #axes.tick_params(axis='both', which='major', labelsize=fontsize)
@@ -31,7 +31,7 @@ def describe(column_name: str, to_describe: pandas.DataFrame, save_dir, save_to,
     try:
         no_zero = column[column != 0]
         log_column = no_zero.apply(math.log10)
-        print(log_column.describe(datetime_is_numeric=True))
+        print(log_column.describe(datetime_is_numeric=True)) # type: ignore
         log_column = no_zero.apply(math.log10)
         axes = log_column.plot(use_index=True, kind='hist', bins=40, range=limit_column(log_column, whisker_size))
         axes.set_title(f"{column_name} Log10")
@@ -112,7 +112,7 @@ def score_and_show(predictions, metric, lims=None):
     show_cv_scores(score_predictions(predictions, metric, lims=lims))
     
 def make_box_plot(scores, save_dir, save_file):
-    plt.boxplot([x for x in scores.values()], labels=[x for x in scores.keys()])
+    plt.boxplot([x for x in scores.values()], labels=[x for x in scores.keys()]) # type: ignore
     #fontsize = 28
     axes = plt.gca()
     #axes.tick_params(axis='both', which='major', labelsize = fontsize)
@@ -123,12 +123,9 @@ def make_box_plot(scores, save_dir, save_file):
     plt.savefig(save_dir / save_file, bbox_inches='tight')
     plt.show()
     
-def score_bars(predictions_dict, metric, title, ylims=(0,1), save_to: Path = None):
+def score_bars(predictions_dict, metric, title, ylims=(0,1), save_to: Optional[Path] = None):
     number_of_predictions = len(predictions_dict.keys())
-    sample_predictions = None
-    for pred in predictions_dict.values():
-        sample_predictions = pred
-        break
+    sample_predictions = list(predictions_dict.values)[0]
     x_labels = sample_predictions.keys()
     base_index = numpy.arange(len(sample_predictions.keys()))
     total_width_of_group = 0.8
@@ -152,14 +149,8 @@ def score_bars(predictions_dict, metric, title, ylims=(0,1), save_to: Path = Non
     
 def cross_val(cross_val_results, save_to =None):
     number_of_datasets = len(cross_val_results.keys())
-    sample_result = None
-    for res in cross_val_results.values():
-        sample_result = res
-        break
-    sample_model_result = None
-    for res in sample_result.values():
-        sample_model_result = res
-        break
+    sample_result = list(cross_val_results.values())[0]
+    sample_model_result = list(sample_result.values())[0]
     x_labels = sample_result.keys()
     base_index = numpy.arange(len(sample_result.keys()))
     total_width_of_group = 0.8

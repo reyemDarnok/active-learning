@@ -2,6 +2,8 @@ from typing import Optional
 import pandas
 from pathlib import Path
 from datetime import datetime, timedelta
+from sys import path
+path.append(str(Path(__file__).parent.parent.parent))
 from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario
 import math
 
@@ -85,6 +87,19 @@ def between_filter(to_transform: pandas.DataFrame, lower_bound: float = 1e-2, up
         return to_transform[(to_transform['parent.pec'].between(lower_bound, upper_bound, inclusive="neither")) & (to_transform['metabolite.pec'].between(lower_bound, upper_bound, inclusive="neither"))]
     else:
         return to_transform[to_transform['parent.pec'].between(lower_bound, upper_bound, inclusive="neither")]
+
+def minimal_filter_raw(to_transform: pandas.DataFrame) -> pandas.DataFrame:
+    return remove_low_filter_raw(to_transform, 0)
+        
+def remove_low_filter_raw(to_transform: pandas.DataFrame, lower_bound=1e-4) -> pandas.DataFrame:
+    return between_filter_raw(to_transform, lower_bound, float('inf'))
+        
+def between_filter_raw(to_transform: pandas.DataFrame, lower_bound: float = 1e-2, upper_bound: float = 3.16227766) -> pandas.DataFrame:
+                                                                                                    # 10^0.5
+    if "1.compound_pec" in to_transform:
+        return to_transform[(to_transform['0.compound_pec'].between(lower_bound, upper_bound, inclusive="neither")) & (to_transform['1.compound_pec'].between(lower_bound, upper_bound, inclusive="neither"))]
+    else:
+        return to_transform[to_transform['0.compound_pec'].between(lower_bound, upper_bound, inclusive="neither")]
 
 def create_datasets(to_transform: pandas.DataFrame):
     datasets = {}

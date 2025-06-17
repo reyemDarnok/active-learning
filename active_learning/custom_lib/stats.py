@@ -38,13 +38,13 @@ def abs_rmse(y_true, y_predicted) -> float:
     y_predicted = numpy.power(10, y_predicted)
     y_predicted = numpy.minimum(y_predicted, 1e10)
     y_true = numpy.minimum(y_true, 1e10)
-    return numpy.sqrt(mean_squared_error(y_true, y_predicted))
+    return float(numpy.sqrt(mean_squared_error(y_true, y_predicted)))
 
 def neg_abs_rmse(y_true, y_predicted):
     return -abs_rmse(y_true, y_predicted)
 
 def root_mean_squared_error(y_true, y_predicted) -> float:
-    return numpy.sqrt(mean_squared_error(y_true, y_predicted))
+    return float(numpy.sqrt(mean_squared_error(y_true, y_predicted)))
 
 def neg_root_mean_squared_error(y_true, y_predicted):
     return -root_mean_squared_error(y_true, y_predicted)
@@ -128,10 +128,10 @@ def is_outlier(points, thresh=3.5):
     """
     if len(points.shape) == 1:
         points = points[:,None]
-    median = np.median(points, axis=0)
-    diff = np.sum((points - median)**2, axis=-1)
-    diff = np.sqrt(diff)
-    med_abs_deviation = np.median(diff)
+    median = numpy.median(points, axis=0)
+    diff = numpy.sum((points - median)**2, axis=-1)
+    diff = numpy.sqrt(diff)
+    med_abs_deviation = numpy.median(diff)
 
     modified_z_score = 0.6745 * diff / med_abs_deviation
 
