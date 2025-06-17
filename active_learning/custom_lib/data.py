@@ -22,7 +22,7 @@ def transform_data_types(to_transform: pandas.DataFrame):
     to_transform.drop(columns=to_transform.filter(regex='name'), inplace=True)
     to_transform.drop(columns=['gap.type'], inplace=True)
     # Parse date
-    to_transform['gap.arguments.time_in_year'] = to_transform['gap.arguments.time_in_year'].apply(date_parser)
+    #to_transform['gap.arguments.time_in_year'] = to_transform['gap.arguments.time_in_year'].apply(date_parser)
     # Transform categories to ints
     to_transform['gap.arguments.modelCrop'] = to_transform['gap.arguments.modelCrop'].apply(
         lambda x: list(FOCUSCrop).index(FOCUSCrop.parse(x))

@@ -60,27 +60,33 @@ total_points = 10000
 batch_size_min = 2_0
 batch_size_max = 2_1#int(total_points / 10)
 bootstrap_size = int(total_points / 5)
+models_in_committee = 10
 number_of_learners = 1
 
 @ignore_warnings()
 def setup_learner():
-    bootstrap_index = rng.choice(features.shape[0], bootstrap_size, replace=False)
-    bootstrap_features = features[bootstrap_index]
-    bootstrap_labels = labels[bootstrap_index]
-    learner = ActiveLearner(
-        estimator = clone(model),
-        query_strategy=ml.GP_regression_std, 
-        X_training=bootstrap_features,
-        y_training=bootstrap_labels
+    learner_list = []
+    for _ in range(models_in_committee):
+        bootstrap_index = np.random.choice(features.shape[0], bootstrap_size, replace=False)
+        bootstrap_features = features[bootstrap_index]
+        bootstrap_labels = labels[bootstrap_index]
+        learner_list.append(ActiveLearner(
+            estimator=clone(model),
+            X_training=bootstrap_features,
+            y_training=bootstrap_labels
+        ))
+        print("created committee member", datetime.now())
+    return CommitteeRegressor(
+        learner_list = learner_list,
+        query_strategy=max_std_sampling, 
     )
-    return learner
 
 custom_metric = stats.make_custom_metric(greater_is_better = False)
 false_negative_metric = stats.make_false_negative_metric(greater_is_better = False)
 false_positive_metric = stats.make_false_positive_metric(greater_is_better = False)
 
 @ignore_warnings()
-def train_learner(learner, batchsize, test_features, test_labels):
+def train_learner(learner, batchsize, test_features, test_labels) -> ml.TrainingRecord:
     result = ml.TrainingRecord(
         model = learner,
         batchsize = batchsize

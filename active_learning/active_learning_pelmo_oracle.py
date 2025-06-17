@@ -67,6 +67,7 @@ def evaluate_features(features: List[Combination]):
 
 test_data = Path(__file__).parent.parent /'ppdb'/'inferred.csv'
 features, labels = load_dataset(Path(__file__).parent.parent /'combined-scan'/'samples.csv')
+
 scratch_space = tempfile.TemporaryDirectory()
 scratch_path = Path(scratch_space.name)
 output_dir = Path('active_learning')
@@ -77,8 +78,7 @@ test_data_critical = data.between_filter_raw(test_data)
 test_features, test_labels = ml.split_into_data_and_label_raw(test_data_filtered)
 test_features_critical, test_labels_critical = ml.split_into_data_and_label_raw(test_data_critical)
 
-kernel = RBF()
-model = GaussianProcessRegressor(normalize_y=True)
+model = HistGradientBoostingRegressor()
 pipeline = make_pipeline(FunctionTransformer(transform), StandardScaler(), model)
 
 
@@ -86,26 +86,34 @@ bootstrap_size = 150
 total_points = 1000
 batchsize = 20
 oversampling_factor = 3.5
+models_in_committee = 10
+
 
 @ignore_warnings()
-def setup_learner() -> ActiveLearner:
-    bootstrap_index = rng.choice(features.shape[0], bootstrap_size, replace=False)
-    bootstrap_features = features.iloc[bootstrap_index]
-    bootstrap_labels = labels.iloc[bootstrap_index] # type: ignore
-    learner = ActiveLearner(
-        estimator = clone(pipeline),
-        query_strategy=ml.GP_regression_std, 
-        X_training=bootstrap_features,
-        y_training=bootstrap_labels
+def setup_learner():
+    learner_list = []
+    for _ in range(models_in_committee):
+        bootstrap_index = np.random.choice(features.shape[0], bootstrap_size, replace=False)
+        bootstrap_features = features.iloc[bootstrap_index]
+        bootstrap_labels = labels.iloc[bootstrap_index]
+        learner_list.append(ActiveLearner(
+            estimator=clone(pipeline),
+            X_training=bootstrap_features,
+            y_training=bootstrap_labels
+        ))
+        print("created committee member", datetime.now())
+    return CommitteeRegressor(
+        learner_list = learner_list,
+        query_strategy=max_std_sampling, 
     )
-    return learner
+
 
 custom_metric = stats.make_custom_metric(greater_is_better = False)
 false_negative_metric = stats.make_false_negative_metric(greater_is_better = False)
 false_positive_metric = stats.make_false_positive_metric(greater_is_better = False)
 
 @ignore_warnings()
-def train_learner(learner, batchsize: int, oversampling_factor: float, test_features, test_labels, template_path: Path) -> ml.TrainingRecord:
+def train_learner(learner, batchsize: int, oversampling_factor: float, test_features, test_labels, template_path: Path):
     result = ml.TrainingRecord(
         model = learner,
         batchsize = batchsize
@@ -120,9 +128,9 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
     for i in range(bootstrap_size, total_points, batchsize):
         combinations, features = generate_features(sample_definition, int(batchsize * oversampling_factor))
         query_ids, selected_features = learner.query(features, n_instances=min(batchsize, total_points - i))
-        result = evaluate_features(features=list(np.array(combinations)[query_ids]))
-        result = data.remove_low_filter_raw(features)
-        features, labels = ml.split_into_data_and_label_raw(features)
+        evaluated = evaluate_features(features=list(np.array(combinations)[query_ids]))
+        evaluated = data.remove_low_filter_raw(evaluated)
+        features, labels = ml.split_into_data_and_label_raw(evaluated)
         # find values for indexes
         learner.teach(selected_features, labels)
         end_teach = datetime.now() 
