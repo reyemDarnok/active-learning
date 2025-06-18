@@ -10,7 +10,13 @@
       "apply_every_n_years": 1
     }
   },
-  "scenarios": ["C"],
+  "scenarios": {
+    "type": "choices", 
+    "parameters": {
+      "options": ["C", "H", "J", "K", "N", "P", "O", "S","T"]
+    }
+
+  },
   "compound": {
     "molarMass": 300,
     "water_solubility": {

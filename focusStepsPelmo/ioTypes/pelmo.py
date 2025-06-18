@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Dict, Union
 
+from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, AbsoluteConstantGAP
 from focusStepsPelmo.ioTypes.scenario import Scenario
@@ -178,37 +179,24 @@ class PelmoResult(TypeCorrecting):
 @dataclass(frozen=True)
 class PECResult:
     """A structure holding the result of a calculation that has been referenced back to its input values"""
-    compound: Compound
-    """The compound that was under consideration"""
-    gap: GAP
-    """The gap that was under consideration"""
-    scenario: Scenario
+    combination: Combination
     """The scenario that was under consideration"""
     pec: Dict[str, float]
     """A mapping from compound names (The compound and all its metabolites) to their PECs"""
 
     def __hash__(self):
-        return hash(tuple([self.compound, self.gap, self.scenario,
+        return hash(tuple([self.combination,
                            tuple(tuple([tuple(ord(c) for c in key), value]) for key, value in self.pec.items())]))
 
-    def asdict(self) -> Dict[str, Union[Compound, GAP, Scenario, Dict[str, float]]]:
+    def asdict(self) -> Dict[str, Union[Combination, Dict[str, float]]]:
         """Convert this object into a dict. Necessary, as dataclasses.asdict chokes on gap"""
-        return {"compound": self.compound,
-                "gap": self.gap,
-                "scenario": self.scenario,
-                "pec": self.pec}
+        return {"combination": self.combination,"pec": self.pec}
 
     def get_csv_headers(self) -> List[str]:
         """Get the headers of a csv file for values with structure like this object"""
         number_of_compounds = len(self.pec.keys())
         key_dict = self.asdict()
         key_dict.pop('pec')
-        converted_gap = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
-        gap_dict = converted_gap.asdict()
-        gap_dict['application_dates'] = [0] * self.gap.number_of_applications
-        gap_dict['converted_rates'] = [0] * self.gap.number_of_applications
-        gap_dict['yearly_application_on_soil'] = 0
-        key_dict['gap'] = gap_dict
         return list(flatten_to_keys(key_dict)) + [f"{i}.compound_pec" for i in range(number_of_compounds)] + [
             f"{i}.compound_name" for i in range(number_of_compounds)]
 
@@ -216,23 +204,4 @@ class PECResult:
         """Turn this object into a list of values, keeping the same ordering as get_csv_headers"""
         key_dict = self.asdict()
         key_dict.pop('pec')
-        converted_gap = AbsoluteConstantGAP.from_gap(self.gap, self.scenario)
-        gap_dict = converted_gap.asdict()
-        app_dates: List[datetime] = []
-        app_rates: List[float] = []
-        app_data = self.gap.application_data(self.scenario)
-        app_interception = -1
-        for i in range(self.gap.number_of_applications):
-            app = next(app_data)
-            if (not pessimistic_interception) or app_interception == -1:
-                app_interception = app[1]
-            app_dates.append(app[0])
-            app_rates.append(self.gap.rate * (100 - app_interception) / 100)
-        gap_dict['application_dates'] = app_dates
-        gap_dict['converted_rates'] = app_rates
-        if pessimistic_interception:
-            gap_dict['yearly_application_on_soil'] = app_rates[0] * len(app_rates)
-        else:
-            gap_dict['yearly_application_on_soil'] = sum(app_rates)
-        key_dict['gap'] = gap_dict
         return list(flatten(key_dict)) + [pec for pec in self.pec.values()] + [name for name in self.pec.keys()]

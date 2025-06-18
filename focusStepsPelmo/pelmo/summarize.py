@@ -11,6 +11,7 @@ from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP
 from focusStepsPelmo.ioTypes.pelmo import PECResult, PelmoResult
+from focusStepsPelmo.ioTypes.scenario import Scenario
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder
 from focusStepsPelmo.util.datastructures import correct_type
 
@@ -119,6 +120,7 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
             logger.debug({"compound_file": compound_hash, "gap_file": gap_hash})
             compound: Compound = get_obj_by_hash(h=compound_hash, file_roots=input_directories) # type: ignore - retrieving by hash would need a hash collision to yield something other than a this class
             gap: GAP = get_obj_by_hash(h=gap_hash, file_roots=input_directories) # type: ignore - retrieving by hash would need a hash collision to yield something other than a this class
+            combination = Combination(compound=compound, gap=gap, scenarios=frozenset([output.scenario]))
         elif 'combination' in input_data_hashes.keys():
             combination_hash = input_data_hashes['combination']
             combination: Combination = get_obj_by_hash(h=combination_hash, file_roots=input_directories) # type: ignore - retrieving by hash would need a hash collision to yield something other than a this class
@@ -151,7 +153,7 @@ def rebuild_output(source: Union[Path, Iterable[PelmoResult]], input_directories
                         metabolite = metabolite.metabolites[0].metabolite
                     pecs[metabolite.name] = pec
 
-        yield PECResult(compound=compound, gap=gap, scenario=output.scenario, pec=pecs)
+        yield PECResult(combination=combination, pec=pecs)
 
 
 @functools.lru_cache(maxsize=None)

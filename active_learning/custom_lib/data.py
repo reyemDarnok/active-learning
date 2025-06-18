@@ -18,18 +18,11 @@ def date_parser(time: str) -> int:
     return (datetime.fromisoformat(time) - datetime(year=1, month=1, day=1) + timedelta(days=1)).days
 
 def transform_data_types(to_transform: pandas.DataFrame):
-    # Drop names
-    to_transform.drop(columns=to_transform.filter(regex='name'), inplace=True)
-    to_transform.drop(columns=['gap.type'], inplace=True)
-    # Parse date
-    to_transform['gap.arguments.time_in_year'] = to_transform['gap.arguments.time_in_year'].apply(date_parser)
-    # Transform categories to ints
-    to_transform['gap.arguments.modelCrop'] = to_transform['gap.arguments.modelCrop'].apply(
-        lambda x: list(FOCUSCrop).index(FOCUSCrop.parse(x))
-    ).astype('int')
-    to_transform['scenario'] = to_transform['scenario'].apply(
-        lambda x: list(Scenario).index(Scenario[x.split('.')[1]])
-    ).astype('int')
+    for column in to_transform.columns:
+        try:
+            to_transform[column] = to_transform[column].astype('float64')
+        except ValueError:
+            pass
     
 def rename_columns(to_transform: pandas.DataFrame):
     def rename(name: str) -> str:
@@ -37,10 +30,14 @@ def rename_columns(to_transform: pandas.DataFrame):
             return 'parent.pec'
         elif name == '1.compound_pec':
             return 'metabolite.pec'
-        elif name.startswith('compound.metabolites'):
-            return "metabolite." + name.split('.', maxsplit=4)[-1]
-        elif name.startswith('compound.'):
-            return "parent." + name.split('.', maxsplit=1)[-1]
+        elif name.startswith('combination.compound.metabolites'):
+            return "metabolite." + name.split('.', maxsplit=3)[-1]
+        elif name.startswith('combination.compound.'):
+            return "parent." + name.split('.', maxsplit=2)[-1]
+        elif name.startswith('combination.gap.'):
+            return "gap." + name.split('.', maxsplit=2)[-1]
+        elif name == 'combination.scenarios.0':
+            return 'scenario'
         else:
             return name
             
@@ -63,8 +60,9 @@ def drop_impossible(to_transform):
     to_transform.drop(drop_index.index, inplace=True)
     
 def drop_uninteresting_artefacts(to_transform: pandas.DataFrame):
-    app_date_columns = [x for x in to_transform.columns if x.startswith('gap.application_dates')]
-    to_transform.drop(columns=app_date_columns, inplace=True)
+    # Drop names
+    to_transform.drop(columns=to_transform.filter(regex='name'), inplace=True)
+    to_transform.drop(columns=['gap.type'], inplace=True)
 
 def all_augments(to_transform: pandas.DataFrame):
     rename_columns(to_transform)

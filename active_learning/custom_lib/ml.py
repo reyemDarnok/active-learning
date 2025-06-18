@@ -1,27 +1,29 @@
 import math
 import numpy
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Any, Dict, List
 from datetime import timedelta
 
+import pandas
 
-def split_into_data_and_label(dataset):
+
+def split_into_data_and_label(dataset: pandas.DataFrame) -> tuple[pandas.DataFrame, pandas.DataFrame]:
     #pecs = dataset.columns[dataset.columns.str.endswith('.pec')]
     pecs = ["parent.pec"]
     data = dataset.drop(pecs, axis=1)
     label = dataset[pecs].copy()
     for column in label:
         label[column] = label[column].apply(lambda x: math.log10(x))
-    return data, label['parent.pec']
+    return data, label[pecs]
 
-def split_into_data_and_label_raw(dataset):
+def split_into_data_and_label_raw(dataset: pandas.DataFrame) -> tuple[pandas.DataFrame, pandas.DataFrame]:
     #pecs = dataset.columns[dataset.columns.str.endswith('.pec')]
     pecs = ["0.compound_pec"]
     data = dataset.drop(pecs, axis=1)
     label = dataset[pecs].copy()
     for column in label:
         label[column] = label[column].apply(lambda x: math.log10(x))
-    return data, label[["0.compound_pec"]]
+    return data, label[pecs]
 
 def GP_regression_std(regressor, X, n_instances=1):
     _, std = regressor.predict(X, return_std=True)

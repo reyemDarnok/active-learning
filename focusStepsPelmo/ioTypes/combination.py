@@ -3,7 +3,7 @@ import json
 from collections import UserList
 from dataclasses import dataclass, asdict
 from pathlib import Path
-from typing import Any, FrozenSet, Generator, Dict
+from typing import Any, FrozenSet, Generator, Dict, List
 
 from focusStepsPelmo.ioTypes.compound import Compound
 from focusStepsPelmo.ioTypes.gap import GAP
@@ -23,11 +23,11 @@ class Combination(TypeCorrecting):
         if not self.scenarios.intersection(self.gap.defined_scenarios):
             raise ValueError(f"No overlap between Combinatino scenarios {self.scenarios} and scenarios defined for crop {self.gap.defined_scenarios}")
 
-    def asdict(self) -> Dict[str, FrozenSet[Scenario] | Dict[str, Any]]:
+    def asdict(self) -> Dict[str, List[str] | Dict[str, Any]]:
         """Represent self as a dictionary - the dataclasses.asdict method chokes on NamedTuples in gap"""
         return {"gap": self.gap.asdict(),
                 "compound": asdict(self.compound),
-                "scenarios": self.scenarios}
+                "scenarios": [s.name for s in self.scenarios]}
 
     @staticmethod
     def from_path(path: Path) -> Generator['Combination', None, None]:

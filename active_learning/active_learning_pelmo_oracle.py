@@ -1,6 +1,7 @@
 import json
 import tempfile
 import pandas
+from sklearn.compose import ColumnTransformer
 from custom_lib import data, ml, stats, vis
 from pathlib import Path
 import numpy as np
@@ -10,7 +11,7 @@ from typing import Any, Generator, List, NoReturn, Tuple, Dict
 from matplotlib import pyplot as plt
 
 from focusStepsPelmo.ioTypes.combination import Combination
-from focusStepsPelmo.ioTypes.gap import Scenario
+from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario
 from focusStepsPelmo.pelmo.generation_definition import Definition
 from focusStepsPelmo.pelmo.local import run_local
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder, flatten, flatten_to_keys
@@ -21,7 +22,7 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, Matern, WhiteKernel
 from sklearn.base import clone
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler, FunctionTransformer
+from sklearn.preprocessing import OneHotEncoder, StandardScaler, FunctionTransformer
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_absolute_percentage_error, r2_score
 from sklearn.utils._testing import ignore_warnings
@@ -33,10 +34,10 @@ from modAL.models import CommitteeRegressor
 from modAL.disagreement import max_std_sampling
 
 def transform(X: pandas.DataFrame, y=None):
-    X = X.copy()
-    data.all_augments(X)
-    data.feature_engineer(X)
-    return X
+    local_copy = X.copy()
+    data.all_augments(local_copy)
+    data.feature_engineer(local_copy)
+    return local_copy
 
 
 def load_dataset(path: Path) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
@@ -44,14 +45,14 @@ def load_dataset(path: Path) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
     return prep_dataset(dataset)
 
 def prep_dataset(dataset: pandas.DataFrame) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-    dataset = data.remove_low_filter_raw(dataset)
+    dataset = data.minimal_filter_raw(dataset)
     return ml.split_into_data_and_label_raw(dataset)
 
 def generate_features(template: Definition, number: int):
     combination_gen = _combination_generator(template=template)
     combinations: List[Combination] = [next(combination_gen) for _ in range(number)] 
-    flattened = [list(flatten(combination.asdict())) for combination in combinations]
-    return combinations, pandas.DataFrame(flattened, columns=list(flatten_to_keys(combinations[0].asdict())))
+    flattened = [list(flatten({'combination': combination.asdict()})) for combination in combinations]
+    return combinations, pandas.DataFrame(flattened, columns=list(flatten_to_keys({'combination': combinations[0].asdict()})))
 
 def _combination_generator(template: Definition) -> Generator[Combination, Any, NoReturn]:
     while True:
@@ -66,10 +67,11 @@ def evaluate_features(features: List[Combination]):
     with tempfile.TemporaryDirectory() as work:
         work_dir = Path(work)
         combination_path = (work_dir / 'combination' / f"{name}.json")
+        combination_path.parent.mkdir(exist_ok=True, parents=True)
         with combination_path.open('w') as combination_file:
             json.dump(feature_tuple, fp=combination_file, cls=EnhancedJSONEncoder)
-        pelmo_res_path = output_dir / 'pelmo' / f"{name}.csv"
-        run_local(work_dir=work_dir / 'pelmo', output_file=pelmo_res_path,combination_dir=combination_path,scenarios=frozenset([Scenario.C]))
+        pelmo_res_path = work_dir / 'pelmo_result' / f"{name}.csv"
+        run_local(work_dir=work_dir / 'pelmo_work', output_file=pelmo_res_path,combination_dir=combination_path,scenarios=frozenset([Scenario.C]))
         result_df = pandas.read_csv(pelmo_res_path)
         return result_df
 
@@ -89,29 +91,37 @@ test_features, test_labels = ml.split_into_data_and_label_raw(test_data_filtered
 test_features_critical, test_labels_critical = ml.split_into_data_and_label_raw(test_data_critical)
 
 model = HistGradientBoostingRegressor()
-pipeline = make_pipeline(FunctionTransformer(transform), StandardScaler(), model)
+oneHotEncoder = ColumnTransformer(
+    transformers=[
+        ('scenario',OneHotEncoder(categories=[[x.name for x in Scenario]]),  ['scenario']),
+        ('crop', OneHotEncoder(categories=[[x.name for x in FOCUSCrop]]), ['gap.arguments.modelCrop'])
+        ],
+    remainder='passthrough'
+)
+pipeline = make_pipeline(FunctionTransformer(transform),oneHotEncoder, StandardScaler(), model)
 
 
-bootstrap_size = 150
-total_points = 1000
+bootstrap_size = 10
+total_points = 100
 batchsize = 20
-oversampling_factor = 3.5
-models_in_committee = 10
+oversampling_factor = 10
+models_in_committee = 1
 
 
 @ignore_warnings()
 def setup_learner(template: Definition):
     learner_list = []
-    for _ in range(models_in_committee):
+    for index in range(models_in_committee):
         combinations, _ = generate_features(template=template, number=bootstrap_size)
         evaluated = evaluate_features(features=combinations)
         features, labels = prep_dataset(evaluated)
-        learner_list.append(ActiveLearner(
+        committee_member = ActiveLearner(
             estimator=clone(pipeline),
             X_training=features,
             y_training=labels
-        ))
-        print("created committee member", datetime.now())
+        )
+        learner_list.append(committee_member)
+        print(f"created committee member {index} at", datetime.now())
     return CommitteeRegressor(
         learner_list = learner_list,
         query_strategy=max_std_sampling, 
@@ -134,15 +144,24 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
                "false_negative": false_negative_metric, "r2": r2_score}
     for name in metrics.keys():
         result.scores[name] = []
-    for i in range(bootstrap_size, total_points, batchsize):
+    learned_points = bootstrap_size
+    while learned_points < total_points:
         combinations, features = generate_features(template, int(batchsize * oversampling_factor))
-        query_ids, selected_features = learner.query(features, n_instances=min(batchsize, total_points - i))
+        query_ids, _ = learner.query(features, n_instances=batchsize)
         evaluated = evaluate_features(features=list(np.array(combinations)[query_ids]))
         features, labels = prep_dataset(evaluated)
+        points_in_batch = features.shape[0]
+        if learned_points + points_in_batch > total_points:
+            remaining_points = total_points - learned_points
+            features = features.iloc[:remaining_points]
+            labels = labels.iloc[:remaining_points]
+            points_in_batch = remaining_points
+
+        learned_points += points_in_batch # prep dataset removes some points
         # find values for indexes
-        learner.teach(selected_features, labels)
+        learner.teach(features, labels)
         end_teach = datetime.now() 
-        result.training_sizes.append(learner.X_training.shape[0])
+        result.training_sizes.append(learned_points)
         result.training_times.append(end_teach - start_time - score_time)
         predict_labels = learner.predict(test_features)
         predict_labels = np.ravel(predict_labels)
