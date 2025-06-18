@@ -4,10 +4,11 @@ import math
 from dataclasses import dataclass, replace
 from datetime import datetime
 from enum import Enum, auto
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, FrozenSet, List, Optional, Tuple
 
 from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoader, Template
 
+from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound, MetaboliteDescription, DT50
 from focusStepsPelmo.ioTypes.gap import GAP, GAPMachineGAP, Scenario, FOCUSCrop
 from focusStepsPelmo.util.datastructures import TypeCorrecting
@@ -255,6 +256,7 @@ class PsmFile(TypeCorrecting):
     gap: GAP
     compound: PsmCompound
     metabolites: List[PsmCompound]
+    scenarios: FrozenSet[Scenario]
     comment: str = "No comment"
     num_soil_horizons: int = 0
     degradation_type: DegradationType = DegradationType.FACTORS
@@ -266,15 +268,18 @@ class PsmFile(TypeCorrecting):
             "application": self.application,
             "compound": self.compound,
             "metabolites": self.metabolites,
+            "scenarios": self.scenarios,
             "comment": self.comment,
             "num_soil_horizons": self.num_soil_horizons,
             "degradation_type": self.degradation_type,
         }
 
     @staticmethod
-    def from_input(compound: Compound, gap: GAP) -> 'PsmFile':
+    def from_input(combination: Combination) -> 'PsmFile':
         """Create a PsmFile from the ioTypes classes"""
         application = PsmApplication()
+        compound = combination.compound
+        gap = combination.gap
 
         metabolites: Dict[str, Compound] = {}
         if 'pelmo' in compound.model_specific_data.keys():
@@ -317,7 +322,7 @@ class PsmFile(TypeCorrecting):
                                          increase_of_sorption_when_air_dried=1000)
                 met_des = replace(met_des, adsorption=met_adsorption)
                 metabolite_list.append(met_des)
-        return PsmFile(application=application, compound=psm_compound, metabolites=metabolite_list, gap=gap)
+        return PsmFile(application=application, compound=psm_compound, metabolites=metabolite_list, gap=gap, scenarios=combination.scenarios)
 
     @staticmethod
     def reorder_metabolites(compound: Compound, metabolites: Dict[str, Compound]) -> Compound:
@@ -387,5 +392,10 @@ class PsmFile(TypeCorrecting):
         """Render this psm file as a string"""
         template_data = self.asdict()
         template_data['pessimistic_interception'] = pessimistic_interception
+        template_data['scenarios'] = self.scenarios.intersection(self.gap.defined_scenarios)
+        if not template_data['scenarios']:
+            print(self.scenarios)
+            print(self.gap.defined_scenarios)
+
         rendered = psm_template.render(template_data)
         return rendered

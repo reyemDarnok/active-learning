@@ -5,7 +5,7 @@ from custom_lib import data, ml, stats, vis
 from pathlib import Path
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Any, List, Tuple, Dict
+from typing import Any, Generator, List, NoReturn, Tuple, Dict
 
 from matplotlib import pyplot as plt
 
@@ -22,7 +22,6 @@ from sklearn.gaussian_process.kernels import RBF, Matern, WhiteKernel
 from sklearn.base import clone
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler, FunctionTransformer
-from sklearn.experimental import enable_hist_gradient_boosting
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.metrics import mean_absolute_percentage_error, r2_score
 from sklearn.utils._testing import ignore_warnings
@@ -40,16 +39,26 @@ def transform(X: pandas.DataFrame, y=None):
     return X
 
 
-def load_dataset(path: Path):
-    dset = data.load_data(path)
-    dset = data.remove_low_filter_raw(dset)
-    return ml.split_into_data_and_label_raw(dset)
+def load_dataset(path: Path) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
+    dataset = data.load_data(path)
+    return prep_dataset(dataset)
 
+def prep_dataset(dataset: pandas.DataFrame) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
+    dataset = data.remove_low_filter_raw(dataset)
+    return ml.split_into_data_and_label_raw(dataset)
 
 def generate_features(template: Definition, number: int):
-    combinations: List[Combination] = [Combination(**template.make_sample()) for _ in range(number)] 
+    combination_gen = _combination_generator(template=template)
+    combinations: List[Combination] = [next(combination_gen) for _ in range(number)] 
     flattened = [list(flatten(combination.asdict())) for combination in combinations]
     return combinations, pandas.DataFrame(flattened, columns=list(flatten_to_keys(combinations[0].asdict())))
+
+def _combination_generator(template: Definition) -> Generator[Combination, Any, NoReturn]:
+    while True:
+        try:
+            yield Combination(**template.make_sample())
+        except ValueError:
+            pass
 
 def evaluate_features(features: List[Combination]):
     feature_tuple = tuple(features)
@@ -66,6 +75,7 @@ def evaluate_features(features: List[Combination]):
 
 
 test_data = Path(__file__).parent.parent /'ppdb'/'inferred.csv'
+
 features, labels = load_dataset(Path(__file__).parent.parent /'combined-scan'/'samples.csv')
 
 scratch_space = tempfile.TemporaryDirectory()
@@ -90,16 +100,16 @@ models_in_committee = 10
 
 
 @ignore_warnings()
-def setup_learner():
+def setup_learner(template: Definition):
     learner_list = []
     for _ in range(models_in_committee):
-        bootstrap_index = np.random.choice(features.shape[0], bootstrap_size, replace=False)
-        bootstrap_features = features.iloc[bootstrap_index]
-        bootstrap_labels = labels.iloc[bootstrap_index]
+        combinations, _ = generate_features(template=template, number=bootstrap_size)
+        evaluated = evaluate_features(features=combinations)
+        features, labels = prep_dataset(evaluated)
         learner_list.append(ActiveLearner(
             estimator=clone(pipeline),
-            X_training=bootstrap_features,
-            y_training=bootstrap_labels
+            X_training=features,
+            y_training=labels
         ))
         print("created committee member", datetime.now())
     return CommitteeRegressor(
@@ -113,7 +123,7 @@ false_negative_metric = stats.make_false_negative_metric(greater_is_better = Fal
 false_positive_metric = stats.make_false_positive_metric(greater_is_better = False)
 
 @ignore_warnings()
-def train_learner(learner, batchsize: int, oversampling_factor: float, test_features, test_labels, template_path: Path):
+def train_learner(learner, batchsize: int, oversampling_factor: float, test_features, test_labels, template: Definition):
     result = ml.TrainingRecord(
         model = learner,
         batchsize = batchsize
@@ -124,13 +134,11 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
                "false_negative": false_negative_metric, "r2": r2_score}
     for name in metrics.keys():
         result.scores[name] = []
-    sample_definition = Definition.parse(json.loads(template_path.read_text()))
     for i in range(bootstrap_size, total_points, batchsize):
-        combinations, features = generate_features(sample_definition, int(batchsize * oversampling_factor))
+        combinations, features = generate_features(template, int(batchsize * oversampling_factor))
         query_ids, selected_features = learner.query(features, n_instances=min(batchsize, total_points - i))
         evaluated = evaluate_features(features=list(np.array(combinations)[query_ids]))
-        evaluated = data.remove_low_filter_raw(evaluated)
-        features, labels = ml.split_into_data_and_label_raw(evaluated)
+        features, labels = prep_dataset(evaluated)
         # find values for indexes
         learner.teach(selected_features, labels)
         end_teach = datetime.now() 
@@ -149,8 +157,10 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
     
 
 def make_training():
-    learner = setup_learner()
-    return train_learner(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, test_features=test_features, test_labels=test_labels, template_path=Path(__file__).parent / 'scan-matrix-ppdb-based.json')
+    template = Definition.parse(json.loads((Path(__file__).parent / 'scan-matrix-ppdb-based.json').read_text()))
+
+    learner = setup_learner(template=template)
+    return train_learner(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, test_features=test_features, test_labels=test_labels, template=template)
 
 records = []
 for index in range(1):

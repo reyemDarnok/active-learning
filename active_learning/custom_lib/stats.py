@@ -10,10 +10,11 @@ from sklearn.metrics import mean_squared_error
 
 
 def pearson_p(x: Iterable[float], y: Iterable[float]) -> float:
-    return pearsonr(x, y)[1]
+    return pearsonr(x, y)[1] # type: ignore
 
 def pearson(x: Iterable[float], y: Iterable[float]) -> float:
-    return pearsonr(x, y)[0]
+    return pearsonr(x, y)[0] # type: ignore
+
 
 def find_input_correlations(correlations: pandas.DataFrame):
     input_columns = correlations.columns[correlations.columns.str.endswith(".pec")]

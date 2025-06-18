@@ -12,7 +12,8 @@ from jinja2 import Environment, select_autoescape, StrictUndefined, PackageLoade
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.compound import Compound
-from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop
+from focusStepsPelmo.ioTypes.scenario import Scenario
 from focusStepsPelmo.pelmo.psm_file import PsmFile
 from focusStepsPelmo.util import jsonLogger as jsonLogger
 
@@ -100,9 +101,9 @@ def generate_psm_files(compounds: Optional[Iterable[Compound]] = None, gaps: Opt
     assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
     if combinations:
         for combination in combinations:
-            psm_file_scenarios = scenarios.intersection(combination.gap.defined_scenarios)
+            psm_file_scenarios = scenarios.intersection(combination.gap.defined_scenarios).intersection(combination.scenarios)
             comment = json.dumps({"combination": hash(combination)})
-            yield _generate_psm_contents(compound=combination.compound, gap=combination.gap,
+            yield _generate_psm_contents(combination=combination,
                                          comment=comment, pessimistic_interception=pessimistic_interception), combination.gap.modelCrop, psm_file_scenarios
     if compounds and gaps:
         compounds = list(compounds)
@@ -111,64 +112,18 @@ def generate_psm_files(compounds: Optional[Iterable[Compound]] = None, gaps: Opt
                 for compound in compounds:
                     psm_file_scenarios = scenarios.intersection(gap.defined_scenarios)
                     comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
-                    yield _generate_psm_contents(compound, gap, comment, pessimistic_interception=pessimistic_interception), gap.modelCrop, psm_file_scenarios
+                    
+                    yield _generate_psm_contents(combination=Combination(gap=gap, compound=compound, scenarios=scenarios), comment= comment, pessimistic_interception=pessimistic_interception), gap.modelCrop, psm_file_scenarios
 
 
-async def generate_psm_files_async(compounds: Optional[Iterable[Compound]] = None, gaps: Optional[Iterable[GAP]] = None,
-                                   crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop),
-                                   scenarios: FrozenSet[Scenario] = frozenset(Scenario),
-                                   combinations: Optional[Iterable[Combination]] = None,
-                                   pessimistic_interception: bool = False
-                                   ) -> List[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]]:
-    """Create the contents of psm files
-    :param compounds: The compounds to combine with gaps to make psm files
-    :param gaps: The gaps to combine with compounds to make psm files
-    :param combinations: The combinations to turn into psm files
-    :param crops: The crops for which psm files should be generated. If a GAP does not match the crops given, it will be
-    skipped
-    :param scenarios:The scenarios for which psm files should be generated. For a given GAP, the scenarios used are
-    the intersection of the scenarios defined by the gap and the scenarios passed into the function
-    :return: The contents of the psm files"""
-    assert not (bool(compounds) ^ bool(gaps)), "Either both or neither of compound file have to be specified"
-    psm_tasks: List[asyncio.Task[Tuple[str, FOCUSCrop, FrozenSet[Scenario]]]] = []
-    if combinations:
-        for combination in combinations:
-            psm_file_scenarios = scenarios.intersection(combination.gap.defined_scenarios)
-            comment = json.dumps({"combination": hash(combination)})
-            psm_tasks.append(asyncio.create_task(
-                _generate_psm_tuple_async(compound=combination.compound, gap=combination.gap,
-                                          comment=comment, scenarios=psm_file_scenarios,
-                                          pessimistic_interception=pessimistic_interception)
-            ))
-    if compounds and gaps:
-        compounds = list(compounds)
-        for gap in gaps:
-            if gap.modelCrop in crops:
-                for compound in compounds:
-                    psm_file_scenarios = scenarios.intersection(gap.defined_scenarios)
-                    comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
-                    psm_tasks.append(asyncio.create_task(
-                        _generate_psm_tuple_async(compound, gap, comment, psm_file_scenarios,
-                                                  pessimistic_interception)
-                    ))
-    return [await x for x in psm_tasks]
-
-
-async def _generate_psm_tuple_async(
-        compound: Compound, gap: GAP, comment: str, scenarios: FrozenSet[Scenario],
-        pessimistic_interception: bool = False
-) -> Tuple[str, FOCUSCrop, FrozenSet[Scenario]]:
-    return _generate_psm_contents(compound, gap, comment, pessimistic_interception), gap.modelCrop, scenarios
-
-
-def _generate_psm_contents(compound: Compound, gap: GAP, comment: str, pessimistic_interception: bool = False) -> str:
+def _generate_psm_contents(combination: Combination, comment: str, pessimistic_interception: bool = False) -> str:
     """For a given compound and gap file, generate the matching psm files 
     :param gap: The gap file to use when generating psm file
     :param compound: The compound file to use when generating psm file
     :param comment: The comment in the resulting psm file
     :return: The contents of the psm file"""
 
-    psm_file = PsmFile.from_input(compound=compound, gap=gap)
+    psm_file = PsmFile.from_input(combination=combination)
     psm_file = replace(psm_file, comment=comment)
     return psm_file.render(pessimistic_interception)
 

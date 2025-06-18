@@ -6,7 +6,8 @@ from pathlib import Path
 from typing import List, Dict, Union
 
 from focusStepsPelmo.ioTypes.compound import Compound
-from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, Scenario, AbsoluteConstantGAP
+from focusStepsPelmo.ioTypes.gap import GAP, FOCUSCrop, AbsoluteConstantGAP
+from focusStepsPelmo.ioTypes.scenario import Scenario
 from focusStepsPelmo.util.conversions import flatten_to_keys, flatten
 from focusStepsPelmo.util.datastructures import TypeCorrecting
 

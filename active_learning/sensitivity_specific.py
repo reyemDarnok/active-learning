@@ -110,7 +110,7 @@ def make_single_fuzz(factor: float, combinations: Sequence[Combination], particl
         local_base = combination.asdict()
         last_dict = local_base
         for particle in particles[:-1]:
-            last_dict = last_dict[particle]
+            last_dict = last_dict[particle] # type: ignore
         last_dict[particles[-1]] = last_dict[particles[-1]] * (1+factor) # type: ignore
         new_combinations.append(Combination(**local_base)) # type: ignore
     return new_combinations

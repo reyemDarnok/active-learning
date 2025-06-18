@@ -13,6 +13,7 @@ from typing import Dict, Generator, List, Tuple, NamedTuple, Any, OrderedDict, F
 import pandas
 from pandera.typing import Series
 
+from focusStepsPelmo.ioTypes.scenario import Scenario
 from focusStepsPelmo.util.conversions import excel_date_to_datetime, uncomment
 from focusStepsPelmo.util.datastructures import HashableRSDict, TypeCorrecting, correct_type
 
@@ -27,18 +28,6 @@ bbch_application: pandas.DataFrame = pandas.read_csv(Path(__file__).parent / 'BB
 """A dataframe containing information about when should the application happen and what is the crop interception
 during the application"""
 
-
-class Scenario(str, Enum):
-    """The Pelmo Scenarios. The name is the one letter shorthand and the value the full name"""
-    C = "Châteaudun"
-    H = "Hamburg"
-    J = "Jokioinen"
-    K = "Kremsmünster"
-    N = "Okehampton"
-    P = "Piacenza"
-    O = "Porto"
-    S = "Sevilla"
-    T = "Thiva"
 
 
 class PrincipalStage(int, Enum):

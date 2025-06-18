@@ -22,7 +22,7 @@ def transform_data_types(to_transform: pandas.DataFrame):
     to_transform.drop(columns=to_transform.filter(regex='name'), inplace=True)
     to_transform.drop(columns=['gap.type'], inplace=True)
     # Parse date
-    #to_transform['gap.arguments.time_in_year'] = to_transform['gap.arguments.time_in_year'].apply(date_parser)
+    to_transform['gap.arguments.time_in_year'] = to_transform['gap.arguments.time_in_year'].apply(date_parser)
     # Transform categories to ints
     to_transform['gap.arguments.modelCrop'] = to_transform['gap.arguments.modelCrop'].apply(
         lambda x: list(FOCUSCrop).index(FOCUSCrop.parse(x))
@@ -45,11 +45,6 @@ def rename_columns(to_transform: pandas.DataFrame):
             return name
             
     to_transform.rename(columns={x: rename(x) for x in to_transform.columns}, inplace=True)
-
-    
-def drop_constants(to_transform: pandas.DataFrame):
-    constant_columns = [x for x in to_transform.columns if len(to_transform[x].unique()) == 1]
-    to_transform.drop(columns=constant_columns, inplace=True)
     
 def add_calculated(to_transform: pandas.DataFrame):
     if 'metabolite.molarMass' in to_transform:
@@ -67,12 +62,16 @@ def drop_impossible(to_transform):
     drop_index = to_transform[to_transform["parent.log_henry"] == float('inf')]
     to_transform.drop(drop_index.index, inplace=True)
     
+def drop_uninteresting_artefacts(to_transform: pandas.DataFrame):
+    app_date_columns = [x for x in to_transform.columns if x.startswith('gap.application_dates')]
+    to_transform.drop(columns=app_date_columns, inplace=True)
+
 def all_augments(to_transform: pandas.DataFrame):
     rename_columns(to_transform)
     transform_data_types(to_transform)
     add_calculated(to_transform)
-    drop_constants(to_transform)
     drop_impossible(to_transform)
+    drop_uninteresting_artefacts(to_transform)
     
     
 def minimal_filter(to_transform: pandas.DataFrame) -> pandas.DataFrame:
