@@ -6,7 +6,7 @@ from custom_lib import data, ml, stats, vis
 from pathlib import Path
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Any, Generator, List, NoReturn, Tuple, Dict
+from typing import Any, Callable, Generator, List, NoReturn, Tuple, Dict
 
 from matplotlib import pyplot as plt
 
@@ -24,7 +24,7 @@ from sklearn.base import clone
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, FunctionTransformer
 from sklearn.ensemble import HistGradientBoostingRegressor
-from sklearn.metrics import mean_absolute_percentage_error, r2_score
+from sklearn.metrics import mean_absolute_percentage_error, r2_score, root_mean_squared_error
 from sklearn.utils._testing import ignore_warnings
 
 
@@ -144,7 +144,7 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
     score_time = timedelta(0)
     start_time = datetime.now()
     metrics = {"custom": custom_metric, "false_positive": false_positive_metric, 
-               "false_negative": false_negative_metric, "r2": r2_score}
+               "false_negative": false_negative_metric, "r2": r2_score, "rmse": root_mean_squared_error}
     for name in metrics.keys():
         result.scores[name] = []
     learned_points = 0
@@ -167,11 +167,16 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
         end_teach = datetime.now() 
         result.training_sizes.append(learned_points)
         result.training_times.append(end_teach - start_time - score_time)
-        predict_labels = learner.predict(test_features)
+        predict_labels, predict_std = learner.predict(test_features, return_std=True)
         predict_labels = np.ravel(predict_labels)
-       
+
+        individual_predict_labels = [np.ravel(indiv.predict(test_features)) for indiv in learner.learner_list]
+
         for name, metric in metrics.items():
-            result.scores[name].append(metric(test_labels, predict_labels))
+            committee_score = metric(test_labels, predict_labels)
+            individual_scores = [metric(test_labels, indiv_labels) for indiv_labels in individual_predict_labels]
+            committee_std = float(np.std(individual_scores))
+            result.scores[name].append((committee_score, committee_std))
         end_score = datetime.now()
         score_time += end_score - end_teach
         print(str(result), end_score, end='\r')
@@ -193,38 +198,65 @@ for index in range(1):
 
 record = records[0]
 
+pl_path = Path(__file__).parent / 'plots'
+pl_path.mkdir(exist_ok=True, parents=True)
 plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
 plt.ylabel("Training time in seconds")
 plt.xlabel("Trained Data Points")
-plt.show()
+plt.savefig(pl_path / 'training_time.svg', bbox_inches='tight')
 
-plt.plot(record.training_sizes, record.scores['custom'])
+scores, stds = zip(*record.scores['custom'])
+scores = np.array(scores)
+plt.plot(record.training_sizes, scores)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds)
 plt.xlabel("Trained Data Points")
 plt.ylabel("custom score")
-plt.show()
+plt.savefig(pl_path / 'custom_score.svg', bbox_inches='tight')
 
-plt.plot(record.training_sizes, record.scores['r2'])
+scores, stds = zip(*record.scores['r2'])
+scores = np.array(scores)
+plt.plot(record.training_sizes, scores)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds)
 plt.xlabel("Trained Data Points")
 plt.ylabel("r2 score")
 plt.ylim(0,1)
-plt.show()
+plt.savefig(pl_path / 'r2_score.svg', bbox_inches='tight')
 
-plt.plot(record.training_sizes, record.scores['false_negative'])
+scores, stds = zip(*record.scores['false_negative'])
+scores = np.array(scores)
+plt.plot(record.training_sizes, scores)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds)
 plt.xlabel("Trained Data Points")
 plt.ylabel("false negative score")
 plt.ylim(0,1)
-plt.show()
+plt.savefig(pl_path / 'false_negative_score.svg', bbox_inches='tight')
 
-plt.plot(record.training_sizes, record.scores['false_positive'])
+scores, stds = zip(*record.scores['false_positive'])
+scores = np.array(scores)
+plt.plot(record.training_sizes, scores)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds)
 plt.xlabel("Trained Data Points")
 plt.ylabel("false positive score")
 plt.ylim(0,1)
-plt.show()
+plt.savefig(pl_path / 'false_positive_score.svg', bbox_inches='tight')
 
-plt.scatter(test_labels,record.model.predict(test_features))
+scores, stds = zip(*record.scores['rmse'])
+scores = np.array(scores)
+plt.plot(record.training_sizes, scores)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds)
+plt.xlabel("Trained Data Points")
+plt.ylabel("rmse score")
+plt.ylim(0,1)
+plt.savefig(pl_path / 'rmse_score.svg', bbox_inches='tight')
+
+
+values, stds = record.model.predict(test_features, return_std=True)
+values = np.ravel(values)
+stds = np.ravel(values)
+plt.scatter(test_labels,values, values - stds, values + stds)
 plt.plot(test_labels,test_labels,'k-')
 plt.xlabel("True values")
 plt.ylabel("Predicted values")
-plt.show()
+plt.savefig(pl_path / 'true_v_pred.svg', bbox_inches='tight')
 
 scratch_space.cleanup()

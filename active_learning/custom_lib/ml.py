@@ -1,7 +1,7 @@
 import math
 import numpy
 from dataclasses import dataclass, field
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from datetime import timedelta
 
 import pandas
@@ -35,7 +35,7 @@ def GP_regression_std(regressor, X, n_instances=1):
 class TrainingRecord:
     model: object = field(repr=False)
     batchsize: int = 0
-    scores: Dict[str, List[float]] = field(default_factory=dict)
+    scores: Dict[str, List[Tuple[float, float]]] = field(default_factory=dict)
     training_times: List[timedelta] = field(default_factory=list)
     training_sizes: List[int] = field(default_factory=list)
         
