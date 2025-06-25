@@ -1,0 +1,178 @@
+[
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 10.0,
+        "vapor_pressure": 67564587.05963114,
+        "reference_temperature": 20,
+        "koc": 10.0,
+        "freundlich": 1.0,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 72.7,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 3.68,
+        "vapor_pressure": 443.36479682953177,
+        "reference_temperature": 20,
+        "koc": 3.68,
+        "freundlich": 0.79,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 8.05,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 1179677.2096413602,
+        "vapor_pressure": 1776949.0518799778,
+        "reference_temperature": 20,
+        "koc": 1179677.2096413602,
+        "freundlich": 0.88,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 2.3,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 15597.24628234905,
+        "vapor_pressure": 2.2676775843530637,
+        "reference_temperature": 20,
+        "koc": 15597.24628234905,
+        "freundlich": 0.859,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 199.0,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 1179677.2096413602,
+        "vapor_pressure": 2037120.680046178,
+        "reference_temperature": 20,
+        "koc": 1179677.2096413602,
+        "freundlich": 1.0,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 90.77408603781298,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 1179677.2096413602,
+        "vapor_pressure": 1887424.596126487,
+        "reference_temperature": 20,
+        "koc": 1179677.2096413602,
+        "freundlich": 1.08,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 17.3,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 1179677.2096413602,
+        "vapor_pressure": 1810164.4231468264,
+        "reference_temperature": 20,
+        "koc": 1179677.2096413602,
+        "freundlich": 0.929,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 17.3,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 189298.57730527406,
+        "vapor_pressure": 8.4e-06,
+        "reference_temperature": 20,
+        "koc": 189298.57730527406,
+        "freundlich": 0.8,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 19.0,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 2520.0,
+        "vapor_pressure": 2.116740634182884,
+        "reference_temperature": 20,
+        "koc": 2520.0,
+        "freundlich": 0.95,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 12.2,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 110.4,
+        "vapor_pressure": 0.0408630324588626,
+        "reference_temperature": 20,
+        "koc": 110.4,
+        "freundlich": 1.166,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 67.3,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    },
+    {
+        "metabolites": [],
+        "molarMass": 300,
+        "water_solubility": 298.0,
+        "vapor_pressure": 7352577.499952495,
+        "reference_temperature": 20,
+        "koc": 298.0,
+        "freundlich": 0.96,
+        "plant_uptake": 0,
+        "dt50": {
+            "system": 6,
+            "soil": 33.9,
+            "surfaceWater": 6,
+            "sediment": 6
+        }
+    }
+]

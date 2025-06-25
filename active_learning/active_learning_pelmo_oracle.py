@@ -71,7 +71,7 @@ def evaluate_features(features: List[Combination]):
         with combination_path.open('w') as combination_file:
             json.dump(feature_tuple, fp=combination_file, cls=EnhancedJSONEncoder)
         pelmo_res_path = work_dir / 'pelmo_result' / f"{name}.csv"
-        run_local(work_dir=work_dir / 'pelmo_work', output_file=pelmo_res_path,combination_dir=combination_path,scenarios=frozenset([Scenario.C]))
+        run_local(output_file=pelmo_res_path,combination_dir=combination_path,scenarios=frozenset([Scenario.C]))
         result_df = pandas.read_csv(pelmo_res_path)
         return result_df
 
