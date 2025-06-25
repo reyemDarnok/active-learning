@@ -40,4 +40,4 @@ class TrainingRecord:
     training_sizes: List[int] = field(default_factory=list)
         
     def __str__(self):
-        return f"TrainingRecord(batchsize={self.batchsize}, training_time={self.training_times[-1]}, total_points={self.training_sizes[-1]}, scores={ {name: f'{scores[-1]:2.2}' for name, scores in self.scores.items()} })"
+        return f"TrainingRecord(batchsize={self.batchsize}, training_time={self.training_times[-1]}, total_points={self.training_sizes[-1]}, scores={ {name: {'value' :f'{scores[-1][0]:2.2}', 'std': f'{scores[-1][1]:2.2}'} for name, scores in self.scores.items()} })"

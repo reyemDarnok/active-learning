@@ -102,7 +102,7 @@ pipeline = make_pipeline(FunctionTransformer(transform),oneHotEncoder, StandardS
 
 
 bootstrap_size = 10
-total_points = 100
+total_points = 30
 batchsize = 20
 oversampling_factor = 10
 models_in_committee = 1

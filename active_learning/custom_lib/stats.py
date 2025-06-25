@@ -58,6 +58,9 @@ def neg_wrong_bin_score(y_true, y_predicted, border: float = -1):
 
 def make_false_negative_metric(split: float = 0.1, greater_is_better = True):
     def metric(y_true, y_pred, *, greater_is_better = greater_is_better):
+        if len(y_true.shape) > 1:
+            y_true = numpy.ravel(y_true)
+            y_pred = numpy.ravel(y_pred)
         should_be_under = y_pred[y_true < split]
         score =  sum(should_be_under > split) / should_be_under.shape[0]
         if greater_is_better:
@@ -67,6 +70,9 @@ def make_false_negative_metric(split: float = 0.1, greater_is_better = True):
 
 def make_false_positive_metric(split: float = 0.1, greater_is_better = True):
     def metric(y_true, y_pred, *, greater_is_better = greater_is_better):
+        if len(y_true.shape) > 1:
+            y_true = numpy.ravel(y_true)
+            y_pred = numpy.ravel(y_pred)
         should_be_over = y_pred[y_true > split]
         score = sum(should_be_over < split) / should_be_over.shape[0]
         if greater_is_better:

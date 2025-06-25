@@ -63,9 +63,11 @@ def add_calculated(to_transform: pandas.DataFrame):
                                     to_transform['parent.water_solubility'])
     to_transform['parent.log_henry'] = to_transform['parent.henry'].apply(lambda x: math.log10(max(1e-10,x)))
 
-def drop_impossible(to_transform):
-    drop_index = to_transform[to_transform["parent.log_henry"] == float('inf')]
-    to_transform.drop(drop_index.index, inplace=True)
+def clamp_impossible(to_transform, high_clamp=1e30):
+    clamp_index = to_transform["parent.log_henry"] == float('inf')
+    to_transform['parent.log_henry'][clamp_index] = high_clamp
+    clamp_index = to_transform["parent.henry"] == float('inf')
+    to_transform['parent.henry'][clamp_index] = high_clamp
     
 def drop_uninteresting_artefacts(to_transform: pandas.DataFrame):
     # Drop names
@@ -76,7 +78,7 @@ def all_augments(to_transform: pandas.DataFrame):
     rename_columns(to_transform)
     transform_data_types(to_transform)
     add_calculated(to_transform)
-    drop_impossible(to_transform)
+    clamp_impossible(to_transform)
     drop_uninteresting_artefacts(to_transform)
     
     
