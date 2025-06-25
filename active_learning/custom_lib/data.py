@@ -38,6 +38,14 @@ def rename_columns(to_transform: pandas.DataFrame):
             return "gap." + name.split('.', maxsplit=2)[-1]
         elif name == 'combination.scenarios.0':
             return 'scenario'
+        elif name.startswith('compound.metabolites'):
+            return "metabolite." + name.split('.', maxsplit=2)[-1]
+        elif name.startswith('compound.'):
+            return "parent." + name.split('.', maxsplit=1)[-1]
+        elif name.startswith('gap.'):
+            return "gap." + name.split('.', maxsplit=1)[-1]
+        elif name == 'combination.scenarios.0':
+            return 'scenario'
         else:
             return name
             

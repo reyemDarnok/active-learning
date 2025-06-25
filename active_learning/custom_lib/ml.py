@@ -20,6 +20,7 @@ def split_into_data_and_label_raw(dataset: pandas.DataFrame) -> tuple[pandas.Dat
     #pecs = dataset.columns[dataset.columns.str.endswith('.pec')]
     pecs = ["0.compound_pec"]
     data = dataset.drop(pecs, axis=1)
+    data.drop(columns=['0.compound_name'], inplace=True)
     label = dataset[pecs].copy()
     for column in label:
         label[column] = label[column].apply(lambda x: math.log10(x))

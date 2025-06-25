@@ -76,7 +76,7 @@ def evaluate_features(features: List[Combination]):
         return result_df
 
 
-test_data = Path(__file__).parent.parent /'ppdb'/'inferred.csv'
+test_data = Path(__file__).parent.parent / 'new_ppdb_inferred.csv'
 
 features, labels = load_dataset(Path(__file__).parent.parent /'combined-scan'/'samples.csv')
 
@@ -112,16 +112,19 @@ models_in_committee = 1
 def setup_learner(template: Definition):
     learner_list = []
     for index in range(models_in_committee):
-        combinations, _ = generate_features(template=template, number=bootstrap_size)
-        evaluated = evaluate_features(features=combinations)
-        features, labels = prep_dataset(evaluated)
+        while True:
+            combinations, _ = generate_features(template=template, number=bootstrap_size)
+            evaluated = evaluate_features(features=combinations)
+            features, labels = prep_dataset(evaluated)
+            if features.shape[0] != 0:
+                break
         committee_member = ActiveLearner(
             estimator=clone(pipeline),
             X_training=features,
             y_training=labels
         )
         learner_list.append(committee_member)
-        print(f"created committee member {index} at", datetime.now())
+        print(f"created committee member {index} at", datetime.now(), f" with {features.shape[0]} bootstrap points")
     return CommitteeRegressor(
         learner_list = learner_list,
         query_strategy=max_std_sampling, 
@@ -144,7 +147,7 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
                "false_negative": false_negative_metric, "r2": r2_score}
     for name in metrics.keys():
         result.scores[name] = []
-    learned_points = bootstrap_size
+    learned_points = 0
     while learned_points < total_points:
         combinations, features = generate_features(template, int(batchsize * oversampling_factor))
         query_ids, _ = learner.query(features, n_instances=batchsize)
@@ -159,7 +162,8 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
 
         learned_points += points_in_batch # prep dataset removes some points
         # find values for indexes
-        learner.teach(features, labels)
+        if points_in_batch > 0:
+            learner.teach(features, labels)
         end_teach = datetime.now() 
         result.training_sizes.append(learned_points)
         result.training_times.append(end_teach - start_time - score_time)
@@ -192,8 +196,6 @@ record = records[0]
 plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
 plt.ylabel("Training time in seconds")
 plt.xlabel("Trained Data Points")
-#plt.axis([x1, x2, y1, y2])
-
 plt.show()
 
 plt.plot(record.training_sizes, record.scores['custom'])
@@ -223,7 +225,6 @@ plt.scatter(test_labels,record.model.predict(test_features))
 plt.plot(test_labels,test_labels,'k-')
 plt.xlabel("True values")
 plt.ylabel("Predicted values")
-plt.ylim(-4,4)
 plt.show()
 
 scratch_space.cleanup()

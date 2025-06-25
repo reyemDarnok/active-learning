@@ -10,6 +10,7 @@
       "apply_every_n_years": 1
     }
   },
+  "scenarios": ["C"],
   "compound": {
     "molarMass": 300,
     "water_solubility": 110.7581,

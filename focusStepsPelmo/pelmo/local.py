@@ -47,6 +47,7 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Optional[Path] 
     :param scenarios: The scenarios to start runs for. Defaults to all scenarios
     :param threads: The number of threads to use when running. Defaults to using all but one CPU core of the system"""
     logger = logging.getLogger()
+    logger.info(scenarios)
     with suppress(FileNotFoundError):
         rmtree(work_dir)
     focus_dir: Path = work_dir / 'FOCUS'
@@ -91,7 +92,7 @@ def parse_args() -> Namespace:
     parser.add_argument('-t', '--threads', type=int, default=cpu_count() - 1,
                         help="The maximum number of threads for Pelmo. Defaults to cpu_count - 1")
     parser.add_argument('-s', '--scenario', nargs='*', type=lambda x: correct_type(x, Scenario),
-                        default=list(Scenario),
+                        default=frozenset(Scenario),
                         help="The scenarios to simulate. Can be specified multiple times. Defaults to all scenarios. "
                              "A scenario will be calculated if it is defined both here and for the crop")
     parser.add_argument('--pessimistic-interception', action='store_true',

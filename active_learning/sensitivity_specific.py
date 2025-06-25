@@ -7,7 +7,11 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Generator, Generic, Iterable, List, Sequence, Set, Tuple, TypeVar
 
 from matplotlib import pyplot as plt
+plt.switch_backend('agg')
 import pandas
+
+from sys import path
+path.append(str(Path(__file__).parent.parent))
 
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.gap import Scenario
@@ -70,23 +74,34 @@ def main():
                       combination_dir=combinations_path,
                       scenarios=args.scenarios)
             results[factor] = (pandas.read_csv(output_path))
-        results_frame = results[0]
-        results_frame['Base PEC'] = results_frame['0.compound_pec']
+        abs_results_frame = results[0]
+        rel_results_frame = abs_results_frame.copy()
+        abs_results_frame['Base PEC'] = abs_results_frame['0.compound_pec']
         abs_props = ['Base PEC']
-        rel_props = []
+        rel_results_frame['Unchanged'] = 1
+        rel_props = ['Unchanged']
         for factor, result in results.items():
             if factor != 0:
-                column_name = f'Changed by {factor}'
-                results_frame[column_name] = result['0.compound_pec']
+                if factor > 0:
+                    column_name = f'Increased by {factor*100:3.2f}%'
+                else:
+                    column_name = f"Decreased by {-factor*100:3.2f}%"
+                abs_results_frame[column_name] = result['0.compound_pec']
                 abs_props.append(column_name)
-                column_name = f"Ratio for Change by {factor}"
-                results_frame[column_name] = result['0.compound_pec'] / results_frame['Base PEC']
+                rel_results_frame[column_name] = result['0.compound_pec'] / abs_results_frame['Base PEC']
                 rel_props.append(column_name)
         changing_property = list(fuzz_instruction[property_name].keys())[0]
-        results_frame.plot(x=changing_property, y=abs_props, title=f"Fuzzing {property_name} over different {changing_property}")
+        pretty_changing = changing_property.split('.')[1].title()
+        pretty_mod = property_name.split('.')[1].title()
+        abs_results_frame.plot(x=f"combination.{changing_property}", y=abs_props, title=f"Changing {pretty_mod} with different {pretty_changing}")
+        plt.ylabel('PEC')
+        plt.xlabel(pretty_changing)
         plt.savefig(graph_output_root / f"{property_subpath}.svg", bbox_inches='tight')
         plt.close('all')
-        results_frame.plot(x=changing_property, y=rel_props, title=f"Ratios after Fuzzing {property_name} over different {changing_property}")
+
+        rel_results_frame.plot(x=f"combination.{changing_property}", y=rel_props, title=f"Ratios after Fuzzing {pretty_mod} over different {pretty_changing}")
+        plt.ylabel('Ratio Modified PEC/Base PEC')
+        plt.xlabel(pretty_changing)
         plt.savefig(graph_output_root / f"{property_subpath}_ratios.svg", bbox_inches='tight')
         plt.close('all')
         
@@ -102,7 +117,10 @@ def fuzz_combinations(combinations: Sequence[Combination], property_name: str,
             if still_negative and factor > 0:
                 yield 0, make_single_fuzz(factor=0, combinations=combinations, particles=particles)
                 still_negative = False
-            yield factor, make_single_fuzz(factor=factor, combinations=combinations, particles=particles)
+            if factor != 0:
+                yield factor, make_single_fuzz(factor=factor, combinations=combinations, particles=particles)
+        if still_negative:
+            yield 0, make_single_fuzz(factor=0, combinations=combinations, particles=particles)
    
 def make_single_fuzz(factor: float, combinations: Sequence[Combination], particles: List[str]) -> List[Combination]:
     new_combinations: List[Combination] = []

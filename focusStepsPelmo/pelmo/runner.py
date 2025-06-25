@@ -6,7 +6,7 @@ import logging
 import shutil
 import subprocess
 from argparse import Namespace, ArgumentParser
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import suppress
 from multiprocessing import cpu_count
 from pathlib import Path
@@ -86,6 +86,7 @@ def _make_runs(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[S
         Generator[Tuple[Union[Path, str], FOCUSCrop, Scenario], None, None]:
     for run in run_data:
         for scenario in run[2]:
+            logging.getLogger().info(scenario)
             yield run[0], run[1], scenario
 
 
@@ -103,10 +104,13 @@ def run_psms(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Sce
     with suppress(FileNotFoundError):
         rmtree(working_dir)
     extract_zip(working_dir / 'sample', Path(__file__).parent / 'data' / 'FOCUS.zip')
-    pool = ThreadPoolExecutor(max_workers=max_workers, initializer=_init_thread, initargs=(working_dir,))
-    yield from pool.map(single_pelmo_run, _make_runs(run_data=run_data),
-                        repeat_infinite(working_dir))
-    pool.shutdown()
+    with ThreadPoolExecutor(thread_name_prefix='pelmo_runner', max_workers=max_workers, initializer=_init_thread, initargs=(working_dir,)) as executor:
+        tasks = [executor.submit(single_pelmo_run, run_info, working_dir) for run_info in _make_runs(run_data=run_data)]
+        for future in as_completed(tasks):
+            try:
+                yield future.result()
+            except ValueError as e:
+                logging.getLogger().warning('A Pelmo run failed, excluding it from results', exc_info=e)
 
 
 def find_duration(psm_file_string) -> int:
