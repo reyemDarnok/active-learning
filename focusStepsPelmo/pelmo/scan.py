@@ -97,13 +97,13 @@ def run_samples(combination_dir: Path, compound_dir: Path, gap_dir: Path, crops:
         logger.info("Starting local calculation")
         if args.run_test_set:
             logger.info("Starting to run test set locally")
-            run_local(work_dir=args.work_dir / 'local' / "test_data",
+            run_local(
                             combination_dir=test_set_location,
                             output_file=args.output_dir / f"test_data.{args.output_format}", crops=crops,
                             scenarios=scenarios,
                             threads=args.threads, pessimistic_interception=args.pessimistic_interception)
         logger.info("Starting to run sample set locally")
-        run_local(work_dir=args.work_dir / 'local' / "samples", compound_files=compound_dir,
+        run_local(compound_files=compound_dir,
                         gap_files=gap_dir,
                         combination_dir=combination_dir,
                         output_file=args.output_dir / f"samples.{args.output_format}", crops=crops,

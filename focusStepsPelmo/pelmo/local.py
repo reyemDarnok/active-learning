@@ -27,18 +27,17 @@ def main():
     logger = logging.getLogger()
 
     logger.debug(args)
-    run_local(work_dir=args.work_dir, compound_files=args.compound_file, gap_files=args.gap_file,
+    run_local(compound_files=args.compound_file, gap_files=args.gap_file,
                           output_file=args.output_file, combination_dir=args.combined,
                           crops=frozenset(args.crop), scenarios=frozenset(args.scenario), threads=args.threads,
                           pessimistic_interception=args.pessimistic_interception)
 
 
-def run_local(work_dir: Path, output_file: Path, compound_files: Optional[Path] = None, gap_files: Optional[Path] = None,
+def run_local(output_file: Path, compound_files: Optional[Path] = None, gap_files: Optional[Path] = None,
               combination_dir: Optional[Path] = None,
               crops: FrozenSet[FOCUSCrop] = frozenset(FOCUSCrop), scenarios: FrozenSet[Scenario] = frozenset(Scenario),
               threads: int = cpu_count() - 1, pessimistic_interception: bool = False):
     """Run Pelmo locally
-    :param work_dir: The directory to use for Pelmos file structure
     :param output_file: The file for the summary of results
     :param compound_files: The compounds to combine with gaps to form runs
     :param combination_dir: The combinations to form runs from
@@ -48,10 +47,6 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Optional[Path] 
     :param threads: The number of threads to use when running. Defaults to using all but one CPU core of the system"""
     logger = logging.getLogger()
     logger.info(scenarios)
-    with suppress(FileNotFoundError):
-        rmtree(work_dir)
-    focus_dir: Path = work_dir / 'FOCUS'
-    focus_dir.mkdir(exist_ok=True, parents=True)
 
     logger.info('Starting to generate psm files')
     compounds = Compound.from_path(compound_files) if compound_files else None
@@ -60,7 +55,7 @@ def run_local(work_dir: Path, output_file: Path, compound_files: Optional[Path] 
     psm_files = generate_psm_files(compounds=compounds, gaps=gaps, combinations=combinations, crops=crops,
                                    scenarios=scenarios, pessimistic_interception=pessimistic_interception)
     logger.info('Starting to run Pelmo')
-    results = run_psms(run_data=psm_files, working_dir=focus_dir,
+    results = run_psms(run_data=psm_files,
                        max_workers=threads)
 
     logger.info('Dumping results of Pelmo runs to %s', output_file)
@@ -81,9 +76,6 @@ def parse_args() -> Namespace:
     parser.add_argument('--combined', default=None, type=Path,
                         help="Combinations of gaps and compounds. If it is a directory, parse every .json file in"
                              "that directory")
-    parser.add_argument('-w', '--work-dir', default=Path.cwd() / 'pelmofiles', type=Path,
-                        help='The directory in which files for Pelmo will be created. '
-                             'Defaults to the current directory')
     parser.add_argument('-o', '--output-file', default=Path('output.json'), type=Path,
                         help='The name of the output file, the extension will be replaced based on the output format. '
                              'Defaults to "output.json"')

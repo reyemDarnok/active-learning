@@ -11,6 +11,7 @@ from contextlib import suppress
 from multiprocessing import cpu_count
 from pathlib import Path
 from shutil import copytree, rmtree
+import tempfile
 from threading import current_thread
 from typing import Generator, Iterable, Optional, Tuple, Union, Dict, FrozenSet
 from zipfile import ZipFile
@@ -54,22 +55,21 @@ def main():
     crops: FrozenSet[FOCUSCrop] = frozenset(args.crop)
     scenarios: FrozenSet[Scenario] = frozenset(args.scenario)
     run_data = [(file, crop, scenarios) for file in files for crop in crops]
-    write_psm_results(output_file=args.output, run_data=run_data, working_dir=args.working_dir,
+    write_psm_results(output_file=args.output, run_data=run_data,
                       max_workers=args.threads, pessimistic_interception=args.pessimistic_interception)
 
 
 def write_psm_results(output_file: Path,
                       run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]], pessimistic_interception: bool,
-                      input_directories: Optional[Tuple[Path]] = None, working_dir: Path = Path.cwd() / 'pelmo',
+                      input_directories: Optional[Tuple[Path]] = None,
                       max_workers: int = cpu_count() - 1, ):
     """Run Pelmo and write the results to output_file
     :param output_file: Where to write the result to
     :param run_data: What to run. A List of (psm file, crop, scenarios) tuples
     :param input_directories: In which directories to find the input files for correctly regenerating the input
     information
-    :param working_dir: Where to run Pelmo
     :param max_workers: The maximum of threads to use for running Pelmo"""
-    results = run_psms(run_data=run_data, working_dir=working_dir,
+    results = run_psms(run_data=run_data,
                        max_workers=max_workers)
     if input_directories:
         rebuild_output_to_file(file=output_file, results=results, input_directories=input_directories, pessimistic_interception=pessimistic_interception)
@@ -90,27 +90,26 @@ def _make_runs(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[S
             yield run[0], run[1], scenario
 
 
-def run_psms(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]], working_dir: Path,
+def run_psms(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]],
              max_workers: int = cpu_count() - 1) -> Generator[PelmoResult, None, None]:
-    """Run all given psm_files using working_dir as scratch space.
+    """Run all given psm_files.
     When given scenarios that are not defined for some given crops, they are silently ignored for those crops only
-    :param working_dir: Where to run them
     :param max_workers: How many worker threads to use at most
     :param run_data: Information about the Pelmo runs that should be started. Each value is a tuple containing
     the psm file, the crop to use and the defined scenarios for the runs in that order
     :return: A Generator of the results of the calculations. Makes new results available as their calculations finish.
                 No particular ordering is guaranteed but the calculations are started in order of
                 psm_file, then crop, then scenario"""
-    with suppress(FileNotFoundError):
-        rmtree(working_dir)
-    extract_zip(working_dir / 'sample', Path(__file__).parent / 'data' / 'FOCUS.zip')
-    with ThreadPoolExecutor(thread_name_prefix='pelmo_runner', max_workers=max_workers, initializer=_init_thread, initargs=(working_dir,)) as executor:
-        tasks = [executor.submit(single_pelmo_run, run_info, working_dir) for run_info in _make_runs(run_data=run_data)]
-        for future in as_completed(tasks):
-            try:
-                yield future.result()
-            except ValueError as e:
-                logging.getLogger().warning('A Pelmo run failed, excluding it from results', exc_info=e)
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_dir = Path(temp_dir)
+        extract_zip(temp_dir / 'sample', Path(__file__).parent / 'data' / 'FOCUS.zip')
+        with ThreadPoolExecutor(thread_name_prefix='pelmo_runner', max_workers=max_workers, initializer=_init_thread, initargs=(temp_dir,)) as executor:
+            tasks = [executor.submit(single_pelmo_run, run_info, temp_dir) for run_info in _make_runs(run_data=run_data)]
+            for future in as_completed(tasks):
+                try:
+                    yield future.result()
+                except ValueError as e:
+                    logging.getLogger().warning('A Pelmo run failed, excluding it from results', exc_info=e)
 
 
 def find_duration(psm_file_string) -> int:
@@ -273,9 +272,6 @@ def parse_args() -> Namespace:
     parser = ArgumentParser()
     parser.add_argument('-p', '--psm-files', type=Path, required=True,
                         help="The psm file to run. If this is a directory, run all .psm files in this directory")
-    parser.add_argument('-w', '--working-dir', type=Path, default=Path.cwd() / 'pelmofiles',
-                        help="The directory to use as a root working directory. "
-                             "Will be filled with expanded zips and defaults to the current working directory")
     parser.add_argument('-f', '--focus-dir', type=Path, default=Path(__file__).parent / 'data' / 'Focus.zip',
                         help="The PELMO FOCUS directory to use. "
                              "If a zip, will be unpacked first. Defaults to a bundled zip.")
