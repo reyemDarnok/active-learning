@@ -84,10 +84,10 @@ def write_psm_results(output_file: Path,
 
 def _make_runs(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]]) -> \
         Generator[Tuple[Union[Path, str], FOCUSCrop, Scenario], None, None]:
-    for run in run_data:
-        for scenario in run[2]:
+    for psm_file, crop, scenarios in run_data:
+        for scenario in scenarios:
             logging.getLogger().info(scenario)
-            yield run[0], run[1], scenario
+            yield psm_file, crop, scenario
 
 
 def run_psms(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[Scenario]]],

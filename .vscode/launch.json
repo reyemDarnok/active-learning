@@ -1,13 +1,14 @@
 {
     "version": "0.2.0",
     "configurations": [
+        
         {
             "name": "Short Infer Run",
             "type": "debugpy",
             "request": "launch",
             "program": "focusStepsPelmo/pelmo/local.py",
             "console": "integratedTerminal",
-            "args": "-c infer_short.json -g examples/gap.json -o new_ppdb_inferred.csv"
+            "args": "-c infer_short.json -g examples/gap.json -o new_ppdb_inferred_short.csv"
         },
         {
             "name": "Pelmo Inferred Run",

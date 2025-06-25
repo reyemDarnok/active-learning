@@ -393,9 +393,6 @@ class PsmFile(TypeCorrecting):
         template_data = self.asdict()
         template_data['pessimistic_interception'] = pessimistic_interception
         template_data['scenarios'] = self.scenarios.intersection(self.gap.defined_scenarios)
-        if not template_data['scenarios']:
-            print(self.scenarios)
-            print(self.gap.defined_scenarios)
 
         rendered = psm_template.render(template_data)
         return rendered
