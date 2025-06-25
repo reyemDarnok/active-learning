@@ -86,7 +86,6 @@ def _make_runs(run_data: Iterable[Tuple[Union[Path, str], FOCUSCrop, FrozenSet[S
         Generator[Tuple[Union[Path, str], FOCUSCrop, Scenario], None, None]:
     for psm_file, crop, scenarios in run_data:
         for scenario in scenarios:
-            logging.getLogger().info(scenario)
             yield psm_file, crop, scenario
 
 

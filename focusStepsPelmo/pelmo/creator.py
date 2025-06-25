@@ -112,7 +112,6 @@ def generate_psm_files(compounds: Optional[Iterable[Compound]] = None, gaps: Opt
                 for compound in compounds:
                     psm_file_scenarios = scenarios.intersection(gap.defined_scenarios)
                     comment = json.dumps({"compound": hash(compound), "gap": hash(gap)})
-                    logging.getLogger().info(psm_file_scenarios)
                     yield _generate_psm_contents(combination=Combination(gap=gap, compound=compound, scenarios=scenarios), comment= comment, pessimistic_interception=pessimistic_interception), gap.modelCrop, psm_file_scenarios
 
 
