@@ -82,7 +82,7 @@ pelmo_batch_size: int = cpu_count() # type: ignore # 15
 bootstrap_size = pelmo_batch_size * 2
 total_points = 1000
 batchsize = pelmo_batch_size
-oversampling_factor = 20
+oversampling_factor = 5
 models_in_committee = 10
 
 
@@ -102,7 +102,7 @@ def setup_learner(template: Definition):
                 break
         committee_member = ActiveLearner(
             estimator=clone(pipeline),
-            query_strategy=max_disagreement_sampling,
+            query_strategy=max_std_sampling,
             X_training=features,
             y_training=labels
         )
@@ -118,10 +118,13 @@ custom_metric = stats.make_custom_metric(greater_is_better = False)
 false_negative_metric = stats.make_false_negative_metric(greater_is_better = False)
 false_positive_metric = stats.make_false_positive_metric(greater_is_better = False)
 
+all_training_points: pandas.DataFrame = None
+
 @ignore_warnings()
 def train_learner(learner, batchsize: int, oversampling_factor: float, test_features, test_labels, template: Definition):
     global usable_points
     global attempted_points
+    global all_training_points
     result = ml.TrainingRecord(
         model = learner,
         batchsize = batchsize
@@ -137,6 +140,10 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
         combinations, features = ml.generate_features(template, int(batchsize * oversampling_factor))
         query_ids, _ = learner.query(features, n_instances=batchsize)
         evaluated = ml.evaluate_features(features=list(np.array(combinations)[query_ids]))
+        if all_training_points:
+            all_training_points.concat(evaluated)
+        else:
+            all_training_points = evaluated
         features, labels = data.prep_dataset(evaluated)
         usable_points += features.shape[0]
         attempted_points += batchsize
@@ -187,6 +194,7 @@ record = records[0]
 
 save_dir = Path(__file__).parent / f'training{str(uuid4())}'
 save_dir.mkdir(exist_ok=True, parents=True)
+all_training_points.to_csv(save_dir / 'training_data.csv')
 print(f"Writing results to {save_dir}")
 with (save_dir / "committee.pickle").open('wb') as picklefile:
     pickle.dump(record, picklefile)
