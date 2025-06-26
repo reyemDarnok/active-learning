@@ -65,10 +65,10 @@ def add_calculated(to_transform: pandas.DataFrame):
 
 def clamp_impossible(to_transform, high_clamp=1e30):
     clamp_index = to_transform["parent.log_henry"] == float('inf')
-    to_transform['parent.log_henry'][clamp_index] = high_clamp
+    to_transform.loc[clamp_index, 'parent.log_henry'] = high_clamp
     clamp_index = to_transform["parent.henry"] == float('inf')
-    to_transform['parent.henry'][clamp_index] = high_clamp
-    
+    to_transform.loc[clamp_index, 'parent.henry'] = high_clamp    
+
 def drop_uninteresting_artefacts(to_transform: pandas.DataFrame):
     # Drop names
     to_transform.drop(columns=to_transform.filter(regex='name'), inplace=True)

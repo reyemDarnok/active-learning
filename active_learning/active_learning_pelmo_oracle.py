@@ -1,5 +1,8 @@
 import json
+import pickle
+import random
 import tempfile
+from uuid import uuid4
 import pandas
 from sklearn.compose import ColumnTransformer
 from custom_lib import data, ml, stats, vis
@@ -75,16 +78,20 @@ def evaluate_features(features: List[Combination]):
         result_df = pandas.read_csv(pelmo_res_path)
         return result_df
 
+usable_points = 0
+attempted_points = 0
 
 test_data = Path(__file__).parent.parent / 'new_ppdb_inferred.csv'
+template = Definition.parse(json.loads((Path(__file__).parent / 'scan-matrix-ppdb-based-scenario-C.json').read_text()))
 
-features, labels = load_dataset(Path(__file__).parent.parent /'combined-scan'/'samples.csv')
 
 scratch_space = tempfile.TemporaryDirectory()
 scratch_path = Path(scratch_space.name)
 output_dir = Path('active_learning')
 
 test_data = data.load_data(test_data)
+test_data = test_data[test_data['combination.scenarios.0'] == 'C']
+
 test_data_filtered = data.remove_low_filter_raw(test_data)
 test_data_critical = data.between_filter_raw(test_data)
 test_features, test_labels = ml.split_into_data_and_label_raw(test_data_filtered)
@@ -101,21 +108,25 @@ oneHotEncoder = ColumnTransformer(
 pipeline = make_pipeline(FunctionTransformer(transform),oneHotEncoder, StandardScaler(), model)
 
 
-bootstrap_size = 10
-total_points = 30
-batchsize = 20
-oversampling_factor = 10
-models_in_committee = 1
+bootstrap_size = 30
+total_points = 1000
+batchsize = 100
+oversampling_factor = 20
+models_in_committee = 10
 
 
 @ignore_warnings()
 def setup_learner(template: Definition):
+    global usable_points
+    global attempted_points
     learner_list = []
     for index in range(models_in_committee):
         while True:
             combinations, _ = generate_features(template=template, number=bootstrap_size)
             evaluated = evaluate_features(features=combinations)
             features, labels = prep_dataset(evaluated)
+            usable_points += features.shape[0]
+            attempted_points += bootstrap_size
             if features.shape[0] != 0:
                 break
         committee_member = ActiveLearner(
@@ -137,6 +148,8 @@ false_positive_metric = stats.make_false_positive_metric(greater_is_better = Fal
 
 @ignore_warnings()
 def train_learner(learner, batchsize: int, oversampling_factor: float, test_features, test_labels, template: Definition):
+    global usable_points
+    global attempted_points
     result = ml.TrainingRecord(
         model = learner,
         batchsize = batchsize
@@ -153,6 +166,9 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
         query_ids, _ = learner.query(features, n_instances=batchsize)
         evaluated = evaluate_features(features=list(np.array(combinations)[query_ids]))
         features, labels = prep_dataset(evaluated)
+        usable_points += features.shape[0]
+        attempted_points += batchsize
+        print(f"usable points: {usable_points/attempted_points}({usable_points}/{attempted_points})")
         points_in_batch = features.shape[0]
         if learned_points + points_in_batch > total_points:
             remaining_points = total_points - learned_points
@@ -184,70 +200,82 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
     return result
     
 
-def make_training():
-    template = Definition.parse(json.loads((Path(__file__).parent / 'scan-matrix-ppdb-based.json').read_text()))
+def make_training(template: Definition):
 
     learner = setup_learner(template=template)
     return train_learner(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, test_features=test_features, test_labels=test_labels, template=template)
 
 records = []
 for index in range(1):
-    t = make_training()
+    t = make_training(template)
     print(str(t))
     records.append(t)
 
 record = records[0]
 
-pl_path = Path(__file__).parent / 'plots'
-pl_path.mkdir(exist_ok=True, parents=True)
+save_dir = Path(__file__).parent / f'training{str(uuid4())}'
+save_dir.mkdir(exist_ok=True, parents=True)
+print(f"Writing results to {save_dir}")
+with (save_dir / "committee.pickle").open('wb') as picklefile:
+    pickle.dump(record, picklefile)
 plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
 plt.ylabel("Training time in seconds")
 plt.xlabel("Trained Data Points")
-plt.savefig(pl_path / 'training_time.svg', bbox_inches='tight')
+plt.savefig(save_dir / 'training_time.svg', bbox_inches='tight')
+plt.close('all')
 
 scores, stds = zip(*record.scores['custom'])
 scores = np.array(scores)
 plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
 plt.xlabel("Trained Data Points")
 plt.ylabel("custom score")
-plt.savefig(pl_path / 'custom_score.svg', bbox_inches='tight')
+plt.savefig(save_dir / 'custom_score.svg', bbox_inches='tight')
+plt.close('all')
+
 
 scores, stds = zip(*record.scores['r2'])
 scores = np.array(scores)
 plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
 plt.xlabel("Trained Data Points")
 plt.ylabel("r2 score")
-plt.ylim(0,1)
-plt.savefig(pl_path / 'r2_score.svg', bbox_inches='tight')
+plt.ylim(top=1)
+plt.savefig(save_dir / 'r2_score.svg', bbox_inches='tight')
+plt.close('all')
+
 
 scores, stds = zip(*record.scores['false_negative'])
 scores = np.array(scores)
 plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
 plt.xlabel("Trained Data Points")
 plt.ylabel("false negative score")
 plt.ylim(0,1)
-plt.savefig(pl_path / 'false_negative_score.svg', bbox_inches='tight')
+plt.savefig(save_dir / 'false_negative_score.svg', bbox_inches='tight')
+plt.close('all')
+
 
 scores, stds = zip(*record.scores['false_positive'])
 scores = np.array(scores)
 plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
 plt.xlabel("Trained Data Points")
 plt.ylabel("false positive score")
 plt.ylim(0,1)
-plt.savefig(pl_path / 'false_positive_score.svg', bbox_inches='tight')
+plt.savefig(save_dir / 'false_positive_score.svg', bbox_inches='tight')
+plt.close('all')
+
 
 scores, stds = zip(*record.scores['rmse'])
 scores = np.array(scores)
 plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds)
+plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
 plt.xlabel("Trained Data Points")
 plt.ylabel("rmse score")
-plt.ylim(0,1)
-plt.savefig(pl_path / 'rmse_score.svg', bbox_inches='tight')
+plt.ylim(bottom=0)
+plt.savefig(save_dir / 'rmse_score.svg', bbox_inches='tight')
+plt.close('all')
 
 
 values, stds = record.model.predict(test_features, return_std=True)
@@ -257,6 +285,8 @@ plt.scatter(test_labels,values, values - stds, values + stds)
 plt.plot(test_labels,test_labels,'k-')
 plt.xlabel("True values")
 plt.ylabel("Predicted values")
-plt.savefig(pl_path / 'true_v_pred.svg', bbox_inches='tight')
+plt.ylim(-4,4)
+plt.savefig(save_dir / 'true_v_pred.svg', bbox_inches='tight')
+plt.close('all')
 
 scratch_space.cleanup()

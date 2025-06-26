@@ -1,0 +1,59 @@
+{
+  "gap": {
+    "type": "relative",
+    "arguments": {
+      "modelCrop": "WC",
+      "number_of_applications": 2,
+      "interval": 14,
+      "rate": 250,
+      "bbch": 31,
+      "apply_every_n_years": 1
+    }
+  },
+  "scenarios": ["C"],
+  "compound": {
+    "molarMass": 300,
+    "water_solubility": {
+      "type": "log_normal",
+      "parameters": {
+        "mu": 2.0505433,
+        "sigma": 2.0932957
+      }
+    },
+    "vapor_pressure": {
+      "type": "log_normal",
+      "parameters": {
+        "mu": -1.5114120,
+        "sigma": 3.3894256
+      }
+    },
+    "reference_temperature": 20,
+    "koc": {
+      "type": "log_normal",
+      "parameters": {
+        "mu": 2.4020405,
+        "sigma": 1.0692643
+      }
+    },
+    "freundlich": {
+      "type": "random",
+      "parameters": {
+        "lower_bound": 0.9,
+        "upper_bound": 1
+      }
+    },
+    "plant_uptake": 0,
+    "dt50": {
+      "system": 6,
+      "soil": {
+        "type": "log_normal",
+        "parameters": {
+          "mu": 1.4295973,
+          "sigma":0.83795973
+        }
+      },
+      "surfaceWater": 6,
+      "sediment": 6
+    }
+  }
+}
