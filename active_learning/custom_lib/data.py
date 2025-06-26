@@ -1,9 +1,10 @@
-from typing import Optional
+from typing import Optional, Tuple
 import pandas
 from pathlib import Path
 from datetime import datetime, timedelta
 from sys import path
 path.append(str(Path(__file__).parent.parent.parent))
+from active_learning.custom_lib import ml
 from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario
 import math
 
@@ -12,6 +13,22 @@ import math
 
 def load_data(file: Path) -> pandas.DataFrame:
     return pandas.read_csv(file, dtype={'scenario': 'category', 'gap.arguments.modelCrop': 'category'})
+
+
+def transform(X: pandas.DataFrame, y=None):
+    local_copy = X.copy()
+    all_augments(local_copy)
+    feature_engineer(local_copy)
+    return local_copy
+
+
+def load_dataset(path: Path) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
+    dataset = load_data(path)
+    return prep_dataset(dataset)
+
+def prep_dataset(dataset: pandas.DataFrame) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
+    dataset = minimal_filter_raw(dataset)
+    return ml.split_into_data_and_label_raw(dataset)
 
 def date_parser(time: str) -> int:
     # pandas can't handle year 1 dates, so save as day of year

@@ -83,6 +83,12 @@ class Definition(ABC, Generic[T]):
             return LiteralDefinition[T](definition.make_sample())
         else:
             return definition
+        
+    def __iter__(self) :
+        return self
+    
+    def __next__(self) -> T:
+        return self.make_sample()
 
 
 class LiteralDefinition(Definition[T]):

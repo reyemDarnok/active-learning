@@ -1,10 +1,21 @@
+import json
 import math
+import tempfile
 import numpy
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, Generator, List, NoReturn, Tuple
 from datetime import timedelta
+from pathlib import Path
 
 import pandas
+from sys import path
+
+from focusStepsPelmo.ioTypes.scenario import Scenario
+from focusStepsPelmo.pelmo.local import run_local
+from focusStepsPelmo.util.conversions import EnhancedJSONEncoder, flatten, flatten_to_keys
+path.append(str(Path(__file__).parent.parent.parent))
+from focusStepsPelmo.ioTypes.combination import Combination
+from focusStepsPelmo.pelmo.generation_definition import Definition
 
 
 def split_into_data_and_label(dataset: pandas.DataFrame) -> tuple[pandas.DataFrame, pandas.DataFrame]:
@@ -30,6 +41,35 @@ def GP_regression_std(regressor, X, n_instances=1):
     _, std = regressor.predict(X, return_std=True)
     idx = numpy.argpartition(std, -n_instances)[-n_instances:]
     return idx, X[idx]
+
+
+def generate_features(template: Definition, number: int):
+    combination_gen = _combination_generator(template=template)
+    combinations: List[Combination] = [next(combination_gen) for _ in range(number)] 
+    flattened = [list(flatten({'combination': combination.asdict()})) for combination in combinations]
+    return combinations, pandas.DataFrame(flattened, columns=list(flatten_to_keys({'combination': combinations[0].asdict()})))
+
+def _combination_generator(template: Definition) -> Generator[Combination, Any, NoReturn]:
+    while True:
+        try:
+            yield Combination(**template.make_sample())
+        except ValueError:
+            pass
+
+def evaluate_features(features: List[Combination]):
+    feature_tuple = tuple(features)
+    name = hash(feature_tuple)
+    with tempfile.TemporaryDirectory() as work:
+        work_dir = Path(work)
+        combination_path = (work_dir / 'combination' / f"{name}.json")
+        combination_path.parent.mkdir(exist_ok=True, parents=True)
+        with combination_path.open('w') as combination_file:
+            json.dump(feature_tuple, fp=combination_file, cls=EnhancedJSONEncoder)
+        pelmo_res_path = work_dir / 'pelmo_result' / f"{name}.csv"
+        run_local(output_file=pelmo_res_path,combination_dir=combination_path,scenarios=frozenset([Scenario.C]))
+        result_df = pandas.read_csv(pelmo_res_path)
+        return result_df
+
 
 @dataclass
 class TrainingRecord:

@@ -1,4 +1,7 @@
+from argparse import ArgumentParser
 import json
+import logging
+from os import cpu_count
 import pickle
 import random
 import tempfile
@@ -17,6 +20,7 @@ from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.ioTypes.gap import FOCUSCrop, Scenario
 from focusStepsPelmo.pelmo.generation_definition import Definition
 from focusStepsPelmo.pelmo.local import run_local
+from focusStepsPelmo.util import jsonLogger
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder, flatten, flatten_to_keys
 
 rng = np.random.default_rng()
@@ -34,49 +38,14 @@ from sklearn.utils._testing import ignore_warnings
 from modAL.models import ActiveLearner
 from modAL.batch import uncertainty_batch_sampling
 from modAL.models import CommitteeRegressor
-from modAL.disagreement import max_std_sampling
+from modAL.disagreement import max_std_sampling, max_disagreement_sampling
 
-def transform(X: pandas.DataFrame, y=None):
-    local_copy = X.copy()
-    data.all_augments(local_copy)
-    data.feature_engineer(local_copy)
-    return local_copy
+parser = ArgumentParser()
+jsonLogger.add_log_args(parser)
+args = parser.parse_args()
+logger = logging.getLogger()
 
-
-def load_dataset(path: Path) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-    dataset = data.load_data(path)
-    return prep_dataset(dataset)
-
-def prep_dataset(dataset: pandas.DataFrame) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-    dataset = data.minimal_filter_raw(dataset)
-    return ml.split_into_data_and_label_raw(dataset)
-
-def generate_features(template: Definition, number: int):
-    combination_gen = _combination_generator(template=template)
-    combinations: List[Combination] = [next(combination_gen) for _ in range(number)] 
-    flattened = [list(flatten({'combination': combination.asdict()})) for combination in combinations]
-    return combinations, pandas.DataFrame(flattened, columns=list(flatten_to_keys({'combination': combinations[0].asdict()})))
-
-def _combination_generator(template: Definition) -> Generator[Combination, Any, NoReturn]:
-    while True:
-        try:
-            yield Combination(**template.make_sample())
-        except ValueError:
-            pass
-
-def evaluate_features(features: List[Combination]):
-    feature_tuple = tuple(features)
-    name = hash(feature_tuple)
-    with tempfile.TemporaryDirectory() as work:
-        work_dir = Path(work)
-        combination_path = (work_dir / 'combination' / f"{name}.json")
-        combination_path.parent.mkdir(exist_ok=True, parents=True)
-        with combination_path.open('w') as combination_file:
-            json.dump(feature_tuple, fp=combination_file, cls=EnhancedJSONEncoder)
-        pelmo_res_path = work_dir / 'pelmo_result' / f"{name}.csv"
-        run_local(output_file=pelmo_res_path,combination_dir=combination_path,scenarios=frozenset([Scenario.C]))
-        result_df = pandas.read_csv(pelmo_res_path)
-        return result_df
+jsonLogger.configure_logger_from_argparse(logger, args)
 
 usable_points = 0
 attempted_points = 0
@@ -105,12 +74,14 @@ oneHotEncoder = ColumnTransformer(
         ],
     remainder='passthrough'
 )
-pipeline = make_pipeline(FunctionTransformer(transform),oneHotEncoder, StandardScaler(), model)
+pipeline = make_pipeline(FunctionTransformer(data.transform),oneHotEncoder, StandardScaler(), model)
 
 
-bootstrap_size = 30
+pelmo_batch_size: int = cpu_count() # type: ignore # 15
+
+bootstrap_size = pelmo_batch_size * 2
 total_points = 1000
-batchsize = 100
+batchsize = pelmo_batch_size
 oversampling_factor = 20
 models_in_committee = 10
 
@@ -122,15 +93,16 @@ def setup_learner(template: Definition):
     learner_list = []
     for index in range(models_in_committee):
         while True:
-            combinations, _ = generate_features(template=template, number=bootstrap_size)
-            evaluated = evaluate_features(features=combinations)
-            features, labels = prep_dataset(evaluated)
+            combinations, _ = ml.generate_features(template=template, number=bootstrap_size)
+            evaluated = ml.evaluate_features(features=combinations)
+            features, labels = data.prep_dataset(evaluated)
             usable_points += features.shape[0]
             attempted_points += bootstrap_size
             if features.shape[0] != 0:
                 break
         committee_member = ActiveLearner(
             estimator=clone(pipeline),
+            query_strategy=max_disagreement_sampling,
             X_training=features,
             y_training=labels
         )
@@ -162,10 +134,10 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
         result.scores[name] = []
     learned_points = 0
     while learned_points < total_points:
-        combinations, features = generate_features(template, int(batchsize * oversampling_factor))
+        combinations, features = ml.generate_features(template, int(batchsize * oversampling_factor))
         query_ids, _ = learner.query(features, n_instances=batchsize)
-        evaluated = evaluate_features(features=list(np.array(combinations)[query_ids]))
-        features, labels = prep_dataset(evaluated)
+        evaluated = ml.evaluate_features(features=list(np.array(combinations)[query_ids]))
+        features, labels = data.prep_dataset(evaluated)
         usable_points += features.shape[0]
         attempted_points += batchsize
         print(f"usable points: {usable_points/attempted_points}({usable_points}/{attempted_points})")
@@ -285,7 +257,7 @@ plt.scatter(test_labels,values, values - stds, values + stds)
 plt.plot(test_labels,test_labels,'k-')
 plt.xlabel("True values")
 plt.ylabel("Predicted values")
-plt.ylim(-4,4)
+plt.ylim(test_labels.iloc[:, 0].min()*1.1,test_labels.iloc[:, 0].max()*1.1)
 plt.savefig(save_dir / 'true_v_pred.svg', bbox_inches='tight')
 plt.close('all')
 
