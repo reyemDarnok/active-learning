@@ -12,7 +12,7 @@ from custom_lib import data, ml, stats, vis
 from pathlib import Path
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Any, Callable, Generator, List, NoReturn, Tuple, Dict
+from typing import Any, Callable, Generator, List, NoReturn, Optional, Tuple, Dict
 
 from matplotlib import pyplot as plt
 
@@ -47,62 +47,59 @@ logger = logging.getLogger()
 
 jsonLogger.configure_logger_from_argparse(logger, args)
 
-usable_points = 0
-attempted_points = 0
-
 test_data = Path(__file__).parent.parent / 'new_ppdb_inferred.csv'
-template = Definition.parse(json.loads((Path(__file__).parent / 'scan-matrix-ppdb-based-scenario-C.json').read_text()))
 
 
-scratch_space = tempfile.TemporaryDirectory()
-scratch_path = Path(scratch_space.name)
-output_dir = Path('active_learning')
 
 test_data = data.load_data(test_data)
-test_data = test_data[test_data['combination.scenarios.0'] == 'C']
+#test_data = test_data[test_data['combination.scenarios.0'] == 'C']
 
 test_data_filtered = data.remove_low_filter_raw(test_data)
 test_data_critical = data.between_filter_raw(test_data)
 test_features, test_labels = ml.split_into_data_and_label_raw(test_data_filtered)
 test_features_critical, test_labels_critical = ml.split_into_data_and_label_raw(test_data_critical)
 
-model = HistGradientBoostingRegressor()
-oneHotEncoder = ColumnTransformer(
-    transformers=[
-        ('scenario',OneHotEncoder(categories=[[x.name for x in Scenario]]),  ['scenario']),
-        ('crop', OneHotEncoder(categories=[[x.name for x in FOCUSCrop]]), ['gap.arguments.modelCrop'])
-        ],
-    remainder='passthrough'
-)
-pipeline = make_pipeline(FunctionTransformer(data.transform),oneHotEncoder, StandardScaler(), model)
 
 
-pelmo_batch_size: int = cpu_count() # type: ignore # 15
+def main():
+    pelmo_batch_size: int = cpu_count() # type: ignore # 15
+    bootstrap_size = pelmo_batch_size * 5
+    total_points = 1000
+    batchsize = pelmo_batch_size * 4
+    oversampling_factor = 5
+    models_in_committee = 10
+    template = Definition.parse(json.loads((Path(__file__).parent / 'scan-matrix-ppdb-based.json').read_text()))
 
-bootstrap_size = pelmo_batch_size * 2
-total_points = 1000
-batchsize = pelmo_batch_size
-oversampling_factor = 5
-models_in_committee = 10
+
+    for _ in range(1):
+        learner = setup_learner(template=template, models_in_committee=models_in_committee, bootstrap_size=bootstrap_size)
+        t = train_learner(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, test_features=test_features, test_labels=test_labels, template=template, total_points=total_points)
+        save_training(t)
+        print(str(t))
 
 
 @ignore_warnings()
-def setup_learner(template: Definition):
-    global usable_points
-    global attempted_points
+def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int):
+    model = HistGradientBoostingRegressor()
+    oneHotEncoder = ColumnTransformer(
+        transformers=[
+            ('scenario',OneHotEncoder(categories=[[x.name for x in Scenario]]),  ['scenario']),
+            ('crop', OneHotEncoder(categories=[[x.name for x in FOCUSCrop]]), ['gap.arguments.modelCrop'])
+            ],
+        remainder='passthrough'
+    )
+    pipeline = make_pipeline(FunctionTransformer(data.transform),oneHotEncoder, StandardScaler(), model)
+
     learner_list = []
     for index in range(models_in_committee):
         while True:
             combinations, _ = ml.generate_features(template=template, number=bootstrap_size)
             evaluated = ml.evaluate_features(features=combinations)
             features, labels = data.prep_dataset(evaluated)
-            usable_points += features.shape[0]
-            attempted_points += bootstrap_size
             if features.shape[0] != 0:
                 break
         committee_member = ActiveLearner(
             estimator=clone(pipeline),
-            query_strategy=max_std_sampling,
             X_training=features,
             y_training=labels
         )
@@ -114,17 +111,14 @@ def setup_learner(template: Definition):
     )
 
 
-custom_metric = stats.make_custom_metric(greater_is_better = False)
-false_negative_metric = stats.make_false_negative_metric(greater_is_better = False)
-false_positive_metric = stats.make_false_positive_metric(greater_is_better = False)
 
-all_training_points: pandas.DataFrame = None
 
 @ignore_warnings()
-def train_learner(learner, batchsize: int, oversampling_factor: float, test_features, test_labels, template: Definition):
-    global usable_points
-    global attempted_points
-    global all_training_points
+def train_learner(learner, batchsize: int, oversampling_factor: float, test_features, test_labels, template: Definition, total_points: int):
+    custom_metric = stats.make_custom_metric(greater_is_better = False)
+    false_negative_metric = stats.make_false_negative_metric(greater_is_better = False)
+    false_positive_metric = stats.make_false_positive_metric(greater_is_better = False)
+
     result = ml.TrainingRecord(
         model = learner,
         batchsize = batchsize
@@ -137,17 +131,21 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
         result.scores[name] = []
     learned_points = 0
     while learned_points < total_points:
+        start_of_iter = datetime.now()
+        print("Starting to generate features", datetime.now() - start_of_iter)
         combinations, features = ml.generate_features(template, int(batchsize * oversampling_factor))
+        print("Features generated, starting to select", datetime.now() - start_of_iter)
         query_ids, _ = learner.query(features, n_instances=batchsize)
+        print("Features selected, starting to evaluate them", datetime.now() - start_of_iter)
         evaluated = ml.evaluate_features(features=list(np.array(combinations)[query_ids]))
-        if all_training_points:
-            all_training_points.concat(evaluated)
+        if result.all_training_points is not None:
+            pandas.concat((result.all_training_points, evaluated))
         else:
-            all_training_points = evaluated
+            result.all_training_points = evaluated
+        print("Labels found, starting to prep data", datetime.now() - start_of_iter)
         features, labels = data.prep_dataset(evaluated)
-        usable_points += features.shape[0]
-        attempted_points += batchsize
-        print(f"usable points: {usable_points/attempted_points}({usable_points}/{attempted_points})")
+        result.usable_points += features.shape[0]
+        result.attempted_points += batchsize
         points_in_batch = features.shape[0]
         if learned_points + points_in_batch > total_points:
             remaining_points = total_points - learned_points
@@ -157,9 +155,11 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
 
         learned_points += points_in_batch # prep dataset removes some points
         # find values for indexes
+        print("Data Prep finished, starting to teach", datetime.now() - start_of_iter)
         if points_in_batch > 0:
             learner.teach(features, labels)
-        end_teach = datetime.now() 
+        end_teach = datetime.now()
+        print("Finished teaching, starting to evaluate metrics", datetime.now() - start_of_iter) 
         result.training_sizes.append(learned_points)
         result.training_times.append(end_teach - start_time - score_time)
         predict_labels, predict_std = learner.predict(test_features, return_std=True)
@@ -174,99 +174,91 @@ def train_learner(learner, batchsize: int, oversampling_factor: float, test_feat
             result.scores[name].append((committee_score, committee_std))
         end_score = datetime.now()
         score_time += end_score - end_teach
-        print(str(result), end_score, end='\r')
+        print(str(result), end_score)
+        print(f"usable points: {result.usable_points/result.attempted_points}({result.usable_points}/{result.attempted_points})")
 
     return result
     
-
-def make_training(template: Definition):
-
-    learner = setup_learner(template=template)
-    return train_learner(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, test_features=test_features, test_labels=test_labels, template=template)
-
-records = []
-for index in range(1):
-    t = make_training(template)
-    print(str(t))
-    records.append(t)
-
-record = records[0]
-
-save_dir = Path(__file__).parent / f'training{str(uuid4())}'
-save_dir.mkdir(exist_ok=True, parents=True)
-all_training_points.to_csv(save_dir / 'training_data.csv')
-print(f"Writing results to {save_dir}")
-with (save_dir / "committee.pickle").open('wb') as picklefile:
-    pickle.dump(record, picklefile)
-plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
-plt.ylabel("Training time in seconds")
-plt.xlabel("Trained Data Points")
-plt.savefig(save_dir / 'training_time.svg', bbox_inches='tight')
-plt.close('all')
-
-scores, stds = zip(*record.scores['custom'])
-scores = np.array(scores)
-plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-plt.xlabel("Trained Data Points")
-plt.ylabel("custom score")
-plt.savefig(save_dir / 'custom_score.svg', bbox_inches='tight')
-plt.close('all')
+    
 
 
-scores, stds = zip(*record.scores['r2'])
-scores = np.array(scores)
-plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-plt.xlabel("Trained Data Points")
-plt.ylabel("r2 score")
-plt.ylim(top=1)
-plt.savefig(save_dir / 'r2_score.svg', bbox_inches='tight')
-plt.close('all')
+def save_training(record: ml.TrainingRecord, save_dir: Path = Path(__file__).parent / f'training{str(uuid4())}'):
+    save_dir.mkdir(exist_ok=True, parents=True)
+    if record.all_training_points is not None:
+        record.all_training_points.to_csv(save_dir / 'training_data.csv')
+    print(f"Writing results to {save_dir}")
+    with (save_dir / "committee.pickle").open('wb') as picklefile:
+        pickle.dump(record, picklefile)
+    plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
+    plt.ylabel("Training time in seconds")
+    plt.xlabel("Trained Data Points")
+    plt.savefig(save_dir / 'training_time.svg', bbox_inches='tight')
+    plt.close('all')
+
+    scores, stds = zip(*record.scores['custom'])
+    scores = np.array(scores)
+    plt.plot(record.training_sizes, scores)
+    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
+    plt.xlabel("Trained Data Points")
+    plt.ylabel("custom score")
+    plt.savefig(save_dir / 'custom_score.svg', bbox_inches='tight')
+    plt.close('all')
 
 
-scores, stds = zip(*record.scores['false_negative'])
-scores = np.array(scores)
-plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-plt.xlabel("Trained Data Points")
-plt.ylabel("false negative score")
-plt.ylim(0,1)
-plt.savefig(save_dir / 'false_negative_score.svg', bbox_inches='tight')
-plt.close('all')
+    scores, stds = zip(*record.scores['r2'])
+    scores = np.array(scores)
+    plt.plot(record.training_sizes, scores)
+    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
+    plt.xlabel("Trained Data Points")
+    plt.ylabel("r2 score")
+    plt.ylim(top=1)
+    plt.savefig(save_dir / 'r2_score.svg', bbox_inches='tight')
+    plt.close('all')
 
 
-scores, stds = zip(*record.scores['false_positive'])
-scores = np.array(scores)
-plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-plt.xlabel("Trained Data Points")
-plt.ylabel("false positive score")
-plt.ylim(0,1)
-plt.savefig(save_dir / 'false_positive_score.svg', bbox_inches='tight')
-plt.close('all')
+    scores, stds = zip(*record.scores['false_negative'])
+    scores = np.array(scores)
+    plt.plot(record.training_sizes, scores)
+    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
+    plt.xlabel("Trained Data Points")
+    plt.ylabel("false negative score")
+    plt.ylim(0,1)
+    plt.savefig(save_dir / 'false_negative_score.svg', bbox_inches='tight')
+    plt.close('all')
 
 
-scores, stds = zip(*record.scores['rmse'])
-scores = np.array(scores)
-plt.plot(record.training_sizes, scores)
-plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-plt.xlabel("Trained Data Points")
-plt.ylabel("rmse score")
-plt.ylim(bottom=0)
-plt.savefig(save_dir / 'rmse_score.svg', bbox_inches='tight')
-plt.close('all')
+    scores, stds = zip(*record.scores['false_positive'])
+    scores = np.array(scores)
+    plt.plot(record.training_sizes, scores)
+    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
+    plt.xlabel("Trained Data Points")
+    plt.ylabel("false positive score")
+    plt.ylim(0,1)
+    plt.savefig(save_dir / 'false_positive_score.svg', bbox_inches='tight')
+    plt.close('all')
 
 
-values, stds = record.model.predict(test_features, return_std=True)
-values = np.ravel(values)
-stds = np.ravel(values)
-plt.scatter(test_labels,values, values - stds, values + stds)
-plt.plot(test_labels,test_labels,'k-')
-plt.xlabel("True values")
-plt.ylabel("Predicted values")
-plt.ylim(test_labels.iloc[:, 0].min()*1.1,test_labels.iloc[:, 0].max()*1.1)
-plt.savefig(save_dir / 'true_v_pred.svg', bbox_inches='tight')
-plt.close('all')
+    scores, stds = zip(*record.scores['rmse'])
+    scores = np.array(scores)
+    plt.plot(record.training_sizes, scores)
+    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
+    plt.xlabel("Trained Data Points")
+    plt.ylabel("rmse score")
+    plt.ylim(bottom=0)
+    plt.savefig(save_dir / 'rmse_score.svg', bbox_inches='tight')
+    plt.close('all')
 
-scratch_space.cleanup()
+
+    values, stds = record.model.predict(test_features, return_std=True)
+    values = np.ravel(values)
+    stds = np.ravel(values)
+    plt.scatter(test_labels,values, values - stds, values + stds)
+    plt.plot(test_labels,test_labels,'k-')
+    plt.xlabel("True values")
+    plt.ylabel("Predicted values")
+    plt.ylim(test_labels.iloc[:, 0].min()*1.1,test_labels.iloc[:, 0].max()*1.1)
+    plt.savefig(save_dir / 'true_v_pred.svg', bbox_inches='tight')
+    plt.close('all')
+
+if __name__ == "__main__":
+    main()

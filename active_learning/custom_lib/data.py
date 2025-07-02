@@ -27,7 +27,7 @@ def load_dataset(path: Path) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
     return prep_dataset(dataset)
 
 def prep_dataset(dataset: pandas.DataFrame) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
-    dataset = minimal_filter_raw(dataset)
+    dataset = remove_low_filter_raw(dataset)
     return ml.split_into_data_and_label_raw(dataset)
 
 def date_parser(time: str) -> int:

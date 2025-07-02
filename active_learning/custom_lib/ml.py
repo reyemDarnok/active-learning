@@ -3,7 +3,7 @@ import math
 import tempfile
 import numpy
 from dataclasses import dataclass, field
-from typing import Any, Dict, Generator, List, NoReturn, Tuple
+from typing import Any, Dict, Generator, List, NoReturn, Optional, Tuple
 from datetime import timedelta
 from pathlib import Path
 
@@ -16,6 +16,7 @@ from focusStepsPelmo.util.conversions import EnhancedJSONEncoder, flatten, flatt
 path.append(str(Path(__file__).parent.parent.parent))
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.pelmo.generation_definition import Definition
+from modAL.models.base import BaseLearner
 
 
 def split_into_data_and_label(dataset: pandas.DataFrame) -> tuple[pandas.DataFrame, pandas.DataFrame]:
@@ -42,6 +43,8 @@ def GP_regression_std(regressor, X, n_instances=1):
     idx = numpy.argpartition(std, -n_instances)[-n_instances:]
     return idx, X[idx]
 
+def random_sample(_, X:pandas.DataFrame, n_instances:int=1):
+    return X.sample(n=n_instances, replace=True).index
 
 def generate_features(template: Definition, number: int):
     combination_gen = _combination_generator(template=template)
@@ -73,11 +76,14 @@ def evaluate_features(features: List[Combination]):
 
 @dataclass
 class TrainingRecord:
-    model: object = field(repr=False)
+    model: BaseLearner = field(repr=False)
     batchsize: int = 0
     scores: Dict[str, List[Tuple[float, float]]] = field(default_factory=dict)
     training_times: List[timedelta] = field(default_factory=list)
     training_sizes: List[int] = field(default_factory=list)
+    all_training_points: Optional[pandas.DataFrame] = None
+    usable_points: int = 0
+    attempted_points: int = 0
         
     def __str__(self):
         return f"TrainingRecord(batchsize={self.batchsize}, training_time={self.training_times[-1]}, total_points={self.training_sizes[-1]}, scores={ {name: {'value' :f'{scores[-1][0]:2.2}', 'std': f'{scores[-1][1]:2.2}'} for name, scores in self.scores.items()} })"
