@@ -124,7 +124,7 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
 @ignore_warnings()
 def train_learner(learner: BaseCommittee, 
                   batchsize: int, oversampling_factor: float, 
-                  test_features: pandas.DataFrame, test_labels: pandas.DataFrame, 
+                  validation_features: pandas.DataFrame, validation_labels: pandas.DataFrame, 
                   template: Definition, total_points: int) -> ml.TrainingRecord:
     custom_metric = stats.make_custom_metric(greater_is_better = False)
     false_negative_metric = stats.make_false_negative_metric(greater_is_better = False)
@@ -136,11 +136,15 @@ def train_learner(learner: BaseCommittee,
     )
     score_time = timedelta(0)
     start_time = datetime.now()
-    metrics = {"custom": custom_metric, "false_positive": false_positive_metric, 
-               "false_negative": false_negative_metric, "r2": r2_score, "rmse": root_mean_squared_error}
-    for metric in metrics.keys():
-        result.validation_scores[metric] = ScenarioScores()
-        result.test_scores[metric] = ScenarioScores()
+    metrics = {"custom": custom_metric, "false positive": false_positive_metric, 
+               "false negative": false_negative_metric, "R²": r2_score, "RMSE": root_mean_squared_error}
+    for name, metric in metrics.items():
+        dataset_filters = {
+            'total': lambda f,l: pandas.Series([True] *len(f), index=f.index),
+            'critical': lambda f,l: l['0.compound_pec'].between(left=1e-2, right= 3, inclusive='neither')
+            }
+        result.validation_scores[name] = ml.DatasetScores(total_features=validation_features, total_labels=validation_labels, dataset_filters=dataset_filters, metric=metric)
+        result.test_scores[name] = ml.DatasetScores(total_features=test_features, total_labels=test_labels, dataset_filters=dataset_filters, metric=metric)
     while result.training_sizes and result.training_sizes[-1] < total_points:
         features, labels = make_training_data(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, template=template, total_points=total_points, result=result)
 
@@ -149,29 +153,20 @@ def train_learner(learner: BaseCommittee,
             learner.teach(features, labels)
         end_teach = datetime.now()
         result.training_times.append(end_teach - start_time - score_time)
-        predict_labels = learner.predict(test_features)
-        predict_labels = np.ravel(predict_labels)
+        
+        for scores in result.validation_scores.values():
+            scores.update_scores(learner)
 
-        individual_predict_labels = [np.ravel(indiv.predict(test_features)) for indiv in learner.learner_list]
+        all_features, all_labels = data.prep_dataset(result.all_training_points)
+        for scores in result.test_scores.values():
+            scores.update_scores(learner, total_features=all_features, total_labels=all_labels)
 
-        for name, metric in metrics.items():
-            committee_score = metric(test_labels, predict_labels)
-            individual_scores = [metric(test_labels, indiv_labels) for indiv_labels in individual_predict_labels]
-            committee_std = float(np.std(individual_scores))
-            result.scores[name].append((committee_score, committee_std))
         end_score = datetime.now()
         score_time += end_score - end_teach
         print(str(result), end_score)
         print(f"usable points: {result.usable_points/result.attempted_points}")
 
     return result
-
-def update_scenario_scores(learner: BaseCommittee, 
-                          test_labels: pandas.DataFrame, test_features: pandas.DataFrame, 
-                          metrics: Dict[str, Callable],
-                          previous_scores:  ScenarioScores) -> ml.ScenarioScores:
-                          
-    pass
 
 def make_training_data(learner, batchsize, oversampling_factor, template, total_points, result):
     combinations, features = ml.generate_features(template, int(batchsize * oversampling_factor))
@@ -215,70 +210,61 @@ def save_training(record: ml.TrainingRecord, save_dir: Path = Path(__file__).par
     plt.savefig(save_dir / 'training_time.svg', bbox_inches='tight')
     plt.close('all')
 
-    scores, stds = zip(*record.scores['custom'])
+    visualise_metric(record=record, save_dir=save_dir, metric='custom')
+    visualise_metric(record=record, save_dir=save_dir, metric='R²')
+    visualise_metric(record=record, save_dir=save_dir, metric='false negative')
+    visualise_metric(record=record, save_dir=save_dir, metric='false positive')
+    visualise_metric(record=record, save_dir=save_dir, metric='RMSE')
+
+
+def visualise_metric(record: ml.TrainingRecord, save_dir: Path, metric: str) -> None:
+    visualise_validation(record=record, save_dir=save_dir, metric=metric, dataset='total')
+    visualise_test(record=record, save_dir=save_dir, metric=metric, dataset='total')
+    visualise_validation(record=record, save_dir=save_dir, metric=metric, dataset='critical')
+    visualise_test(record=record, save_dir=save_dir, metric=metric, dataset='critical')
+
+    
+
+
+def visualise_validation(record: ml.TrainingRecord, save_dir: Path, metric: str, dataset: str):
+    scenario_scores = record.validation_scores[metric].scores[dataset]
+    for scenario in Scenario:
+        scores, stds = zip(*[(score.value, score.std) for score in scenario_scores.scenarios[scenario]])
+        scores = np.array(scores)
+        plt.plot(record.training_sizes, scores, label=f"Scenario {scenario.value}")
+        plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
+    scores, stds = zip(*[(score.value, score.std) for score in scenario_scores.combined])
     scores = np.array(scores)
-    plt.plot(record.training_sizes, scores)
+    plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
     plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
     plt.xlabel("Trained Data Points")
-    plt.ylabel("custom score")
-    plt.savefig(save_dir / 'custom_score.svg', bbox_inches='tight')
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.title(f"{metric} Score on {dataset} external validation data".title())
+    plt.savefig(save_dir / f'{metric}_{dataset}_score.svg', bbox_inches='tight')
     plt.close('all')
 
 
-    scores, stds = zip(*record.scores['r2'])
+def visualise_test(record: ml.TrainingRecord, save_dir: Path, metric: str, dataset: str):
+    scenario_scores = record.test_scores[metric].scores[dataset]
+    for scenario in Scenario:
+        scores, stds = zip(*[(score.value, score.std) for score in scenario_scores.scenarios[scenario]])
+        scores = np.array(scores)
+        plt.plot(record.training_sizes, scores, label=f"Scenario {scenario.value}")
+        plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
+    scores, stds = zip(*[(score.value, score.std) for score in scenario_scores.combined])
     scores = np.array(scores)
-    plt.plot(record.training_sizes, scores)
+    plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
     plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
     plt.xlabel("Trained Data Points")
-    plt.ylabel("r2 score")
-    plt.ylim(top=1)
-    plt.savefig(save_dir / 'r2_score.svg', bbox_inches='tight')
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.title(f"{metric} Score on {dataset} training data".title())
+    plt.savefig(save_dir / f'{metric}_{dataset}_score.svg', bbox_inches='tight')
     plt.close('all')
 
 
-    scores, stds = zip(*record.scores['false_negative'])
-    scores = np.array(scores)
-    plt.plot(record.training_sizes, scores)
-    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-    plt.xlabel("Trained Data Points")
-    plt.ylabel("false negative score")
-    plt.ylim(0,1)
-    plt.savefig(save_dir / 'false_negative_score.svg', bbox_inches='tight')
-    plt.close('all')
-
-
-    scores, stds = zip(*record.scores['false_positive'])
-    scores = np.array(scores)
-    plt.plot(record.training_sizes, scores)
-    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-    plt.xlabel("Trained Data Points")
-    plt.ylabel("false positive score")
-    plt.ylim(0,1)
-    plt.savefig(save_dir / 'false_positive_score.svg', bbox_inches='tight')
-    plt.close('all')
-
-
-    scores, stds = zip(*record.scores['rmse'])
-    scores = np.array(scores)
-    plt.plot(record.training_sizes, scores)
-    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-    plt.xlabel("Trained Data Points")
-    plt.ylabel("rmse score")
-    plt.ylim(bottom=0)
-    plt.savefig(save_dir / 'rmse_score.svg', bbox_inches='tight')
-    plt.close('all')
-
-
-    values, stds = record.model.predict(test_features, return_std=True)
-    values = np.ravel(values)
-    stds = np.ravel(values)
-    plt.scatter(test_labels,values, values - stds, values + stds)
-    plt.plot(test_labels,test_labels,'k-')
-    plt.xlabel("True values")
-    plt.ylabel("Predicted values")
-    plt.ylim(test_labels.iloc[:, 0].min()*1.1,test_labels.iloc[:, 0].max()*1.1)
-    plt.savefig(save_dir / 'true_v_pred.svg', bbox_inches='tight')
-    plt.close('all')
+    
 
 if __name__ == "__main__":
     main()

@@ -2,8 +2,9 @@ import json
 import math
 import tempfile
 import numpy
+import numpy.typing as npt
 from dataclasses import dataclass, field
-from typing import Any, Dict, Generator, List, NoReturn, Optional, Tuple
+from typing import Any, Callable, Dict, Generator, List, NoReturn, Optional, Tuple
 from datetime import timedelta
 from pathlib import Path
 
@@ -73,28 +74,84 @@ def evaluate_features(features: List[Combination]):
         result_df = pandas.read_csv(pelmo_res_path)
         return result_df
 
-@dataclass
-class TrainingRecord:
-    model: BaseCommittee = field(repr=False)
-    batchsize: int = 0
-    validation_scores: Dict[str, 'ScenarioScores'] = field(default_factory=dict)
-    test_scores: Dict[str, 'ScenarioScores'] = field(default_factory=dict)
-    training_times: List[timedelta] = field(default_factory=list)
-    training_sizes: List[int] = field(default_factory=list)
-    all_training_points: Optional[pandas.DataFrame] = None
-    usable_points: int = 0
-    attempted_points: int = 0
-        
-    #def __str__(self):
-    #    return f"TrainingRecord(batchsize={self.batchsize}, " +\
-    #            f"training_time={self.training_times[-1]}, total_points={self.training_sizes[-1]}, scores={ {name: {'value' :f'{scores[-1][0]:2.2}', 'std': f'{scores[-1][1]:2.2}'} for name, scores in self.scores.items()} })"
+       
     
-@dataclass
-class ScenarioScores:
-    combined: List['Score'] = field(default_factory=list)
-    scenarios: Dict[Scenario, List['Score']] = field(default_factory=lambda: {s: [] for s in Scenario})
-
 @dataclass
 class Score:
     value: float = 0
     std: float = 0
+
+@dataclass
+class ScenarioScores:
+    metric: Callable
+    combined: List['Score'] = field(default_factory=list)
+    scenarios: Dict[Scenario, List['Score']] = field(default_factory=lambda: {s: [] for s in Scenario})
+    
+    def update_scores(self, learner: BaseCommittee, test_labels: pandas.DataFrame, test_features: pandas.DataFrame) -> None:
+        individual_predict_labels = [numpy.ravel(indiv.predict(test_features)) for indiv in learner.learner_list]
+        committee_predict_labels = learner.predict(test_features)
+        for scenario in test_features['combination.scenarios.0'].unique():
+            scenario_index = test_features['combination.scenarios.0'] == scenario
+            self.scenarios[Scenario[scenario]].append(
+                make_score(metric=self.metric, 
+                        test_labels=test_labels[scenario_index], 
+                        individual_predict_labels=individual_predict_labels,
+                        committee_predict_labels=committee_predict_labels)
+            )
+        self.combined.append(
+            make_score(metric=self.metric, 
+                    test_labels=test_labels, 
+                    individual_predict_labels=individual_predict_labels, 
+                    committee_predict_labels=committee_predict_labels)
+                    )
+
+@dataclass
+class DatasetScores:
+    total_features: pandas.DataFrame
+    total_labels: pandas.DataFrame
+    dataset_filters: Dict[str, Callable[[pandas.DataFrame, pandas.DataFrame], pandas.Series[bool]]] = field(repr=False, default_factory=dict)
+    metric: Callable[[npt.ArrayLike, npt.ArrayLike], float] = field(repr=False, default=lambda x,y: 0)
+    scores: Dict[str, ScenarioScores] = field(default_factory=dict)
+    _filtered_features: Dict[str, pandas.DataFrame] = field(default_factory=dict)
+    _filtered_labels: Dict[str, pandas.DataFrame] = field(default_factory=dict)
+
+    def __post_init__(self):
+        self._filter()
+
+    def _filter(self):
+        for name, filter in self.dataset_filters.items():
+            index = filter(self.total_features, self.total_labels)
+            self._filtered_features[name] = self.total_features[index]
+            self._filtered_labels[name] = self.total_labels[index]
+
+    def update_scores(self, learner: BaseCommittee, total_features: Optional[pandas.DataFrame] = None, total_labels: Optional[pandas.DataFrame] = None) -> None:
+        assert total_features is None == total_labels is None
+        if total_features is not None:
+            assert total_labels is not None
+            assert total_features.shape[0] == total_labels.shape[0]
+            self.total_features = total_features
+            self.total_labels = total_labels
+            self._filter()
+
+        for name, scores in self.scores.items():
+            scores.update_scores(learner=learner, test_labels=self._filtered_labels[name], test_features=self._filtered_features[name])
+
+    
+@dataclass
+class TrainingRecord:
+    model: BaseCommittee = field(repr=False)
+    batchsize: int = 0
+    validation_scores: Dict[str, 'DatasetScores'] = field(default_factory=dict)
+    test_scores: Dict[str, 'DatasetScores'] = field(default_factory=dict)
+    training_times: List[timedelta] = field(default_factory=list)
+    training_sizes: List[int] = field(default_factory=list)
+    all_training_points: pandas.DataFrame = None # type: ignore
+    usable_points: int = 0
+    attempted_points: int = 0
+ 
+def make_score(metric, test_labels, individual_predict_labels, committee_predict_labels) -> Score:
+    committee_score = metric(test_labels, committee_predict_labels)
+    individaul_scores = [metric(test_labels, indiv_predict_labels) 
+                        for indiv_predict_labels in individual_predict_labels]
+    committee_std = float(numpy.std(individaul_scores))
+    return Score(value=committee_score, std=committee_std)
