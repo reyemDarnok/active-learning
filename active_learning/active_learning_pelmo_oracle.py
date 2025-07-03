@@ -119,7 +119,11 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
     ) # type: ignore a base committee fulfills BaseLearners contract, the subclassing is just wrong
 
 
+def true_index(features, labels):
+    return pandas.Series([True] *len(features), index=features.index)
 
+def between_index(features, labels):
+    return labels['0.compound_pec'].between(left=1e-2, right= 3, inclusive='neither')
 
 @ignore_warnings()
 def train_learner(learner: BaseCommittee, 
@@ -140,12 +144,12 @@ def train_learner(learner: BaseCommittee,
                "false negative": false_negative_metric, "R²": r2_score, "RMSE": root_mean_squared_error}
     for name, metric in metrics.items():
         dataset_filters = {
-            'total': lambda f,l: pandas.Series([True] *len(f), index=f.index),
-            'critical': lambda f,l: l['0.compound_pec'].between(left=1e-2, right= 3, inclusive='neither')
+            'total': true_index,
+            'critical': between_index
             }
         result.validation_scores[name] = ml.DatasetScores(total_features=validation_features, total_labels=validation_labels, dataset_filters=dataset_filters, metric=metric)
         result.test_scores[name] = ml.DatasetScores(total_features=test_features, total_labels=test_labels, dataset_filters=dataset_filters, metric=metric)
-    while result.training_sizes and result.training_sizes[-1] < total_points:
+    while not result.training_sizes or result.training_sizes[-1] < total_points:
         features, labels = make_training_data(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, template=template, total_points=total_points, result=result)
 
         # find values for indexes
@@ -163,7 +167,7 @@ def train_learner(learner: BaseCommittee,
 
         end_score = datetime.now()
         score_time += end_score - end_teach
-        print(str(result), end_score)
+        print(repr(result), end_score)
         print(f"usable points: {result.usable_points/result.attempted_points}")
 
     return result
@@ -202,8 +206,8 @@ def save_training(record: ml.TrainingRecord, save_dir: Path = Path(__file__).par
     if record.all_training_points is not None:
         record.all_training_points.to_csv(save_dir / 'training_data.csv')
     print(f"Writing results to {save_dir}")
-    with (save_dir / "committee.pickle").open('wb') as picklefile:
-        pickle.dump(record, picklefile)
+    with (save_dir / "model.pkl").open('wb') as picklefile:
+        pickle.dump(record.model, picklefile)
     plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
     plt.ylabel("Training time in seconds")
     plt.xlabel("Trained Data Points")

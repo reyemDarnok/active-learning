@@ -62,7 +62,10 @@ def make_false_negative_metric(split: float = 0.1, greater_is_better = True):
             y_true = numpy.ravel(y_true)
             y_pred = numpy.ravel(y_pred)
         should_be_under = y_pred[y_true < split]
-        score =  sum(should_be_under > split) / should_be_under.shape[0]
+        if should_be_under.shape[0] > 0:
+            score =  sum(should_be_under > split) / should_be_under.shape[0]
+        else:
+            score = 0
         if greater_is_better:
             score *= -1
         return score
@@ -74,7 +77,10 @@ def make_false_positive_metric(split: float = 0.1, greater_is_better = True):
             y_true = numpy.ravel(y_true)
             y_pred = numpy.ravel(y_pred)
         should_be_over = y_pred[y_true > split]
-        score = sum(should_be_over < split) / should_be_over.shape[0]
+        if should_be_over.shape[0] > 0:
+            score = sum(should_be_over < split) / should_be_over.shape[0]
+        else:
+            score = 0
         if greater_is_better:
             score *= -1
         return score

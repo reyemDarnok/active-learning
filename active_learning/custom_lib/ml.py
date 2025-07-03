@@ -87,16 +87,24 @@ class ScenarioScores:
     combined: List['Score'] = field(default_factory=list)
     scenarios: Dict[Scenario, List['Score']] = field(default_factory=lambda: {s: [] for s in Scenario})
     
+    def __repr__(self):
+        return f"ScenarioScores(combined={self.combined[-1] if self.combined else numpy.NAN})"
+        
+
     def update_scores(self, learner: BaseCommittee, test_labels: pandas.DataFrame, test_features: pandas.DataFrame) -> None:
-        individual_predict_labels = [numpy.ravel(indiv.predict(test_features)) for indiv in learner.learner_list]
-        committee_predict_labels = learner.predict(test_features)
+        if test_features.shape[0] > 0:
+            individual_predict_labels = [indiv.predict(test_features) for indiv in learner.learner_list]
+            committee_predict_labels = learner.predict(test_features)
+        else:
+            individual_predict_labels = [numpy.ndarray((0,1)) for _ in learner.learner_list]
+            committee_predict_labels = numpy.ndarray((0,1))
         for scenario in test_features['combination.scenarios.0'].unique():
             scenario_index = test_features['combination.scenarios.0'] == scenario
             self.scenarios[Scenario[scenario]].append(
                 make_score(metric=self.metric, 
                         test_labels=test_labels[scenario_index], 
-                        individual_predict_labels=individual_predict_labels,
-                        committee_predict_labels=committee_predict_labels)
+                        individual_predict_labels=[pred[scenario_index] for pred in individual_predict_labels],
+                        committee_predict_labels=committee_predict_labels[scenario_index])
             )
         self.combined.append(
             make_score(metric=self.metric, 
@@ -109,13 +117,17 @@ class ScenarioScores:
 class DatasetScores:
     total_features: pandas.DataFrame
     total_labels: pandas.DataFrame
-    dataset_filters: Dict[str, Callable[[pandas.DataFrame, pandas.DataFrame], pandas.Series[bool]]] = field(repr=False, default_factory=dict)
+    dataset_filters: Dict[str, Callable[[pandas.DataFrame, pandas.DataFrame], 'pandas.Series[bool]']] = field(repr=False, default_factory=dict)
     metric: Callable[[npt.ArrayLike, npt.ArrayLike], float] = field(repr=False, default=lambda x,y: 0)
     scores: Dict[str, ScenarioScores] = field(default_factory=dict)
     _filtered_features: Dict[str, pandas.DataFrame] = field(default_factory=dict)
     _filtered_labels: Dict[str, pandas.DataFrame] = field(default_factory=dict)
 
+    def __repr__(self):
+        return str(self.scores)
+
     def __post_init__(self):
+        assert self.total_features.shape[0] == self.total_labels.shape[0]
         self._filter()
 
     def _filter(self):
@@ -123,9 +135,10 @@ class DatasetScores:
             index = filter(self.total_features, self.total_labels)
             self._filtered_features[name] = self.total_features[index]
             self._filtered_labels[name] = self.total_labels[index]
+            self.scores[name] = ScenarioScores(metric=self.metric)
 
     def update_scores(self, learner: BaseCommittee, total_features: Optional[pandas.DataFrame] = None, total_labels: Optional[pandas.DataFrame] = None) -> None:
-        assert total_features is None == total_labels is None
+        assert (total_features is None) == (total_labels is None)
         if total_features is not None:
             assert total_labels is not None
             assert total_features.shape[0] == total_labels.shape[0]
@@ -150,8 +163,14 @@ class TrainingRecord:
     attempted_points: int = 0
  
 def make_score(metric, test_labels, individual_predict_labels, committee_predict_labels) -> Score:
-    committee_score = metric(test_labels, committee_predict_labels)
-    individaul_scores = [metric(test_labels, indiv_predict_labels) 
-                        for indiv_predict_labels in individual_predict_labels]
-    committee_std = float(numpy.std(individaul_scores))
-    return Score(value=committee_score, std=committee_std)
+    if committee_predict_labels.shape[0] > 0:
+        committee_score = metric(test_labels, committee_predict_labels)
+        individaul_scores = [metric(test_labels, indiv_predict_labels) 
+                            for indiv_predict_labels in individual_predict_labels]
+        committee_std = float(numpy.std(individaul_scores))
+        return Score(value=committee_score, std=committee_std)
+    else:
+        return Score(value=numpy.NAN, std=numpy.NAN)
+
+def __repr__(self):
+    return f"TraininingRecord({self.batchsize=}, validation_scores={self.validation_scores!r}, test_scores={self.test_scores!r}, training_sizes={self.training_sizes[-1]})"
