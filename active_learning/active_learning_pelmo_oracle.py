@@ -81,7 +81,7 @@ def main():
 
     for _ in range(1):
         learner = setup_learner(template=template, models_in_committee=models_in_committee, bootstrap_size=bootstrap_size)
-        t = train_learner(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, test_features=test_features, test_labels=test_labels, template=template, total_points=total_points)
+        t = train_learner(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, validation_features=test_features, validation_labels=test_labels, template=template, total_points=total_points)
         save_training(t)
         print(str(t))
 
