@@ -16,7 +16,7 @@ from focusStepsPelmo.util.conversions import EnhancedJSONEncoder, flatten, flatt
 path.append(str(Path(__file__).parent.parent.parent))
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.pelmo.generation_definition import Definition
-from modAL.models.base import BaseLearner
+from modAL.models.base import BaseCommittee
 
 
 def split_into_data_and_label(dataset: pandas.DataFrame) -> tuple[pandas.DataFrame, pandas.DataFrame]:
@@ -73,17 +73,28 @@ def evaluate_features(features: List[Combination]):
         result_df = pandas.read_csv(pelmo_res_path)
         return result_df
 
-
 @dataclass
 class TrainingRecord:
-    model: BaseLearner = field(repr=False)
+    model: BaseCommittee = field(repr=False)
     batchsize: int = 0
-    scores: Dict[str, List[Tuple[float, float]]] = field(default_factory=dict)
+    validation_scores: Dict[str, 'ScenarioScores'] = field(default_factory=dict)
+    test_scores: Dict[str, 'ScenarioScores'] = field(default_factory=dict)
     training_times: List[timedelta] = field(default_factory=list)
     training_sizes: List[int] = field(default_factory=list)
     all_training_points: Optional[pandas.DataFrame] = None
     usable_points: int = 0
     attempted_points: int = 0
         
-    def __str__(self):
-        return f"TrainingRecord(batchsize={self.batchsize}, training_time={self.training_times[-1]}, total_points={self.training_sizes[-1]}, scores={ {name: {'value' :f'{scores[-1][0]:2.2}', 'std': f'{scores[-1][1]:2.2}'} for name, scores in self.scores.items()} })"
+    #def __str__(self):
+    #    return f"TrainingRecord(batchsize={self.batchsize}, " +\
+    #            f"training_time={self.training_times[-1]}, total_points={self.training_sizes[-1]}, scores={ {name: {'value' :f'{scores[-1][0]:2.2}', 'std': f'{scores[-1][1]:2.2}'} for name, scores in self.scores.items()} })"
+    
+@dataclass
+class ScenarioScores:
+    combined: List['Score'] = field(default_factory=list)
+    scenarios: Dict[Scenario, List['Score']] = field(default_factory=lambda: {s: [] for s in Scenario})
+
+@dataclass
+class Score:
+    value: float = 0
+    std: float = 0
