@@ -27,7 +27,7 @@ rng = np.random.default_rng()
 
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, Matern, WhiteKernel
-from sklearn.base import clone
+from sklearn.base import BaseEstimator, clone
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler, FunctionTransformer
 from sklearn.ensemble import HistGradientBoostingRegressor
@@ -58,7 +58,7 @@ def parse_args():
     parser.add_argument('--bootstrap', type=int, default=15, help="How many batches to use to bootstrap the models")
     parser.add_argument('--batch', type=int, default = 8, help="How many batches to run as a group when training")
     parser.add_argument('--total-points', type=int, default=1000, help="How many points to train on")
-    parser.add_argument('--oversampling', type=float, default=5, help="Training chooses x points from x*oversampling options")
+    parser.add_argument('--oversampling', type=float, default=20, help="Training chooses x points from x*oversampling options")
     parser.add_argument('--models-in-committee', type=int, default=10, help="How many models are in the committee")
     parser.add_argument('--template-path', type=Path, default=Path(__file__).parent / 'scan-matrix-ppdb-based.json', help="Where to find the definition for the scanning template")
     jsonLogger.add_log_args(parser)
@@ -115,7 +115,7 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
         print(f"created committee member {index} at", datetime.now(), f" with {features.shape[0]} bootstrap points")
     return CommitteeRegressor(
         learner_list = learner_list,
-        query_strategy=max_std_sampling, 
+        query_strategy=ml.skewed_std_sampling, 
     ) # type: ignore a base committee fulfills BaseLearners contract, the subclassing is just wrong
 
 
@@ -167,8 +167,7 @@ def train_learner(learner: BaseCommittee,
 
         end_score = datetime.now()
         score_time += end_score - end_teach
-        print(repr(result), end_score)
-        print(f"usable points: {result.usable_points/result.attempted_points}")
+        print(json.dumps(result.to_json(), indent=4))
 
     return result
 
@@ -177,7 +176,7 @@ def make_training_data(learner, batchsize, oversampling_factor, template, total_
     query_ids, _ = learner.query(features, n_instances=batchsize)
     evaluated = ml.evaluate_features(features=list(np.array(combinations)[query_ids]))
     if result.all_training_points is not None:
-        pandas.concat((result.all_training_points, evaluated))
+        result.all_training_points = pandas.concat((result.all_training_points, evaluated))
     else:
         result.all_training_points = evaluated
     features, labels = data.prep_dataset(evaluated)
@@ -208,6 +207,7 @@ def save_training(record: ml.TrainingRecord, save_dir: Path = Path(__file__).par
     print(f"Writing results to {save_dir}")
     with (save_dir / "model.pkl").open('wb') as picklefile:
         pickle.dump(record.model, picklefile)
+    (save_dir / "record.json").write_text(str(record.to_json()))
     plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
     plt.ylabel("Training time in seconds")
     plt.xlabel("Trained Data Points")
@@ -222,49 +222,40 @@ def save_training(record: ml.TrainingRecord, save_dir: Path = Path(__file__).par
 
 
 def visualise_metric(record: ml.TrainingRecord, save_dir: Path, metric: str) -> None:
-    visualise_validation(record=record, save_dir=save_dir, metric=metric, dataset='total')
-    visualise_test(record=record, save_dir=save_dir, metric=metric, dataset='total')
-    visualise_validation(record=record, save_dir=save_dir, metric=metric, dataset='critical')
-    visualise_test(record=record, save_dir=save_dir, metric=metric, dataset='critical')
+    visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset='total', category="validation", scoring=record.validation_scores)
+    visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset='total', category="test", scoring=record.test_scores)
+    visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset='critical', category="validation", scoring=record.validation_scores)
+    visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset='critical', category="test", scoring=record.test_scores)
 
-    
-
-
-def visualise_validation(record: ml.TrainingRecord, save_dir: Path, metric: str, dataset: str):
-    scenario_scores = record.validation_scores[metric].scores[dataset]
-    for scenario in Scenario:
-        scores, stds = zip(*[(score.value, score.std) for score in scenario_scores.scenarios[scenario]])
-        scores = np.array(scores)
-        plt.plot(record.training_sizes, scores, label=f"Scenario {scenario.value}")
-        plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-    scores, stds = zip(*[(score.value, score.std) for score in scenario_scores.combined])
-    scores = np.array(scores)
-    plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
-    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
+def visualise_metric_dataset(record: ml.TrainingRecord, scoring: Dict[str, ml.DatasetScores], category: str,  save_dir: Path, metric: str, dataset: str):
+    plt.title(f"{metric} Score on {dataset} {category} data".title())
     plt.xlabel("Trained Data Points")
     plt.ylabel(f"{metric} score".title())
-    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.title(f"{metric} Score on {dataset} external validation data".title())
-    plt.savefig(save_dir / f'{metric}_{dataset}_score.svg', bbox_inches='tight')
-    plt.close('all')
-
-
-def visualise_test(record: ml.TrainingRecord, save_dir: Path, metric: str, dataset: str):
-    scenario_scores = record.test_scores[metric].scores[dataset]
+    scenario_scores = scoring[metric].scores[dataset]
+    maxima = []
     for scenario in Scenario:
-        scores, stds = zip(*[(score.value, score.std) for score in scenario_scores.scenarios[scenario]])
-        scores = np.array(scores)
-        plt.plot(record.training_sizes, scores, label=f"Scenario {scenario.value}")
-        plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-    scores, stds = zip(*[(score.value, score.std) for score in scenario_scores.combined])
+        if scenario_scores.scenarios[scenario]:
+            scores, minimum, maximum = zip(*[(score.value, score.minimum, score.maximum) for score in scenario_scores.scenarios[scenario]])
+            maxima.extend(maximum)
+            scores = np.array(scores)
+            plt.plot(record.training_sizes, scores, label=f"Scenario {scenario.value}")
+            plt.fill_between(record.training_sizes, minimum, maximum, alpha=0.2)
+    scores, minimum, maximum = zip(*[(score.value, score.minimum, score.maximum) for score in scenario_scores.combined])
+    maxima.extend(maximum)
+    maxima = [m for m in maxima if not np.isnan(m)]
+    maxima.sort()
+    percentile80 = maxima[int(len(maxima) * 0.8)]
     scores = np.array(scores)
+    if plt.ylim()[0] < 0:
+        plt.ylim(bottom=0)
+    if percentile80 < 1:
+        plt.ylim(top=1)
+    else:
+        plt.ylim(top=percentile80)
     plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
-    plt.fill_between(record.training_sizes, scores - stds, scores + stds, alpha=0.2)
-    plt.xlabel("Trained Data Points")
-    plt.ylabel(f"{metric} score".title())
+    plt.fill_between(record.training_sizes, minimum, maximum, alpha=0.2)
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.title(f"{metric} Score on {dataset} training data".title())
-    plt.savefig(save_dir / f'{metric}_{dataset}_score.svg', bbox_inches='tight')
+    plt.savefig(save_dir / f'{metric}_{dataset}_{category.replace(" ", "_")}_score.svg', bbox_inches='tight')
     plt.close('all')
 
 
