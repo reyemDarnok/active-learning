@@ -251,7 +251,13 @@ def expand_volatilization_user_manual(volatilization: Volatilization) -> Tuple[V
 
 @dataclass(frozen=True)
 class PsmFile(TypeCorrecting):
-    """Describes the contents of a psm file"""
+    """Describes the contents of a psm file
+    >>> from pathlib import Path
+    >>> c = next(Combination.from_file(Path(__file__).parent.parent.parent / "ppdb_combinations.json"))
+    >>> psmFile = PsmFile.from_input(c)
+    >>> psmFile.render() == (Path(__file__).parent.parent.parent / "ppdb_combinations_render_example.psm").read_text()
+    True
+    """
     application: PsmApplication
     gap: GAP
     compound: PsmCompound
