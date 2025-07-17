@@ -41,6 +41,8 @@ from modAL.models import CommitteeRegressor
 from modAL.disagreement import max_std_sampling, max_disagreement_sampling
 from modAL.models.base import BaseCommittee
 
+from catboost import CatBoostRegressor
+
 test_data = Path(__file__).parent.parent / 'new_ppdb_inferred.csv'
 
 
@@ -55,8 +57,8 @@ test_features_critical, test_labels_critical = ml.split_into_data_and_label_raw(
 
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('--bootstrap', type=int, default=15, help="How many batches to use to bootstrap the models")
-    parser.add_argument('--batch', type=int, default = 8, help="How many batches to run as a group when training")
+    parser.add_argument('--bootstrap', type=int, default=8, help="How many batches to use to bootstrap the models")
+    parser.add_argument('--batch', type=int, default = 4, help="How many batches to run as a group when training")
     parser.add_argument('--total-points', type=int, default=1000, help="How many points to train on")
     parser.add_argument('--oversampling', type=float, default=20, help="Training chooses x points from x*oversampling options")
     parser.add_argument('--models-in-committee', type=int, default=10, help="How many models are in the committee")
@@ -85,18 +87,18 @@ def main():
         save_training(t)
         print(str(t))
 
-
 @ignore_warnings()
 def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int) -> BaseCommittee:
-    model = HistGradientBoostingRegressor()
-    oneHotEncoder = ColumnTransformer(
-        transformers=[
-            ('scenario',OneHotEncoder(categories=[[x.name for x in Scenario]]),  ['scenario']),
-            ('crop', OneHotEncoder(categories=[[x.name for x in FOCUSCrop]]), ['gap.arguments.modelCrop'])
-            ],
-        remainder='passthrough'
-    )
-    pipeline = make_pipeline(FunctionTransformer(data.transform),oneHotEncoder, StandardScaler(), model)
+    #model = HistGradientBoostingRegressor()
+    #oneHotEncoder = ColumnTransformer(
+    #    transformers=[
+    #        ('scenario',OneHotEncoder(categories=[[x.name for x in Scenario]]),  ['scenario']),
+    #        ('crop', OneHotEncoder(categories=[[x.name for x in FOCUSCrop]]), ['gap.arguments.modelCrop'])
+    #        ],
+    #    remainder='passthrough'
+    #)
+    model = CatBoostRegressor(cat_features=[15, 19])
+    pipeline = make_pipeline(FunctionTransformer(data.transform), StandardScaler(), model)
 
     learner_list = []
     for index in range(models_in_committee):
@@ -174,7 +176,7 @@ def train_learner(learner: BaseCommittee,
 def make_training_data(learner, batchsize, oversampling_factor, template, total_points, result):
     combinations, features = ml.generate_features(template, int(batchsize * oversampling_factor))
     query_ids, _ = learner.query(features, n_instances=batchsize)
-    evaluated = ml.evaluate_features(features=list(np.array(combinations)[query_ids]))
+    evaluated = ml.evaluate_features(features=combinations[query_ids])
     if result.all_training_points is not None:
         result.all_training_points = pandas.concat((result.all_training_points, evaluated))
     else:

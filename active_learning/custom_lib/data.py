@@ -39,7 +39,9 @@ def transform_data_types(to_transform: pandas.DataFrame):
         try:
             to_transform[column] = to_transform[column].astype('float64')
         except ValueError:
-            pass
+            if to_transform[column].dtype.__str__() == "categorical":
+                to_transform[column] = to_transform[column].cat.codes
+            # leave other columns unaltered
     
 def rename_columns(to_transform: pandas.DataFrame):
     def rename(name: str) -> str:
