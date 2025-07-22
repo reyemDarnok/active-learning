@@ -13,7 +13,7 @@ import pandas
 from sys import path
 
 from sklearn.base import BaseEstimator
-
+from sklearn.preprocessing import  StandardScaler
 from focusStepsPelmo.ioTypes.scenario import Scenario
 from focusStepsPelmo.pelmo.local import run_local
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder, flatten, flatten_to_keys
@@ -22,7 +22,25 @@ from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.pelmo.generation_definition import Definition
 from modAL.models.base import BaseCommittee
 from modAL.utils.selection import multi_argmax
+ 
 
+class PartialScaler:
+    def __init__(self, to_exclude: Sequence[str], **scaler_kwargs):
+        self.scaler = StandardScaler(**scaler_kwargs)
+        self.to_exclude = to_exclude
+
+    def fit(self, X: pandas.DataFrame, *args, **kwargs):
+        self.scaler.fit(X.drop(columns=self.to_exclude), *args, **kwargs)
+        return self
+
+
+    def transform(self, X: pandas.DataFrame, *args, **kwargs):
+        passthrough_columns = {name: X[name] for name in self.to_exclude}
+        transforming_columns = [name for name in X.columns if name not in self.to_exclude]
+        res = pandas.DataFrame(self.scaler.transform(X.drop(columns=self.to_exclude), *args, **kwargs), columns=transforming_columns)
+        for name, column in passthrough_columns.items():
+            res[name] =[int(x) for x in column]
+        return res
 
 def split_into_data_and_label(dataset: pandas.DataFrame) -> tuple[pandas.DataFrame, pandas.DataFrame]:
     #pecs = dataset.columns[dataset.columns.str.endswith('.pec')]

@@ -1,4 +1,5 @@
 from typing import Optional, Tuple
+from numpy import dtype
 import pandas
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -28,6 +29,8 @@ def load_dataset(path: Path) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
 
 def prep_dataset(dataset: pandas.DataFrame) -> Tuple[pandas.DataFrame, pandas.DataFrame]:
     dataset = remove_low_filter_raw(dataset)
+    transform_data_types(dataset)
+
     return ml.split_into_data_and_label_raw(dataset)
 
 def date_parser(time: str) -> int:
@@ -36,11 +39,16 @@ def date_parser(time: str) -> int:
 
 def transform_data_types(to_transform: pandas.DataFrame):
     for column in to_transform.columns:
+        column_dtype = to_transform[column].dtype
         try:
-            to_transform[column] = to_transform[column].astype('float64')
+            if column_dtype != dtype('int64') and column_dtype != dtype('float64'): 
+                to_transform[column] = to_transform[column].astype('float64')
         except ValueError:
-            if to_transform[column].dtype.__str__() == "categorical":
-                to_transform[column] = to_transform[column].cat.codes
+            if column == 'combination.gap.arguments.modelCrop' or column == 'gap.arguments.modelCrop':
+                to_transform[column] = to_transform[column].apply(lambda x: list(FOCUSCrop).index(FOCUSCrop[x])).astype('category')
+            elif column == 'combination.scenarios.0' or column == 'scenario':
+                to_transform[column]  = to_transform[column].apply(lambda x: list(Scenario).index(Scenario[x])).astype('category')
+                pass
             # leave other columns unaltered
     
 def rename_columns(to_transform: pandas.DataFrame):

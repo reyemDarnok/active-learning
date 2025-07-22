@@ -86,6 +86,20 @@ def make_false_positive_metric(split: float = 0.1, greater_is_better = True):
         return score
     return metric
 
+class CatboostCustom:
+
+    def __init__(self, *args, **kwargs):
+        self.metric = make_custom_metric(*args, **kwargs)
+
+    def get_final_error(self, error, weight):
+        return error / (weight + 1e-38)
+
+    def is_max_optimal(self):
+        return False
+    
+    def evaluate(self, approxes, target, weight):
+        self.metric(target, approxes, input_weights=weight)
+
 def make_custom_metric(
         max_weight: float = 10, 
         min_weight: float = 1,
@@ -93,17 +107,19 @@ def make_custom_metric(
         falloff: float = 2,
         center: float = -1,
         greater_is_better: bool = True):
-    def metric(y_true, y_pred, *, greater_is_better = greater_is_better):
+    def metric(y_true, y_pred, *, greater_is_better = greater_is_better, input_weights = None):
         total_weight = 0
         total_score = 0
         if len(y_true.shape) > 1:
             y_true = numpy.ravel(y_true)
             y_pred = numpy.ravel(y_pred)
-        for y_t, y_p in zip(y_true, y_pred):
+        if input_weights is None:
+            input_weights = numpy.ones_like(y_true)
+        for y_t, y_p, i_w in zip(y_true, y_pred, input_weights):
             if (y_t < center < y_p) or (y_p < center < y_t):
-                weight = penalty_weight
+                weight = penalty_weight * i_w
             else:
-                weight = max(max_weight - falloff * abs(y_t - center), min_weight)
+                weight = max(max_weight - falloff * abs(y_t - center), min_weight) * i_w
             diff = abs((y_t - y_p) / y_t)
             total_score += weight * diff
             total_weight += weight

@@ -12,7 +12,7 @@ from custom_lib import data, ml, stats, vis
 from pathlib import Path
 import numpy as np
 from datetime import datetime, timedelta
-from typing import Any, Callable, Generator, List, NoReturn, Optional, Tuple, Dict
+from typing import Any, Callable, Generator, List, NoReturn, Optional, Sequence, Tuple, Dict
 
 from matplotlib import pyplot as plt
 
@@ -63,6 +63,7 @@ def parse_args():
     parser.add_argument('--oversampling', type=float, default=20, help="Training chooses x points from x*oversampling options")
     parser.add_argument('--models-in-committee', type=int, default=10, help="How many models are in the committee")
     parser.add_argument('--template-path', type=Path, default=Path(__file__).parent / 'scan-matrix-ppdb-based.json', help="Where to find the definition for the scanning template")
+    parser.add_argument('--name', type=str, default=str(uuid4()), help="The name to use for documenting this run")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()
@@ -82,13 +83,17 @@ def main():
 
 
     for _ in range(1):
-        learner = setup_learner(template=template, models_in_committee=models_in_committee, bootstrap_size=bootstrap_size)
+        learner = setup_learner(template=template, models_in_committee=models_in_committee, bootstrap_size=bootstrap_size, name=args.name)
         t = train_learner(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, validation_features=test_features, validation_labels=test_labels, template=template, total_points=total_points)
-        save_training(t)
+        save_training(record=t, save_name=args.name)
         print(str(t))
 
+def make_pd(X, y=None):
+    res =  pandas.DataFrame(X, columns=['parent.dt50.sediment', 'parent.dt50.soil', 'parent.dt50.surfaceWater', 'parent.dt50.system', 'parent.freundlich', 'parent.henry', 'parent.koc', 'parent.molarMass', 'parent.plant_uptake', 'parent.reference_temperature', 'parent.vapor_pressure', 'parent.water_solubility', 'gap.arguments.apply_every_n_years', 'gap.arguments.bbch', 'gap.arguments.interval', 'gap.arguments.modelCrop', 'gap.arguments.number_of_applications', 'gap.arguments.rate', 'gap.arguments.season', 'scenario', 'parent.log_henry'])
+    return res
+
 @ignore_warnings()
-def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int) -> BaseCommittee:
+def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int, name: str) -> BaseCommittee:
     #model = HistGradientBoostingRegressor()
     #oneHotEncoder = ColumnTransformer(
     #    transformers=[
@@ -97,11 +102,26 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
     #        ],
     #    remainder='passthrough'
     #)
-    model = CatBoostRegressor(cat_features=[15, 19])
-    pipeline = make_pipeline(FunctionTransformer(data.transform), StandardScaler(), model)
+   
 
     learner_list = []
+    catboost_base = Path("catboost", name).absolute()
+    catboost_base.mkdir(parents=True)
+    print(catboost_base.absolute())
     for index in range(models_in_committee):
+        cat_features = ['scenario', 'gap.arguments.modelCrop']
+        cpus = cpu_count()
+        metrics = [ "R2", "RMSE"]
+        model = CatBoostRegressor(iterations=10_000, thread_count=cpus - 1 if cpus is not None else 1, 
+                                  cat_features=cat_features,name=f"Committee Member {index}", 
+                                  train_dir=catboost_base / str(index),
+                                  #save_snapshot=True,
+                                  #snapshot_file=catboost_base / str(index) / "snapshot",
+                                  one_hot_max_size=25,
+                                  #eval_metric=metrics,
+                                  custom_metric=metrics,
+                                  loss_function="RMSE")
+        pipeline = make_pipeline(FunctionTransformer(data.transform), ml.PartialScaler(to_exclude=cat_features, copy=False), model)
         while True:
             combinations, _ = ml.generate_features(template=template, number=bootstrap_size)
             evaluated = ml.evaluate_features(features=combinations)
@@ -109,7 +129,7 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
             if features.shape[0] != 0:
                 break
         committee_member = ActiveLearner(
-            estimator=clone(pipeline),
+            estimator=pipeline,
             X_training=features,
             y_training=labels
         )
@@ -117,7 +137,7 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
         print(f"created committee member {index} at", datetime.now(), f" with {features.shape[0]} bootstrap points")
     return CommitteeRegressor(
         learner_list = learner_list,
-        query_strategy=ml.skewed_std_sampling, 
+        query_strategy=max_std_sampling, 
     ) # type: ignore a base committee fulfills BaseLearners contract, the subclassing is just wrong
 
 
@@ -170,6 +190,7 @@ def train_learner(learner: BaseCommittee,
         end_score = datetime.now()
         score_time += end_score - end_teach
         print(json.dumps(result.to_json(), indent=4))
+        print(result.training_sizes[-1])
 
     return result
 
@@ -202,7 +223,8 @@ def make_training_data(learner, batchsize, oversampling_factor, template, total_
     
 
 
-def save_training(record: ml.TrainingRecord, save_dir: Path = Path(__file__).parent / f'training{str(uuid4())}'):
+def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path = Path(__file__).parent):
+    save_dir = save_dir / save_name
     save_dir.mkdir(exist_ok=True, parents=True)
     if record.all_training_points is not None:
         record.all_training_points.to_csv(save_dir / 'training_data.csv')
@@ -265,3 +287,5 @@ def visualise_metric_dataset(record: ml.TrainingRecord, scoring: Dict[str, ml.Da
 
 if __name__ == "__main__":
     main()
+
+
