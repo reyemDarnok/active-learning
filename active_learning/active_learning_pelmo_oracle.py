@@ -1,4 +1,6 @@
 from argparse import ArgumentParser
+from enum import Enum
+from itertools import product
 import json
 import logging
 from os import cpu_count
@@ -14,6 +16,8 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Any, Callable, Generator, List, NoReturn, Optional, Sequence, Tuple, Dict
 
+import matplotlib
+matplotlib.use('Agg')
 from matplotlib import pyplot as plt
 
 from focusStepsPelmo.ioTypes.combination import Combination
@@ -64,6 +68,7 @@ def parse_args():
     parser.add_argument('--models-in-committee', type=int, default=10, help="How many models are in the committee")
     parser.add_argument('--template-path', type=Path, default=Path(__file__).parent / 'scan-matrix-ppdb-based.json', help="Where to find the definition for the scanning template")
     parser.add_argument('--name', type=str, default=str(uuid4()), help="The name to use for documenting this run")
+    parser.add_argument('--results-dir', type=Path, default=Path(__file__).parent / "training", help="Where to write the results to")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()
@@ -83,9 +88,12 @@ def main():
 
 
     for _ in range(1):
-        learner = setup_learner(template=template, models_in_committee=models_in_committee, bootstrap_size=bootstrap_size, name=args.name)
-        t = train_learner(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, validation_features=test_features, validation_labels=test_labels, template=template, total_points=total_points)
-        save_training(record=t, save_name=args.name)
+        learner = setup_learner(template=template, models_in_committee=models_in_committee, bootstrap_size=bootstrap_size, name=args.name, result_dir=args.results_dir)
+        t = train_learner(learner=learner, batchsize=batchsize,
+                           oversampling_factor=oversampling_factor, 
+                           validation_features=test_features, validation_labels=test_labels,
+                             template=template, total_points=total_points,
+                             save_name=args.name, save_dir=args.results_dir)
         print(str(t))
 
 def make_pd(X, y=None):
@@ -93,7 +101,7 @@ def make_pd(X, y=None):
     return res
 
 @ignore_warnings()
-def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int, name: str) -> BaseCommittee:
+def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int, name: str, result_dir: Path) -> BaseCommittee:
     #model = HistGradientBoostingRegressor()
     #oneHotEncoder = ColumnTransformer(
     #    transformers=[
@@ -105,14 +113,14 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
    
 
     learner_list = []
-    catboost_base = Path("catboost", name).absolute()
+    catboost_base = result_dir / name / "catboost"
     catboost_base.mkdir(parents=True)
     print(catboost_base.absolute())
     for index in range(models_in_committee):
         cat_features = ['scenario', 'gap.arguments.modelCrop']
         cpus = cpu_count()
         metrics = [ "R2", "RMSE"]
-        model = CatBoostRegressor(iterations=10_000, thread_count=cpus - 1 if cpus is not None else 1, 
+        model = CatBoostRegressor(iterations=1_000, thread_count=cpus - 1 if cpus is not None else 1, 
                                   cat_features=cat_features,name=f"Committee Member {index}", 
                                   train_dir=catboost_base / str(index),
                                   #save_snapshot=True,
@@ -120,6 +128,7 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
                                   one_hot_max_size=25,
                                   #eval_metric=metrics,
                                   custom_metric=metrics,
+                                  #silent=True,
                                   loss_function="RMSE")
         pipeline = make_pipeline(FunctionTransformer(data.transform), ml.PartialScaler(to_exclude=cat_features, copy=False), model)
         while True:
@@ -147,12 +156,15 @@ def true_index(features, labels):
 def between_index(features, labels):
     return labels['0.compound_pec'].between(left=1e-2, right= 3, inclusive='neither')
 
+
+
 @ignore_warnings()
 def train_learner(learner: BaseCommittee, 
                   batchsize: int, oversampling_factor: float, 
                   validation_features: pandas.DataFrame, validation_labels: pandas.DataFrame, 
-                  template: Definition, total_points: int) -> ml.TrainingRecord:
+                  template: Definition, total_points: int, save_dir: Path, save_name: str) -> ml.TrainingRecord:
     custom_metric = stats.make_custom_metric(greater_is_better = False)
+    custom_rmse_metric = stats.make_custom_rmse_metric(greater_is_better= False)
     false_negative_metric = stats.make_false_negative_metric(greater_is_better = False)
     false_positive_metric = stats.make_false_positive_metric(greater_is_better = False)
 
@@ -163,14 +175,18 @@ def train_learner(learner: BaseCommittee,
     score_time = timedelta(0)
     start_time = datetime.now()
     metrics = {"custom": custom_metric, "false positive": false_positive_metric, 
-               "false negative": false_negative_metric, "R²": r2_score, "RMSE": root_mean_squared_error}
+               "false negative": false_negative_metric, "R²": r2_score, 
+               "RMSE": root_mean_squared_error,
+               "custom RMSE": custom_rmse_metric}
+
+    dataset_filters = {
+        'total': true_index,
+        'critical': between_index
+        }
     for name, metric in metrics.items():
-        dataset_filters = {
-            'total': true_index,
-            'critical': between_index
-            }
-        result.validation_scores[name] = ml.DatasetScores(total_features=validation_features, total_labels=validation_labels, dataset_filters=dataset_filters, metric=metric)
-        result.test_scores[name] = ml.DatasetScores(total_features=test_features, total_labels=test_labels, dataset_filters=dataset_filters, metric=metric)
+
+        result.scores[ml.Category.CONFIRM].dataset_scores[name] = ml.DatasetScores(total_features=validation_features, total_labels=validation_labels, dataset_filters=dataset_filters, metric=metric)
+        result.scores[ml.Category.TRAIN].dataset_scores[name] = ml.DatasetScores(total_features=test_features, total_labels=test_labels, dataset_filters=dataset_filters, metric=metric)
     while not result.training_sizes or result.training_sizes[-1] < total_points:
         features, labels = make_training_data(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, template=template, total_points=total_points, result=result)
 
@@ -180,16 +196,16 @@ def train_learner(learner: BaseCommittee,
         end_teach = datetime.now()
         result.training_times.append(end_teach - start_time - score_time)
         
-        for scores in result.validation_scores.values():
+        for scores in result.scores[ml.Category.CONFIRM].dataset_scores.values():
             scores.update_scores(learner)
 
         all_features, all_labels = data.prep_dataset(result.all_training_points)
-        for scores in result.test_scores.values():
+        for scores in result.scores[ml.Category.TRAIN].dataset_scores.values():
             scores.update_scores(learner, total_features=all_features, total_labels=all_labels)
 
         end_score = datetime.now()
         score_time += end_score - end_teach
-        print(json.dumps(result.to_json(), indent=4))
+        save_training(result, save_dir=save_dir, save_name=save_name)
         print(result.training_sizes[-1])
 
     return result
@@ -223,8 +239,8 @@ def make_training_data(learner, batchsize, oversampling_factor, template, total_
     
 
 
-def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path = Path(__file__).parent):
-    save_dir = save_dir / save_name
+def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path):
+    save_dir = save_dir / save_name / "results"
     save_dir.mkdir(exist_ok=True, parents=True)
     if record.all_training_points is not None:
         record.all_training_points.to_csv(save_dir / 'training_data.csv')
@@ -238,23 +254,73 @@ def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path = Pa
     plt.savefig(save_dir / 'training_time.svg', bbox_inches='tight')
     plt.close('all')
 
-    visualise_metric(record=record, save_dir=save_dir, metric='custom')
-    visualise_metric(record=record, save_dir=save_dir, metric='R²')
-    visualise_metric(record=record, save_dir=save_dir, metric='false negative')
-    visualise_metric(record=record, save_dir=save_dir, metric='false positive')
-    visualise_metric(record=record, save_dir=save_dir, metric='RMSE')
+    for metric in record.scores[ml.Category.TRAIN].dataset_scores.keys():
+        visualise_metric(record=record, save_dir=save_dir, metric=metric)
 
 
 def visualise_metric(record: ml.TrainingRecord, save_dir: Path, metric: str) -> None:
-    visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset='total', category="validation", scoring=record.validation_scores)
-    visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset='total', category="test", scoring=record.test_scores)
-    visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset='critical', category="validation", scoring=record.validation_scores)
-    visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset='critical', category="test", scoring=record.test_scores)
+    datasets = next(iter(record.scores[ml.Category.TRAIN].dataset_scores.values())).scores.keys()
+    for dataset, category in product(datasets, list(ml.Category)):
+        visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset=dataset, category=category)
+        visualise_model_diagnostics(record=record, save_dir=save_dir, metric=metric, dataset=dataset, category=category)
+   
 
-def visualise_metric_dataset(record: ml.TrainingRecord, scoring: Dict[str, ml.DatasetScores], category: str,  save_dir: Path, metric: str, dataset: str):
-    plt.title(f"{metric} Score on {dataset} {category} data".title())
+def visualise_model_diagnostics(record: ml.TrainingRecord, category: ml.Category,  save_dir: Path, metric: str, dataset: str):
+    scoring = record.scores[category].dataset_scores
+    scenario_scores = scoring[metric].scores[dataset]
+
+    for scenario in Scenario:
+        if scenario_scores.scenarios[scenario]:
+            std, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.scenarios[scenario]])
+            plt.plot(record.training_sizes, std, label=f"Scenario {scenario.value} Standard Deviation")
+
+    std, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.combined])
+    plt.plot(record.training_sizes, std, label=f"All Scenarios Combined Standard Deviation")
+
+    plt.title(f"{metric} Standard Deviation Diagnostics on {dataset} {category.value} data".title())
     plt.xlabel("Trained Data Points")
     plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_diagnostics_std.svg', bbox_inches='tight')
+    plt.close('all')
+    
+    plt.plot(record.training_sizes, std, label=f"All Scenarios Combined Standard Deviation")
+
+    plt.title(f"{metric} Standard Deviation Diagnostics on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_diagnostics_std_only_combined.svg', bbox_inches='tight')
+    plt.close('all')
+
+    for scenario in Scenario:
+        if scenario_scores.scenarios[scenario]:
+            std, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.scenarios[scenario]])
+            plt.plot(record.training_sizes, diff, label=f"Scenario {scenario.value} Prediction Interval")
+
+    std, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.combined])
+    plt.plot(record.training_sizes, diff, label=f"All Scenarios Combined Prediction Interval")
+
+    plt.title(f"{metric} Prediction Interval Diagnostics on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_diagnostics_interval.svg', bbox_inches='tight')
+    plt.close('all')
+    
+    plt.plot(record.training_sizes, diff, label=f"All Scenarios Combined Prediction Interval")
+
+    plt.title(f"{metric} Prediction Interval Diagnostics on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_diagnostics_interval_only_combined.svg', bbox_inches='tight')
+    plt.close('all')
+
+    
+
+def visualise_metric_dataset(record: ml.TrainingRecord, category: ml.Category,  save_dir: Path, metric: str, dataset: str):
+    scoring = record.scores[category].dataset_scores
     scenario_scores = scoring[metric].scores[dataset]
     maxima = []
     for scenario in Scenario:
@@ -266,20 +332,55 @@ def visualise_metric_dataset(record: ml.TrainingRecord, scoring: Dict[str, ml.Da
             plt.fill_between(record.training_sizes, minimum, maximum, alpha=0.2)
     scores, minimum, maximum = zip(*[(score.value, score.minimum, score.maximum) for score in scenario_scores.combined])
     maxima.extend(maximum)
+    
+    
     maxima = [m for m in maxima if not np.isnan(m)]
-    maxima.sort()
-    percentile80 = maxima[int(len(maxima) * 0.8)]
-    scores = np.array(scores)
-    if plt.ylim()[0] < 0:
-        plt.ylim(bottom=0)
-    if percentile80 < 1:
-        plt.ylim(top=1)
-    else:
+    if maxima:
+        maxima.sort()
+        percentile80 = maxima[int(len(maxima) * 0.8)]
+        scores = np.array(scores)
         plt.ylim(top=percentile80)
+        if plt.ylim()[0] < 0:
+            plt.ylim(bottom=0)
+        if percentile80 < 1:
+            plt.ylim(top=1)
+        else:
+            plt.ylim(top=percentile80)
+    plt.ylim(bottom=0)
+    if plt.ylim()[1] < 1:
+        plt.ylim(top=1)
+    plt.title(f"{metric} Score on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+
     plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
     plt.fill_between(record.training_sizes, minimum, maximum, alpha=0.2)
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(save_dir / f'{metric}_{dataset}_{category.replace(" ", "_")}_score.svg', bbox_inches='tight')
+    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_score.svg', bbox_inches='tight')
+    plt.close('all')
+
+    if maxima:
+        maxima.sort()
+        percentile80 = maxima[int(len(maxima) * 0.8)]
+        scores = np.array(scores)
+        plt.ylim(top=percentile80)
+        if plt.ylim()[0] < 0:
+            plt.ylim(bottom=0)
+        if percentile80 < 1:
+            plt.ylim(top=1)
+        else:
+            plt.ylim(top=percentile80)
+    plt.ylim(bottom=0)
+    if plt.ylim()[1] < 1:
+        plt.ylim(top=1)
+    plt.title(f"{metric} Score on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+
+    plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
+    plt.fill_between(record.training_sizes, minimum, maximum, alpha=0.2)
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_score_only_combined.svg', bbox_inches='tight')
     plt.close('all')
 
 

@@ -1,3 +1,4 @@
+from enum import Enum
 import json
 import math
 import tempfile
@@ -100,12 +101,10 @@ def evaluate_features(features: Iterable[Combination]) -> pandas.DataFrame:
     
 @dataclass
 class Score:
-    value: float = 0
-    minimum: float = 0
-    maximum: float = 0
-
-    def __str__(self):
-        return f"value={self.value:.2f}\nminimum={self.minimum:.2f}\nmaximum={self.maximum:.2f}\n"
+    value: float = numpy.NAN
+    minimum: float = numpy.NAN
+    maximum: float = numpy.NAN
+    std: float = numpy.NAN
     
     def to_json(self):
         return asdict(self)
@@ -130,8 +129,8 @@ class ScenarioScores:
         else:
             individual_predict_labels = [numpy.ndarray((0,1)) for _ in learner.learner_list]
             committee_predict_labels = numpy.ndarray((0,1))
-        for scenario in Scenario:
-            scenario_index = test_features['combination.scenarios.0'] == scenario.name
+        for index, scenario in enumerate(Scenario):
+            scenario_index = (test_features['combination.scenarios.0'] == scenario.name) | (test_features['combination.scenarios.0'] == index) 
             self.scenarios[scenario].append(
                 make_score(metric=self.metric, 
                         test_labels=test_labels[scenario_index], 
@@ -192,35 +191,34 @@ class DatasetScores:
         for name, scores in self.scores.items():
             scores.update_scores(learner=learner, test_labels=self._filtered_labels[name], test_features=self._filtered_features[name])
 
-    
+class Category(str, Enum):
+    TRAIN = "Internal Test"
+    CONFIRM = "External Test"
+
+@dataclass
+class CategoryScores:
+    dataset_scores: Dict[str, DatasetScores] = field(default_factory=dict)
+
+    def to_json(self):
+        return {
+            key: value.to_json() for key, value in self.dataset_scores.items()
+        }
+
 @dataclass
 class TrainingRecord:
     model: BaseCommittee = field(repr=False)
     batchsize: int = 0
-    validation_scores: Dict[str, 'DatasetScores'] = field(default_factory=dict)
-    test_scores: Dict[str, 'DatasetScores'] = field(default_factory=dict)
+    scores: Dict[Category, CategoryScores] = field(default_factory=lambda: {category: CategoryScores() for category in Category})
     training_times: List[timedelta] = field(default_factory=list)
     training_sizes: List[int] = field(default_factory=list)
     all_training_points: pandas.DataFrame = None # type: ignore
     usable_points: int = 0
     attempted_points: int = 0
 
-    def __str__(self):
-        validation_scores = ""
-        for key, value in self.validation_scores.items():
-            validation_scores += f"{key}=\n{textwrap.indent(str(value), chr(9))}"
-        validation_scores = textwrap.indent(validation_scores, '\t')
-        test_scores = ""
-        for key, value in self.test_scores.items():
-            test_scores += f"{key}=\n{textwrap.indent(str(value),chr(9))}"
-        test_scores = textwrap.indent(test_scores, '\t')
-        return f"batchsize={self.batchsize}\nvalidation_scores=\n{validation_scores}\ntest_scores=\n{test_scores}\ntraining_size={self.training_sizes[-1]}"
-    
     def to_json(self):
         
         return {"batchsize": self.batchsize, 
-                "validation_scores": {key: value.to_json() for key, value in self.validation_scores.items()},
-                "test_scores": {key: value.to_json() for key, value in self.test_scores.items()},
+                "scores": {key: value.to_json() for key, value in self.scores.items()},
                 "training_size": self.training_sizes[-1]
                 }
  
@@ -230,9 +228,9 @@ def make_score(metric, test_labels, individual_predict_labels, committee_predict
         committee_score = metric(test_labels, committee_predict_labels)
         individual_scores = [metric(test_labels, indiv_predict_labels) 
                             for indiv_predict_labels in individual_predict_labels]
-        return Score(value=committee_score, minimum=min(individual_scores), maximum=max(individual_scores))
+        return Score(value=committee_score, minimum=min(individual_scores), maximum=max(individual_scores), std=numpy.std(individual_scores)) # type: ignore
     else:
-        return Score(value=numpy.NAN, minimum=numpy.NAN, maximum=numpy.NAN)
+        return Score()
 
 def skewed_std_sampling(regressor: BaseCommittee, X: pandas.DataFrame, n_instances: int = 1):
     skew_target = -1

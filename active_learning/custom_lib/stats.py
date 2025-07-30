@@ -130,6 +130,36 @@ def make_custom_metric(
             
     return metric
 
+def make_custom_rmse_metric(
+        max_weight: float = 10, 
+        min_weight: float = 1,
+        penalty_weight: float = 10, 
+        falloff: float = 2,
+        center: float = -1,
+        greater_is_better: bool = True):
+    def metric(y_true, y_pred, *, greater_is_better = greater_is_better, input_weights = None):
+        total_weight = 0
+        total_score = 0
+        if len(y_true.shape) > 1:
+            y_true = numpy.ravel(y_true)
+            y_pred = numpy.ravel(y_pred)
+        if input_weights is None:
+            input_weights = numpy.ones_like(y_true)
+        for y_t, y_p, i_w in zip(y_true, y_pred, input_weights):
+            if (y_t < center < y_p) or (y_p < center < y_t):
+                weight = penalty_weight * i_w
+            else:
+                weight = max(max_weight - falloff * abs(y_t - center), min_weight) * i_w
+            diff = (y_t - y_p) ** 2
+            total_score += weight * diff
+            total_weight += weight
+        score = total_score / total_weight
+        if greater_is_better:
+            score *= -1
+        return score
+            
+    return metric
+
 def is_outlier(points, thresh=3.5):
     """
     Returns a boolean array with True if points are outliers and False 
