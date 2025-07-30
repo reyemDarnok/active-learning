@@ -268,7 +268,8 @@ def visualise_metric(record: ml.TrainingRecord, save_dir: Path, metric: str) -> 
 def visualise_model_diagnostics(record: ml.TrainingRecord, category: ml.Category,  save_dir: Path, metric: str, dataset: str):
     scoring = record.scores[category].dataset_scores
     scenario_scores = scoring[metric].scores[dataset]
-
+    selection_path = save_dir / category.value / dataset / metric
+    selection_path.mkdir(exist_ok=True, parents=True)
     for scenario in Scenario:
         if scenario_scores.scenarios[scenario]:
             std, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.scenarios[scenario]])
@@ -281,7 +282,7 @@ def visualise_model_diagnostics(record: ml.TrainingRecord, category: ml.Category
     plt.xlabel("Trained Data Points")
     plt.ylabel(f"{metric} score".title())
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_diagnostics_std.svg', bbox_inches='tight')
+    plt.savefig(selection_path /  "diagnostics_std.svg", bbox_inches='tight')
     plt.close('all')
     
     plt.plot(record.training_sizes, std, label=f"All Scenarios Combined Standard Deviation")
@@ -290,7 +291,7 @@ def visualise_model_diagnostics(record: ml.TrainingRecord, category: ml.Category
     plt.xlabel("Trained Data Points")
     plt.ylabel(f"{metric} score".title())
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_diagnostics_std_only_combined.svg', bbox_inches='tight')
+    plt.savefig(selection_path / "diagnostics_std_only_combined.svg", bbox_inches='tight')
     plt.close('all')
 
     for scenario in Scenario:
@@ -305,7 +306,7 @@ def visualise_model_diagnostics(record: ml.TrainingRecord, category: ml.Category
     plt.xlabel("Trained Data Points")
     plt.ylabel(f"{metric} score".title())
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_diagnostics_interval.svg', bbox_inches='tight')
+    plt.savefig(selection_path / 'diagnostics_interval.svg', bbox_inches='tight')
     plt.close('all')
     
     plt.plot(record.training_sizes, diff, label=f"All Scenarios Combined Prediction Interval")
@@ -314,7 +315,7 @@ def visualise_model_diagnostics(record: ml.TrainingRecord, category: ml.Category
     plt.xlabel("Trained Data Points")
     plt.ylabel(f"{metric} score".title())
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_diagnostics_interval_only_combined.svg', bbox_inches='tight')
+    plt.savefig(selection_path / 'diagnostics_interval_only_combined.svg', bbox_inches='tight')
     plt.close('all')
 
     
@@ -322,6 +323,8 @@ def visualise_model_diagnostics(record: ml.TrainingRecord, category: ml.Category
 def visualise_metric_dataset(record: ml.TrainingRecord, category: ml.Category,  save_dir: Path, metric: str, dataset: str):
     scoring = record.scores[category].dataset_scores
     scenario_scores = scoring[metric].scores[dataset]
+    selection_path = save_dir / category.value / dataset / metric
+    selection_path.mkdir(exist_ok=True, parents=True)
     maxima = []
     for scenario in Scenario:
         if scenario_scores.scenarios[scenario]:
@@ -356,7 +359,7 @@ def visualise_metric_dataset(record: ml.TrainingRecord, category: ml.Category,  
     plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
     plt.fill_between(record.training_sizes, minimum, maximum, alpha=0.2)
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_score.svg', bbox_inches='tight')
+    plt.savefig(selection_path / 'score.svg', bbox_inches='tight')
     plt.close('all')
 
     if maxima:
@@ -380,7 +383,7 @@ def visualise_metric_dataset(record: ml.TrainingRecord, category: ml.Category,  
     plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
     plt.fill_between(record.training_sizes, minimum, maximum, alpha=0.2)
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(save_dir / f'{category.value.replace(" ", "_")}_{dataset.replace(" ", "_")}_{metric.replace(" ", "_")}_score_only_combined.svg', bbox_inches='tight')
+    plt.savefig(selection_path / 'score_only_combined.svg', bbox_inches='tight')
     plt.close('all')
 
 
