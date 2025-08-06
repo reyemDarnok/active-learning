@@ -9,3 +9,4 @@ graphviz
 modAL-python
 scikit-learn
 scipy
+catboost

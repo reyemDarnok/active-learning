@@ -70,7 +70,7 @@ def parse_args():
     parser.add_argument('--models-in-committee', type=int, default=10, help="How many models are in the committee")
     parser.add_argument('--template-path', type=Path, default=Path(__file__).parent / 'scan-matrix-ppdb-based.json', help="Where to find the definition for the scanning template")
     parser.add_argument('--name', type=str, default=str(uuid4()), help="The name to use for documenting this run")
-    parser.add_argument('--results-dir', type=Path, default=Path(__file__).parent / "training", help="Where to write the results to")
+    parser.add_argument('--results-dir', type=Path, default=Path(__file__).parent.parent / "training", help="Where to write the results to")
     parser.add_argument('--catboost-iter', type=int, default=10_000, help="How many catboost iterations to do")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()

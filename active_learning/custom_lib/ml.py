@@ -88,16 +88,22 @@ def _combination_generator(template: Definition) -> Generator[Combination, Any, 
 def evaluate_features(features: Iterable[Combination]) -> pandas.DataFrame:
     feature_tuple = tuple(features)
     name = hash(feature_tuple)
-    with tempfile.TemporaryDirectory() as work:
-        work_dir = Path(work)
-        combination_path = (work_dir / 'combination' / f"{name}.json")
-        combination_path.parent.mkdir(exist_ok=True, parents=True)
-        with combination_path.open('w') as combination_file:
-            json.dump(feature_tuple, fp=combination_file, cls=EnhancedJSONEncoder)
-        pelmo_res_path = work_dir / 'pelmo_result' / f"{name}.csv"
-        run_local(output_file=pelmo_res_path,combination_dir=combination_path)
-        result_df = pandas.read_csv(pelmo_res_path)
-        return result_df
+    try:
+        with tempfile.TemporaryDirectory() as work:
+            work_dir = Path(work)
+            combination_path = (work_dir / 'combination' / f"{name}.json")
+            combination_path.parent.mkdir(exist_ok=True, parents=True)
+            with combination_path.open('w') as combination_file:
+                json.dump(feature_tuple, fp=combination_file, cls=EnhancedJSONEncoder)
+            pelmo_res_path = work_dir / 'pelmo_result' / f"{name}.csv"
+            run_local(output_file=pelmo_res_path,combination_dir=combination_path)
+            result_df = pandas.read_csv(pelmo_res_path)
+            return result_df
+    except FileNotFoundError:
+        # something went wrong while calculating - I don't know why the context manager files and not something else but thats the error
+        with open('erroring.json', w) errorfile:
+            json.dump([x.asdict() for x in feature_tuple], errorfile)
+        raise
 
        
     
