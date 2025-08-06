@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 from enum import Enum
+from functools import partial
 from itertools import product
 import json
 import logging
@@ -47,7 +48,7 @@ from modAL.models.base import BaseCommittee
 
 from catboost import CatBoostRegressor
 
-test_data = Path(__file__).parent.parent / 'new_ppdb_inferred.csv'
+test_data = Path(__file__).parent / 'static_crop.csv'
 
 
 
@@ -59,16 +60,18 @@ test_data_critical = data.between_filter_raw(test_data)
 test_features, test_labels = ml.split_into_data_and_label_raw(test_data_filtered)
 test_features_critical, test_labels_critical = ml.split_into_data_and_label_raw(test_data_critical)
 
+
 def parse_args():
     parser = ArgumentParser()
-    parser.add_argument('--bootstrap', type=int, default=8, help="How many batches to use to bootstrap the models")
-    parser.add_argument('--batch', type=int, default = 4, help="How many batches to run as a group when training")
+    parser.add_argument('--bootstrap', type=int, default=1, help="How many batches to use to bootstrap the models")
+    parser.add_argument('--batch', type=int, default = 12, help="How many batches to run as a group when training")
     parser.add_argument('--total-points', type=int, default=1000, help="How many points to train on")
     parser.add_argument('--oversampling', type=float, default=20, help="Training chooses x points from x*oversampling options")
     parser.add_argument('--models-in-committee', type=int, default=10, help="How many models are in the committee")
     parser.add_argument('--template-path', type=Path, default=Path(__file__).parent / 'scan-matrix-ppdb-based.json', help="Where to find the definition for the scanning template")
     parser.add_argument('--name', type=str, default=str(uuid4()), help="The name to use for documenting this run")
     parser.add_argument('--results-dir', type=Path, default=Path(__file__).parent / "training", help="Where to write the results to")
+    parser.add_argument('--catboost-iter', type=int, default=10_000, help="How many catboost iterations to do")
     jsonLogger.add_log_args(parser)
     args = parser.parse_args()
     logger = logging.getLogger()
@@ -88,7 +91,7 @@ def main():
 
 
     for _ in range(1):
-        learner = setup_learner(template=template, models_in_committee=models_in_committee, bootstrap_size=bootstrap_size, name=args.name, result_dir=args.results_dir)
+        learner = setup_learner(template=template, models_in_committee=models_in_committee, bootstrap_size=bootstrap_size, name=args.name, result_dir=args.results_dir, catboost_iter=args.catboost_iter)
         t = train_learner(learner=learner, batchsize=batchsize,
                            oversampling_factor=oversampling_factor, 
                            validation_features=test_features, validation_labels=test_labels,
@@ -101,7 +104,7 @@ def make_pd(X, y=None):
     return res
 
 @ignore_warnings()
-def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int, name: str, result_dir: Path) -> BaseCommittee:
+def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int, name: str, result_dir: Path, catboost_iter: int) -> BaseCommittee:
     #model = HistGradientBoostingRegressor()
     #oneHotEncoder = ColumnTransformer(
     #    transformers=[
@@ -114,13 +117,13 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
 
     learner_list = []
     catboost_base = result_dir / name / "catboost"
-    catboost_base.mkdir(parents=True)
+    catboost_base.mkdir(parents=True, exist_ok=True)
     print(catboost_base.absolute())
     for index in range(models_in_committee):
         cat_features = ['scenario', 'gap.arguments.modelCrop']
         cpus = cpu_count()
         metrics = [ "R2", "RMSE"]
-        model = CatBoostRegressor(iterations=1_000, thread_count=cpus - 1 if cpus is not None else 1, 
+        model = CatBoostRegressor(iterations=catboost_iter, thread_count=cpus - 1 if cpus is not None else 1, 
                                   cat_features=cat_features,name=f"Committee Member {index}", 
                                   train_dir=catboost_base / str(index),
                                   #save_snapshot=True,
@@ -177,7 +180,9 @@ def train_learner(learner: BaseCommittee,
     metrics = {"custom": custom_metric, "false positive": false_positive_metric, 
                "false negative": false_negative_metric, "R²": r2_score, 
                "RMSE": root_mean_squared_error,
-               "custom RMSE": custom_rmse_metric}
+               "custom RMSE": custom_rmse_metric,
+               "PEC std": partial(stats.pec_std_metric, greater_is_better=False),
+               "PEC Intervall": partial(stats.pec_interval_metric, greater_is_better=False)}
 
     dataset_filters = {
         'total': true_index,

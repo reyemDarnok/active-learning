@@ -1,10 +1,11 @@
 import pandas
-from typing import Tuple, Iterable
+from typing import List, Tuple, Iterable
 from pathlib import Path
 from scipy.stats import pearsonr
 from matplotlib import pyplot as plt
 import math
 import numpy
+from numpy.typing import NDArray
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_squared_error
 
@@ -159,6 +160,29 @@ def make_custom_rmse_metric(
         return score
             
     return metric
+
+def pec_std_metric(committee_pred: List[NDArray],  *, greater_is_better = True, input_weights = None):
+    if input_weights is None:
+        input_weights = numpy.ones_like(committee_pred[0].shape)
+    acc = 0
+    for input_weight, *predictions in zip(input_weights, *committee_pred):
+        acc += numpy.std(predictions) * input_weight
+    score = acc / numpy.sum(input_weights)
+    if greater_is_better:
+        score *= -1
+    return score
+
+def pec_interval_metric(committee_pred: List[NDArray],  *, greater_is_better = True, input_weights = None):
+    if input_weights is None:
+        input_weights = numpy.ones_like(committee_pred[0].shape)
+    acc = 0
+    for input_weight, *predictions in zip(input_weights, *committee_pred):
+        acc += (numpy.max(predictions) - numpy.min(predictions)) * input_weight
+    score = acc / numpy.sum(input_weights)
+    if greater_is_better:
+        score *= -1
+    return score
+
 
 def is_outlier(points, thresh=3.5):
     """

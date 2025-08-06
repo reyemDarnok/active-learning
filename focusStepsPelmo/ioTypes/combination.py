@@ -21,7 +21,7 @@ class Combination(TypeCorrecting):
     def __post_init__(self):
         super().__post_init__()
         if not self.scenarios.intersection(self.gap.defined_scenarios):
-            raise ValueError(f"No overlap between Combinatino scenarios {self.scenarios} and scenarios defined for crop {self.gap.defined_scenarios}")
+            raise ValueError(f"No overlap between Combination scenarios {self.scenarios} and scenarios defined for crop {self.gap.defined_scenarios}")
 
     def asdict(self) -> Dict[str, List[str] | Dict[str, Any]]:
         """Represent self as a dictionary - the dataclasses.asdict method chokes on NamedTuples in gap"""

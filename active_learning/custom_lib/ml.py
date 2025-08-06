@@ -79,8 +79,10 @@ def generate_features(template: Definition, number: int):
 def _combination_generator(template: Definition) -> Generator[Combination, Any, NoReturn]:
     while True:
         try:
-            yield Combination(**template.make_sample())
-        except ValueError:
+            candidate = Combination(**template.make_sample())
+            list(candidate.gap.application_data(next(candidate.scenarios.__iter__())))
+            yield candidate
+        except (ValueError, IndexError):
             pass
 
 def evaluate_features(features: Iterable[Combination]) -> pandas.DataFrame:
@@ -114,8 +116,11 @@ class ScenarioScores:
     combined: List['Score'] = field(default_factory=list)
     scenarios: Dict[Scenario, List['Score']] = field(default_factory=lambda: {s: [] for s in Scenario})
     
+    def __repr__(self):
+        return f"ScenarioScores(combined={self.combined[-1] if self.combined else {}},scenarios={{key.name: value[-1] for key, value in self.scenarios.items() if value and not numpy.isnan(value[-1].value)}})"
+
     def __str__(self):
-       return str(self.combined[-1] if self.combined else numpy.NAN)
+       return str(self.combined[-1] if self.combined else {})
     
     def to_json(self):
         return {"combined": self.combined[-1].to_json() if self.combined else {},
@@ -146,20 +151,14 @@ class ScenarioScores:
 
 @dataclass
 class DatasetScores:
-    total_features: pandas.DataFrame
-    total_labels: pandas.DataFrame
+    total_features: pandas.DataFrame = field(repr=False)
+    total_labels: pandas.DataFrame = field(repr=False)
     dataset_filters: Dict[str, Callable[[pandas.DataFrame, pandas.DataFrame], 'pandas.Series[bool]']] = field(repr=False, default_factory=dict)
     metric: Callable[[npt.ArrayLike, npt.ArrayLike], float] = field(repr=False, default=lambda x,y: 0)
     scores: Dict[str, ScenarioScores] = field(default_factory=dict)
-    _filtered_features: Dict[str, pandas.DataFrame] = field(default_factory=dict)
-    _filtered_labels: Dict[str, pandas.DataFrame] = field(default_factory=dict)
+    _filtered_features: Dict[str, pandas.DataFrame] = field(default_factory=dict, repr=False)
+    _filtered_labels: Dict[str, pandas.DataFrame] = field(default_factory=dict, repr=False)
 
-    def __str__(self):
-        res = ""
-        for key, value in self.scores.items():
-            res += f"{key}=\n{textwrap.indent(str(value), chr(9))}"
-        textwrap.indent(res, ' ')
-        return res
     
     def to_json(self):
         return {
@@ -211,7 +210,7 @@ class TrainingRecord:
     scores: Dict[Category, CategoryScores] = field(default_factory=lambda: {category: CategoryScores() for category in Category})
     training_times: List[timedelta] = field(default_factory=list)
     training_sizes: List[int] = field(default_factory=list)
-    all_training_points: pandas.DataFrame = None # type: ignore
+    all_training_points: pandas.DataFrame = field(default=None, repr=False) # type: ignore
     usable_points: int = 0
     attempted_points: int = 0
 
@@ -225,10 +224,14 @@ class TrainingRecord:
 
 def make_score(metric, test_labels, individual_predict_labels, committee_predict_labels) -> Score:
     if committee_predict_labels.shape[0] > 0:
-        committee_score = metric(test_labels, committee_predict_labels)
-        individual_scores = [metric(test_labels, indiv_predict_labels) 
-                            for indiv_predict_labels in individual_predict_labels]
-        return Score(value=committee_score, minimum=min(individual_scores), maximum=max(individual_scores), std=numpy.std(individual_scores)) # type: ignore
+        try:
+            score = metric(individual_predict_labels)
+            return Score(score, score, score)
+        except:
+            committee_score = metric(test_labels, committee_predict_labels)
+            individual_scores = [metric(test_labels, indiv_predict_labels) 
+                                for indiv_predict_labels in individual_predict_labels]
+            return Score(value=committee_score, minimum=min(individual_scores), maximum=max(individual_scores), std=numpy.std(individual_scores)) # type: ignore
     else:
         return Score()
 
