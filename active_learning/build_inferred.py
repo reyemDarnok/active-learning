@@ -23,22 +23,36 @@ print('Read GAP')
 gap_variations = [gap]#[replace(gap, bbch=new_bbch) for new_bbch in range(1,90,10)]
 
 combinations = []
-for compound in compounds:
-    for single_gap in gap_variations:
-        for scenario in Scenario:
-            mod_gap = replace(gap,
-                              number_of_applications=randint(1,3),
-                              interval=randint(7,21),
-                              bbch=randint(1,90),
-                              rate=randint(100,b=1000),
-                              apply_every_n_years=randint(1,3),
-                              )
-            try:
-                combinations.append(Combination(compound=compound, gap=single_gap, scenarios=frozenset([scenario])))
-            except ValueError:
-                pass
+created_combinations = 0
+for _ in range(10):
+    for compound in compounds:
+        for single_gap in gap_variations:
+            for scenario in Scenario:
+                found_combo = False
+                while not found_combo:
+                    mod_gap = replace(gap,
+                                    modelCrop=choice(list(FOCUSCrop)),
+                                    number_of_applications=randint(1,3),
+                                    interval=randint(7,21),
+                                    bbch=randint(1,90),
+                                    rate=randint(100,b=1000),
+                                    apply_every_n_years=randint(1,3),
+                                    )
+                    try:
+                        candidate = Combination(compound=compound, gap=mod_gap, scenarios=frozenset([scenario]))
+                        list(candidate.gap.application_data(next(candidate.scenarios.__iter__())))
+                        
+                    except (ValueError, IndexError):
+                        pass
+                    else:
+                        combinations.append(Combination(compound=compound, gap=mod_gap, scenarios=frozenset([scenario])))
+                        found_combo = True
+                        created_combinations+=1
+                        if created_combinations % 100 == 0:
+                            print(created_combinations)
 
-out_path = Path(__file__).parent.parent / 'ppdb_combinations_open_gap_static crop.json'
+
+out_path = Path(__file__).parent.parent / 'ppdb_combinations_open_gap_var_crop.json'
 if out_path.exists():
    all_combinations = json.loads(out_path.read_text())
 else:

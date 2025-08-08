@@ -57,7 +57,7 @@ def wrong_bin_score(y_true, y_predicted, border: float = -1):
 def neg_wrong_bin_score(y_true, y_predicted, border: float = -1):
     return - wrong_bin_score(y_true, y_predicted, border)
 
-def make_false_negative_metric(split: float = 0.1, greater_is_better = True):
+def make_false_negative_metric(split: float = -1, greater_is_better = True):
     def metric(y_true, y_pred, *, greater_is_better = greater_is_better):
         if len(y_true.shape) > 1:
             y_true = numpy.ravel(y_true)
@@ -72,7 +72,7 @@ def make_false_negative_metric(split: float = 0.1, greater_is_better = True):
         return score
     return metric
 
-def make_false_positive_metric(split: float = 0.1, greater_is_better = True):
+def make_false_positive_metric(split: float = -1, greater_is_better = True):
     def metric(y_true, y_pred, *, greater_is_better = greater_is_better):
         if len(y_true.shape) > 1:
             y_true = numpy.ravel(y_true)
@@ -82,6 +82,52 @@ def make_false_positive_metric(split: float = 0.1, greater_is_better = True):
             score = sum(should_be_over < split) / should_be_over.shape[0]
         else:
             score = 0
+        if greater_is_better:
+            score *= -1
+        return score
+    return metric
+
+def make_long_jump_metric(lower_bound: float = -1.5, upper_bound: float = -0.5, greater_is_better = True):
+    def metric(y_true, y_pred, *, greater_is_better = greater_is_better):
+        if len(y_true.shape) > 1:
+            y_true = numpy.ravel(y_true)
+            y_pred = numpy.ravel(y_pred)
+        true_value_in_lower_indexes = y_true < lower_bound
+        true_value_in_higher_indexes = y_true > upper_bound
+        true_value_in_middle = (y_true > lower_bound) & (y_true < upper_bound)
+        jumps_upward = y_pred[true_value_in_lower_indexes] > upper_bound
+        jumps_downward = y_pred[true_value_in_higher_indexes] < lower_bound
+        jumps_from_middle = numpy.abs(y_pred[true_value_in_middle] - y_true[true_value_in_middle]) > (upper_bound - lower_bound / 2) & ((y_pred[true_value_in_middle] > upper_bound) | (y_pred[true_value_in_middle] < lower_bound))
+        score = (jumps_downward.sum() + jumps_upward.sum() + jumps_from_middle.sum()) / y_true.shape[0]
+        
+        if greater_is_better:
+            score *= -1
+        return score
+    return metric
+
+def make_up_jump_metric(lower_bound: float = -1.5, upper_bound: float = -0.5, greater_is_better = True):
+    def metric(y_true, y_pred, *, greater_is_better = greater_is_better):
+        if len(y_true.shape) > 1:
+            y_true = numpy.ravel(y_true)
+            y_pred = numpy.ravel(y_pred)
+        true_value_in_lower_indexes = y_true < lower_bound
+        jumps_upward = y_pred[true_value_in_lower_indexes] > upper_bound
+        score = jumps_upward.sum() / jumps_upward.shape[0]
+        
+        if greater_is_better:
+            score *= -1
+        return score
+    return metric
+
+def make_down_jump_metric(lower_bound: float = -1.5, upper_bound: float = -0.5, greater_is_better = True):
+    def metric(y_true, y_pred, *, greater_is_better = greater_is_better):
+        if len(y_true.shape) > 1:
+            y_true = numpy.ravel(y_true)
+            y_pred = numpy.ravel(y_pred)
+        true_value_in_higher_indexes = y_true > upper_bound
+        jumps_downward = y_pred[true_value_in_higher_indexes] < lower_bound
+        score = jumps_downward.sum() / jumps_downward.shape[0]
+        
         if greater_is_better:
             score *= -1
         return score
@@ -161,6 +207,7 @@ def make_custom_rmse_metric(
             
     return metric
 
+
 def pec_std_metric(committee_pred: List[NDArray],  *, greater_is_better = True, input_weights = None):
     if input_weights is None:
         input_weights = numpy.ones_like(committee_pred[0].shape)
@@ -182,6 +229,7 @@ def pec_interval_metric(committee_pred: List[NDArray],  *, greater_is_better = T
     if greater_is_better:
         score *= -1
     return score
+
 
 
 def is_outlier(points, thresh=3.5):

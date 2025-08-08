@@ -170,6 +170,10 @@ def train_learner(learner: BaseCommittee,
     custom_rmse_metric = stats.make_custom_rmse_metric(greater_is_better= False)
     false_negative_metric = stats.make_false_negative_metric(greater_is_better = False)
     false_positive_metric = stats.make_false_positive_metric(greater_is_better = False)
+    long_jump_metric = stats.make_long_jump_metric(greater_is_better=True)
+    up_jump_metric = stats.make_up_jump_metric(greater_is_better=True)
+    down_jump_metric = stats.make_down_jump_metric(greater_is_better=True)
+
 
     result = ml.TrainingRecord(
         model = learner,
@@ -181,6 +185,9 @@ def train_learner(learner: BaseCommittee,
                "false negative": false_negative_metric, "R²": r2_score, 
                "RMSE": root_mean_squared_error,
                "custom RMSE": custom_rmse_metric,
+               "Long jumps": long_jump_metric,
+               "Upwards jumps": up_jump_metric,
+               "Downwards jumps": down_jump_metric,
                "PEC std": partial(stats.pec_std_metric, greater_is_better=False),
                "PEC Intervall": partial(stats.pec_interval_metric, greater_is_better=False)}
 
