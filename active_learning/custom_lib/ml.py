@@ -9,6 +9,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Callable, Dict, Generator, Iterable, List, NoReturn, Optional, Sequence, Tuple
 from datetime import timedelta
 from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
 
 import pandas
 from sys import path
@@ -23,7 +24,8 @@ from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.pelmo.generation_definition import Definition
 from modAL.models.base import BaseCommittee
 from modAL.utils.selection import multi_argmax
- 
+from modAL.models import CommitteeRegressor
+
 
 class PartialScaler:
     def __init__(self, to_exclude: Sequence[str], **scaler_kwargs):
@@ -42,7 +44,29 @@ class PartialScaler:
         for name, column in passthrough_columns.items():
             res[name] =[int(x) for x in column]
         return res
+    
+class ThreadPoolCommitteeRegressor(CommitteeRegressor):
+    def _fit_to_known(self, bootstrap: bool = False, **fit_kwargs) -> None:
+        pool = ThreadPoolExecutor(thread_name_prefix="Trainer_committee_model", max_workers=len(self.learner_list))
+        for learner in self.learner_list:
+            pool.submit(learner._fit_to_known, bootstrap=bootstrap, **fit_kwargs)
+        pool.shutdown()
 
+    def _fit_on_new(self, X, y, bootstrap: bool = False, **fit_kwargs) -> None:
+        pool = ThreadPoolExecutor(thread_name_prefix="Trainer_committee_model", max_workers=len(self.learner_list))
+
+        for learner in self.learner_list:
+            pool.submit(learner._fit_on_new, X, y, bootstrap=bootstrap, **fit_kwargs)
+        pool.shutdown()
+
+    def fit(self, X, y, **fit_kwargs) -> 'ThreadPoolCommitteeRegressor':
+        pool = ThreadPoolExecutor(thread_name_prefix="Trainer_committee_model", max_workers=len(self.learner_list))
+
+        for learner in self.learner_list:
+            pool.submit(learner.fit, X, y, **fit_kwargs)
+        pool.shutdown()
+        return self
+   
 def split_into_data_and_label(dataset: pandas.DataFrame) -> tuple[pandas.DataFrame, pandas.DataFrame]:
     #pecs = dataset.columns[dataset.columns.str.endswith('.pec')]
     pecs = ["parent.pec"]
@@ -129,8 +153,8 @@ class ScenarioScores:
        return str(self.combined[-1] if self.combined else {})
     
     def to_json(self):
-        return {"combined": self.combined[-1].to_json() if self.combined else {},
-                "scenarios": {key.name: value[-1].to_json() for key, value in self.scenarios.items() if value and not numpy.isnan(value[-1].value)}
+        return {"combined": [x.to_json() for x in self.combined],
+                "scenarios": {key.name:  [x.to_json() for x in value] for key, value in self.scenarios.items() if value and not numpy.isnan(value[-1].value)}
                 }
 
     def update_scores(self, learner: BaseCommittee, test_labels: pandas.DataFrame, test_features: pandas.DataFrame) -> None:
@@ -154,6 +178,21 @@ class ScenarioScores:
                     individual_predict_labels=individual_predict_labels, 
                     committee_predict_labels=committee_predict_labels)
                     )
+        
+        def load_old(self, old, size):
+            self.combined = [Score(**value) for value in old['combined']]
+            for key in self.scenarios.keys():
+                if key in old['scenarios']:
+                    self.scenarios[key] = [Score(**value) for value in old['scenarios'][key]]
+                else:
+                    self.scenarios[key] = [Score()] * size
+
+        def dummy_old(self, size):
+            self.combined = [Score()] * size
+
+            for key in self.scenarios.keys():
+                self.scenarios[key] = [Score()] * size
+
 
 @dataclass
 class DatasetScores:
@@ -196,8 +235,20 @@ class DatasetScores:
         for name, scores in self.scores.items():
             scores.update_scores(learner=learner, test_labels=self._filtered_labels[name], test_features=self._filtered_features[name])
 
+    def load_old(self, old, size):
+        for key, value in self.scores.items():
+            if key in old:
+                value.load_old(old[key], size)
+            else:
+                value.dummy_old(size)
+
+    def dummy_old(self, size):
+        for value in self.scores.values():
+            value.dummy_old(size)
+
+
 class Category(str, Enum):
-    TRAIN = "Internal Test"
+    TRAIN = "Internal Train"
     CONFIRM = "External Test"
 
 @dataclass
@@ -208,6 +259,17 @@ class CategoryScores:
         return {
             key: value.to_json() for key, value in self.dataset_scores.items()
         }
+    
+    def load_old(self, old, size):
+        for key, value in self.dataset_scores.items():
+            if key in old:
+                value.load_old(old[key], size)
+            else:
+                value.dummy_old(size)
+
+    def dummy_old(self, size):
+        for value in self.dataset_scores.values():
+            value.dummy_old(size)
 
 @dataclass
 class TrainingRecord:
@@ -224,8 +286,21 @@ class TrainingRecord:
         
         return {"batchsize": self.batchsize, 
                 "scores": {key: value.to_json() for key, value in self.scores.items()},
-                "training_size": self.training_sizes[-1]
+                "training_times": [x.total_seconds() for x in self.training_times],
+                "training_sizes": self.training_sizes
                 }
+    
+    def load_old_record(self, old: Dict):
+        if 'training_sizes' in old:
+            self.training_sizes = old['training_sizes']
+            self.training_times = [timedelta(seconds=x) for x in old['training_times']]
+            for key, value in self.scores.items():
+                if key in old['scores']:
+                    value.load_old(old['scores'][key], len(self.training_sizes))
+                else:
+                    value.dummy_old(len(self.training_sizes))
+        else:
+            self.training_sizes = [old['training_size']]
  
 
 def make_score(metric, test_labels, individual_predict_labels, committee_predict_labels) -> Score:
@@ -248,4 +323,5 @@ def skewed_std_sampling(regressor: BaseCommittee, X: pandas.DataFrame, n_instanc
     falloff = 2
     predicts, std = regressor.predict(X, return_std=True) # type: ignore
     weights = numpy.maximum(min_weight, max_weight - numpy.abs(predicts - skew_target) * falloff) * std
+    regressor.X_training
     return multi_argmax(weights, n_instances=n_instances)

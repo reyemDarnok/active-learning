@@ -1,29 +1,33 @@
-{
-  "gap": {
-    "type": "relative",
-    "arguments": {
-      "modelCrop": "WC",
-      "number_of_applications": 2,
-      "interval": 14,
-      "rate": 250,
-      "bbch": 31,
-      "apply_every_n_years": 1
-    }
-  },
-  "scenarios": ["C"],
-  "compound": {
-    "molarMass": 300,
-    "water_solubility": 110.7581,
-    "vapor_pressure": 0.00017,
-    "reference_temperature": 20,
-    "koc": 54.68,
-    "freundlich": 0.92058,
-    "plant_uptake": 0,
-    "dt50": {
-      "system": 6,
-      "soil": 41.12,
-      "surfaceWater": 6,
-      "sediment": 6
+[
+  {
+    "gap": {
+      "type": "relative",
+      "arguments": {
+        "modelCrop": "WC",
+        "number_of_applications": 2,
+        "interval": 14,
+        "rate": 250,
+        "bbch": 31,
+        "apply_every_n_years": 1
+      }
+    },
+    "scenarios": [
+      "C"
+    ],
+    "compound": {
+      "molarMass": 300,
+      "water_solubility": 110.7581,
+      "vapor_pressure": 0.00017,
+      "reference_temperature": 20,
+      "koc": 54.68,
+      "freundlich": 0.92058,
+      "plant_uptake": 0,
+      "dt50": {
+        "system": 6,
+        "soil": 41.12,
+        "surfaceWater": 6,
+        "sediment": 6
+      }
     }
   }
-}
+]

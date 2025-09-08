@@ -97,7 +97,7 @@ def make_long_jump_metric(lower_bound: float = -1.5, upper_bound: float = -0.5, 
         true_value_in_middle = (y_true > lower_bound) & (y_true < upper_bound)
         jumps_upward = y_pred[true_value_in_lower_indexes] > upper_bound
         jumps_downward = y_pred[true_value_in_higher_indexes] < lower_bound
-        jumps_from_middle = numpy.abs(y_pred[true_value_in_middle] - y_true[true_value_in_middle]) > (upper_bound - lower_bound / 2) & ((y_pred[true_value_in_middle] > upper_bound) | (y_pred[true_value_in_middle] < lower_bound))
+        jumps_from_middle = (numpy.abs(y_pred[true_value_in_middle] - y_true[true_value_in_middle]) > (upper_bound - lower_bound / 2)) & ((y_pred[true_value_in_middle] > upper_bound) | (y_pred[true_value_in_middle] < lower_bound))
         score = (jumps_downward.sum() + jumps_upward.sum() + jumps_from_middle.sum()) / y_true.shape[0]
         
         if greater_is_better:

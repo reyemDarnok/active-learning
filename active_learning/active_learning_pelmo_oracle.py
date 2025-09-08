@@ -8,14 +8,17 @@ from os import cpu_count
 import pickle
 import random
 import tempfile
+import math
 from uuid import uuid4
 import pandas
 from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import LinearRegression
 from custom_lib import data, ml, stats, vis
 from pathlib import Path
 import numpy as np
+from numpy.typing import NDArray
 from datetime import datetime, timedelta
-from typing import Any, Callable, Generator, List, NoReturn, Optional, Sequence, Tuple, Dict
+from typing import Any, Callable, Generator, List, NoReturn, Optional, Sequence, Tuple, Dict, TypeVar
 
 import matplotlib
 matplotlib.use('Agg')
@@ -60,11 +63,15 @@ test_data_critical = data.between_filter_raw(test_data)
 test_features, test_labels = ml.split_into_data_and_label_raw(test_data_filtered)
 test_features_critical, test_labels_critical = ml.split_into_data_and_label_raw(test_data_critical)
 
+def mechanistic_preprocessing(X: pandas.DataFrame, y=None):
+    X.columns
+    return X
+
 
 def parse_args():
     parser = ArgumentParser()
     parser.add_argument('--bootstrap', type=int, default=1, help="How many batches to use to bootstrap the models")
-    parser.add_argument('--batch', type=int, default = 12, help="How many batches to run as a group when training")
+    parser.add_argument('--batch', type=int, default = 1, help="How many batches to run as a group when training")
     parser.add_argument('--total-points', type=int, default=1000, help="How many points to train on")
     parser.add_argument('--oversampling', type=float, default=20, help="Training chooses x points from x*oversampling options")
     parser.add_argument('--models-in-committee', type=int, default=10, help="How many models are in the committee")
@@ -90,14 +97,18 @@ def main():
     template = Definition.parse(json.loads(args.template_path.read_text()))
 
 
-    for _ in range(1):
+    pkl_file = args.results_dir / args.name / 'catboost' / 'model.pkl'
+    if pkl_file.exists():
+        with pkl_file.open('rb') as pkl:
+            learner = pickle.load(pkl)
+    else:
         learner = setup_learner(template=template, models_in_committee=models_in_committee, bootstrap_size=bootstrap_size, name=args.name, result_dir=args.results_dir, catboost_iter=args.catboost_iter)
-        t = train_learner(learner=learner, batchsize=batchsize,
-                           oversampling_factor=oversampling_factor, 
-                           validation_features=test_features, validation_labels=test_labels,
-                             template=template, total_points=total_points,
-                             save_name=args.name, save_dir=args.results_dir)
-        print(str(t))
+    t = train_learner(learner=learner, batchsize=batchsize,
+                        oversampling_factor=oversampling_factor, 
+                        validation_features=test_features, validation_labels=test_labels,
+                            template=template, total_points=total_points,
+                            save_name=args.name, save_dir=args.results_dir)
+    print(str(t))
 
 def make_pd(X, y=None):
     res =  pandas.DataFrame(X, columns=['parent.dt50.sediment', 'parent.dt50.soil', 'parent.dt50.surfaceWater', 'parent.dt50.system', 'parent.freundlich', 'parent.henry', 'parent.koc', 'parent.molarMass', 'parent.plant_uptake', 'parent.reference_temperature', 'parent.vapor_pressure', 'parent.water_solubility', 'gap.arguments.apply_every_n_years', 'gap.arguments.bbch', 'gap.arguments.interval', 'gap.arguments.modelCrop', 'gap.arguments.number_of_applications', 'gap.arguments.rate', 'gap.arguments.season', 'scenario', 'parent.log_henry'])
@@ -105,14 +116,6 @@ def make_pd(X, y=None):
 
 @ignore_warnings()
 def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int, name: str, result_dir: Path, catboost_iter: int) -> BaseCommittee:
-    #model = HistGradientBoostingRegressor()
-    #oneHotEncoder = ColumnTransformer(
-    #    transformers=[
-    #        ('scenario',OneHotEncoder(categories=[[x.name for x in Scenario]]),  ['scenario']),
-    #        ('crop', OneHotEncoder(categories=[[x.name for x in FOCUSCrop]]), ['gap.arguments.modelCrop'])
-    #        ],
-    #    remainder='passthrough'
-    #)
    
 
     learner_list = []
@@ -121,9 +124,9 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
     print(catboost_base.absolute())
     for index in range(models_in_committee):
         cat_features = ['scenario', 'gap.arguments.modelCrop']
-        cpus = cpu_count()
+        cpus_available = cpu_count() - 1 if cpu_count() is not None else 1 # type: ignore
         metrics = [ "R2", "RMSE"]
-        model = CatBoostRegressor(iterations=catboost_iter, thread_count=cpus - 1 if cpus is not None else 1, 
+        model = CatBoostRegressor(iterations=catboost_iter, thread_count=math.ceil(cpus_available / models_in_committee), 
                                   cat_features=cat_features,name=f"Committee Member {index}", 
                                   train_dir=catboost_base / str(index),
                                   #save_snapshot=True,
@@ -133,7 +136,7 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
                                   custom_metric=metrics,
                                   #silent=True,
                                   loss_function="RMSE")
-        pipeline = make_pipeline(FunctionTransformer(data.transform), ml.PartialScaler(to_exclude=cat_features, copy=False), model)
+        pipeline = make_pipeline(FunctionTransformer(data.transform), FunctionTransformer(mechanistic_preprocessing), ml.PartialScaler(to_exclude=cat_features, copy=False), model)
         while True:
             combinations, _ = ml.generate_features(template=template, number=bootstrap_size)
             evaluated = ml.evaluate_features(features=combinations)
@@ -145,12 +148,13 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
             X_training=features,
             y_training=labels
         )
+        committee_member.bootstrap_evaluated = evaluated # type: ignore
         learner_list.append(committee_member)
         print(f"created committee member {index} at", datetime.now(), f" with {features.shape[0]} bootstrap points")
-    return CommitteeRegressor(
+    return ml.ThreadPoolCommitteeRegressor(
         learner_list = learner_list,
-        query_strategy=max_std_sampling, 
-    ) # type: ignore a base committee fulfills BaseLearners contract, the subclassing is just wrong
+        query_strategy=ml.skewed_std_sampling, 
+    ) # type: ignore 
 
 
 def true_index(features, labels):
@@ -170,9 +174,9 @@ def train_learner(learner: BaseCommittee,
     custom_rmse_metric = stats.make_custom_rmse_metric(greater_is_better= False)
     false_negative_metric = stats.make_false_negative_metric(greater_is_better = False)
     false_positive_metric = stats.make_false_positive_metric(greater_is_better = False)
-    long_jump_metric = stats.make_long_jump_metric(greater_is_better=True)
-    up_jump_metric = stats.make_up_jump_metric(greater_is_better=True)
-    down_jump_metric = stats.make_down_jump_metric(greater_is_better=True)
+    long_jump_metric = stats.make_long_jump_metric(greater_is_better=False)
+    up_jump_metric = stats.make_up_jump_metric(greater_is_better=False)
+    down_jump_metric = stats.make_down_jump_metric(greater_is_better=False)
 
 
     result = ml.TrainingRecord(
@@ -184,7 +188,7 @@ def train_learner(learner: BaseCommittee,
     metrics = {"custom": custom_metric, "false positive": false_positive_metric, 
                "false negative": false_negative_metric, "R²": r2_score, 
                "RMSE": root_mean_squared_error,
-               "custom RMSE": custom_rmse_metric,
+               "Custom RMSE": custom_rmse_metric,
                "Long jumps": long_jump_metric,
                "Upwards jumps": up_jump_metric,
                "Downwards jumps": down_jump_metric,
@@ -199,6 +203,10 @@ def train_learner(learner: BaseCommittee,
 
         result.scores[ml.Category.CONFIRM].dataset_scores[name] = ml.DatasetScores(total_features=validation_features, total_labels=validation_labels, dataset_filters=dataset_filters, metric=metric)
         result.scores[ml.Category.TRAIN].dataset_scores[name] = ml.DatasetScores(total_features=test_features, total_labels=test_labels, dataset_filters=dataset_filters, metric=metric)
+    old_record = save_dir / 'results' / 'record.json'
+    if old_record.exists():
+        with old_record.open() as old:
+            result.load_old_record(json.load(old))
     while not result.training_sizes or result.training_sizes[-1] < total_points:
         features, labels = make_training_data(learner=learner, batchsize=batchsize, oversampling_factor=oversampling_factor, template=template, total_points=total_points, result=result)
 
@@ -217,7 +225,7 @@ def train_learner(learner: BaseCommittee,
 
         end_score = datetime.now()
         score_time += end_score - end_teach
-        save_training(result, save_dir=save_dir, save_name=save_name)
+        save_training(result, save_dir=save_dir, save_name=save_name, validation_features=validation_features, validation_labels=validation_labels)
         print(result.training_sizes[-1])
 
     return result
@@ -251,15 +259,21 @@ def make_training_data(learner, batchsize, oversampling_factor, template, total_
     
 
 
-def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path):
+def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path, validation_features, validation_labels):
+    catboost_dir = save_dir / save_name / "catboost"
     save_dir = save_dir / save_name / "results"
     save_dir.mkdir(exist_ok=True, parents=True)
     if record.all_training_points is not None:
         record.all_training_points.to_csv(save_dir / 'training_data.csv')
     print(f"Writing results to {save_dir}")
-    with (save_dir / "model.pkl").open('wb') as picklefile:
+    with (catboost_dir / "model.pkl").open('wb') as picklefile:
         pickle.dump(record.model, picklefile)
-    (save_dir / "record.json").write_text(str(record.to_json()))
+    with open(save_dir / "record.json", 'w') as json_out:
+        json.dump(record.to_json(), json_out)
+    
+    visualise_predictions(model=record.model, validation_features=validation_features, validation_labels=validation_labels, save_dir=save_dir, category=ml.Category.CONFIRM)
+    training_features, training_labels = ml.split_into_data_and_label_raw(record.all_training_points)
+    visualise_predictions(model=record.model, validation_features=training_features, validation_labels=training_labels, save_dir=save_dir, category=ml.Category.TRAIN)
     plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
     plt.ylabel("Training time in seconds")
     plt.xlabel("Trained Data Points")
@@ -269,6 +283,30 @@ def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path):
     for metric in record.scores[ml.Category.TRAIN].dataset_scores.keys():
         visualise_metric(record=record, save_dir=save_dir, metric=metric)
 
+def visualise_predictions(model, validation_features, validation_labels, save_dir: Path, category: ml.Category):
+    plot_dir = save_dir / 'predictions' / category.value
+    plot_dir.mkdir(exist_ok=True, parents=True)
+    predictions = model.predict(validation_features)
+    lowest = min(*predictions, *np.ravel(validation_labels))
+    highest = max(*predictions, *np.ravel(validation_labels))
+    plt.scatter(np.ravel(validation_labels), predictions, s=0.2)
+    plt.plot([lowest, highest], [lowest, highest], color='red')
+    plt.xlabel('True Values')
+    plt.ylabel('Model Predictions')
+    plt.title(f'Performance of the Model on the {category.value} Set')
+    plt.savefig(plot_dir / 'all.svg', bbox_inches='tight')
+    plt.close('all')
+    for index, scenario in enumerate(Scenario):
+        scenario_index = (validation_features['combination.scenarios.0'] == scenario.name) | (validation_features['combination.scenarios.0'] == index) 
+        predictions = model.predict(validation_features[scenario_index])
+        truth = validation_labels[scenario_index]
+        plt.scatter(truth, predictions, s=0.5)
+        plt.plot([lowest, highest], [lowest, highest], color='red')
+        plt.xlabel('True Values')
+        plt.ylabel('Model Predictions')
+        plt.title(f'Performance of the Model on the {category.value} Set')
+        plt.savefig(plot_dir / f'{scenario.name}.svg', bbox_inches='tight')
+        plt.close('all')
 
 def visualise_metric(record: ml.TrainingRecord, save_dir: Path, metric: str) -> None:
     datasets = next(iter(record.scores[ml.Category.TRAIN].dataset_scores.values())).scores.keys()
@@ -277,65 +315,148 @@ def visualise_metric(record: ml.TrainingRecord, save_dir: Path, metric: str) -> 
         visualise_model_diagnostics(record=record, save_dir=save_dir, metric=metric, dataset=dataset, category=category)
    
 
+def visualise_std_diagnostic(scenario_scores: ml.ScenarioScores, training_sizes: List[int], selection_path: Path, metric: str, dataset: str, category: ml.Category):
+    for scenario in Scenario:
+        if scenario_scores.scenarios[scenario]:
+            std, _ = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.scenarios[scenario]])
+            plt.plot(training_sizes, std, label=f"Scenario {scenario.value} Standard Deviation")
+
+    std, _ = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.combined])
+    plt.plot(training_sizes, std, label=f"All Scenarios Combined Standard Deviation")
+
+    plt.title(f"{metric} Standard Deviation Diagnostics on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(selection_path /  "std.svg", bbox_inches='tight')
+    plt.close('all')
+    
+    plt.plot(training_sizes, std, label=f"All Scenarios Combined Standard Deviation")
+
+    plt.title(f"{metric} Standard Deviation Diagnostics on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(selection_path / "std_only_combined.svg", bbox_inches='tight')
+    plt.close('all')
+
+def visualise_interval_diagnostic(scenario_scores: ml.ScenarioScores, training_sizes: List[int], selection_path: Path, metric: str, dataset: str, category: ml.Category):
+    for scenario in Scenario:
+        if scenario_scores.scenarios[scenario]:
+            _, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.scenarios[scenario]])
+            plt.plot(training_sizes, diff, label=f"Scenario {scenario.value} Prediction Interval")
+
+    _, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.combined])
+    plt.plot(training_sizes, diff, label=f"All Scenarios Combined Prediction Interval")
+
+    plt.title(f"{metric} Prediction Interval Diagnostics on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(selection_path / 'interval.svg', bbox_inches='tight')
+    plt.close('all')
+    
+    plt.plot(training_sizes, diff, label=f"All Scenarios Combined Prediction Interval")
+
+    plt.title(f"{metric} Prediction Interval Diagnostics on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(selection_path / 'interval_only_combined.svg', bbox_inches='tight')
+    plt.close('all')
+
+T = TypeVar('T')
+
+def walk_slices(sequence: NDArray, length: int) -> Generator[NDArray, None, None]:
+    for i in range(length, len(sequence)):
+        yield sequence[i-length:i]
+
+def visualise_slope_diagnostics(scenario_scores: ml.ScenarioScores, training_sizes: List[int], selection_path: Path, metric: str, dataset: str, category: ml.Category, slope_length: int):
+    regression = LinearRegression()
+    for scenario in Scenario:
+        curr_scores = np.array([score.value for score in scenario_scores.scenarios[scenario]])
+        training_copy = np.array(training_sizes)
+        nan_index = np.isnan(curr_scores)
+        curr_scores = curr_scores[~nan_index]
+        training_copy = training_copy[~nan_index] 
+        if curr_scores.shape[0] > 1:
+            points = [(regression.fit(x.reshape(-1,1),y.reshape(-1,1)), regression.coef_[0])[1] 
+                      for x, y in zip(walk_slices(training_copy, slope_length), 
+                                      walk_slices(curr_scores,slope_length))]
+            plt.plot(training_copy[slope_length:], points, label=f"Scenario {scenario.value} Best Slope for last {slope_length} scores".title())
+
+    curr_scores = np.array([score.value for score in scenario_scores.combined])
+    training_copy = np.array(training_sizes)
+    nan_index = np.isnan(curr_scores)
+    curr_scores = curr_scores[~nan_index]
+    training_copy = training_copy[~nan_index] 
+    if curr_scores.shape[0] > 1:
+        points = [(regression.fit([[value] for value in x],y), regression.coef_[0])[1] 
+                    for x, y in zip(walk_slices(training_copy, slope_length), # type: ignore
+                                    walk_slices(curr_scores,slope_length))] # type: ignore    
+        plt.plot(training_copy[slope_length:], points, label=f"All Scenarios Combined Best Slope for last {slope_length} scores".title())
+        plt.plot([training_copy[0], training_copy[-1]], [0,0], color='red')
+        plt.title(f"{metric} Best Slope for last {slope_length} Diagnostics on {dataset} {category.value} data".title())
+        plt.xlabel("Trained Data Points")
+        plt.ylabel(f"{metric} score slope".title())
+        plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+        plt.savefig(selection_path / f'slope_{slope_length}.svg', bbox_inches='tight')
+        plt.close('all')
+
+        plt.plot(training_copy[slope_length:], points, label=f"All Scenarios Combined Best Slope for last {slope_length} scores".title())
+        plt.plot([training_copy[0], training_copy[-1]], [0,0], color='red')
+        plt.title(f"{metric} Best Slope for last {slope_length} Diagnostics on {dataset} {category.value} data".title())
+        plt.xlabel("Trained Data Points")
+        plt.ylabel(f"{metric} score slope".title())
+        plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+        plt.savefig(selection_path / f'slope_{slope_length}_only_combined.svg', bbox_inches='tight')
+        plt.close('all')
+
+def visualise_progression_diagnostics(scenario_scores: ml.ScenarioScores, training_sizes: List[int], selection_path: Path, metric: str, dataset: str, category: ml.Category):
+    for scenario in Scenario:
+        if scenario_scores.scenarios[scenario]:
+            numpy_scores = np.array([s.value for s in scenario_scores.scenarios[scenario]])
+            offset_scores = numpy_scores[1:]
+            differences = numpy_scores[:-1] - offset_scores
+            plt.plot(training_sizes[1:], differences, label=f"Scenario {scenario.value} Score Change")
+
+    numpy_scores = np.array([s.value for s in scenario_scores.combined])
+    offset_scores = numpy_scores[1:]
+    differences = numpy_scores[:-1] - offset_scores
+    plt.plot(training_sizes[1:], differences, label=f"All Scenarios Combined Score Change")            
+    plt.title(f"{metric} Score Change Diagnostics on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(selection_path / 'change.svg', bbox_inches='tight')
+    plt.close('all')
+
+
+    plt.plot(training_sizes[1:], differences, label=f"All Scenarios Combined Score Change")            
+    plt.title(f"{metric} Score Change Diagnostics on {dataset} {category.value} data".title())
+    plt.xlabel("Trained Data Points")
+    plt.ylabel(f"{metric} score".title())
+    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    plt.savefig(selection_path / 'change_only_combined.svg', bbox_inches='tight')
+    plt.close('all')
+
 def visualise_model_diagnostics(record: ml.TrainingRecord, category: ml.Category,  save_dir: Path, metric: str, dataset: str):
-    scoring = record.scores[category].dataset_scores
-    scenario_scores = scoring[metric].scores[dataset]
-    selection_path = save_dir / category.value / dataset / metric
+    scenario_scores = record.scores[category].dataset_scores[metric].scores[dataset]
+    selection_path = save_dir / category.value / dataset / metric / 'diagnostics'
     selection_path.mkdir(exist_ok=True, parents=True)
-    for scenario in Scenario:
-        if scenario_scores.scenarios[scenario]:
-            std, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.scenarios[scenario]])
-            plt.plot(record.training_sizes, std, label=f"Scenario {scenario.value} Standard Deviation")
+    visualise_std_diagnostic(scenario_scores=scenario_scores, training_sizes=record.training_sizes, selection_path=selection_path, metric=metric, dataset=dataset, category=category)
+    visualise_interval_diagnostic(scenario_scores=scenario_scores, training_sizes=record.training_sizes, selection_path=selection_path, metric=metric, dataset=dataset, category=category)
+    visualise_progression_diagnostics(scenario_scores=scenario_scores, training_sizes=record.training_sizes, selection_path=selection_path, metric=metric, dataset=dataset, category=category)
+    for slope_length in (5, 10, 20):
+        visualise_slope_diagnostics(scenario_scores=scenario_scores, training_sizes=record.training_sizes, selection_path=selection_path, metric=metric, dataset=dataset, category=category, slope_length=slope_length)
 
-    std, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.combined])
-    plt.plot(record.training_sizes, std, label=f"All Scenarios Combined Standard Deviation")
-
-    plt.title(f"{metric} Standard Deviation Diagnostics on {dataset} {category.value} data".title())
-    plt.xlabel("Trained Data Points")
-    plt.ylabel(f"{metric} score".title())
-    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(selection_path /  "diagnostics_std.svg", bbox_inches='tight')
-    plt.close('all')
-    
-    plt.plot(record.training_sizes, std, label=f"All Scenarios Combined Standard Deviation")
-
-    plt.title(f"{metric} Standard Deviation Diagnostics on {dataset} {category.value} data".title())
-    plt.xlabel("Trained Data Points")
-    plt.ylabel(f"{metric} score".title())
-    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(selection_path / "diagnostics_std_only_combined.svg", bbox_inches='tight')
-    plt.close('all')
-
-    for scenario in Scenario:
-        if scenario_scores.scenarios[scenario]:
-            std, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.scenarios[scenario]])
-            plt.plot(record.training_sizes, diff, label=f"Scenario {scenario.value} Prediction Interval")
-
-    std, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.combined])
-    plt.plot(record.training_sizes, diff, label=f"All Scenarios Combined Prediction Interval")
-
-    plt.title(f"{metric} Prediction Interval Diagnostics on {dataset} {category.value} data".title())
-    plt.xlabel("Trained Data Points")
-    plt.ylabel(f"{metric} score".title())
-    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(selection_path / 'diagnostics_interval.svg', bbox_inches='tight')
-    plt.close('all')
-    
-    plt.plot(record.training_sizes, diff, label=f"All Scenarios Combined Prediction Interval")
-
-    plt.title(f"{metric} Prediction Interval Diagnostics on {dataset} {category.value} data".title())
-    plt.xlabel("Trained Data Points")
-    plt.ylabel(f"{metric} score".title())
-    plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(selection_path / 'diagnostics_interval_only_combined.svg', bbox_inches='tight')
-    plt.close('all')
 
     
 
 def visualise_metric_dataset(record: ml.TrainingRecord, category: ml.Category,  save_dir: Path, metric: str, dataset: str):
     scoring = record.scores[category].dataset_scores
     scenario_scores = scoring[metric].scores[dataset]
-    selection_path = save_dir / category.value / dataset / metric
+    selection_path = save_dir / category.value / dataset / metric / 'score'
     selection_path.mkdir(exist_ok=True, parents=True)
     maxima = []
     for scenario in Scenario:
@@ -371,7 +492,7 @@ def visualise_metric_dataset(record: ml.TrainingRecord, category: ml.Category,  
     plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
     plt.fill_between(record.training_sizes, minimum, maximum, alpha=0.2)
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(selection_path / 'score.svg', bbox_inches='tight')
+    plt.savefig(selection_path / 'all.svg', bbox_inches='tight')
     plt.close('all')
 
     if maxima:
@@ -395,7 +516,7 @@ def visualise_metric_dataset(record: ml.TrainingRecord, category: ml.Category,  
     plt.plot(record.training_sizes, scores, label=f"All Scenarios Combined")
     plt.fill_between(record.training_sizes, minimum, maximum, alpha=0.2)
     plt.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    plt.savefig(selection_path / 'score_only_combined.svg', bbox_inches='tight')
+    plt.savefig(selection_path / 'only_combined.svg', bbox_inches='tight')
     plt.close('all')
 
 
