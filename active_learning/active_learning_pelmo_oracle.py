@@ -272,7 +272,7 @@ def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path, val
         json.dump(record.to_json(), json_out)
     
     visualise_predictions(model=record.model, validation_features=validation_features, validation_labels=validation_labels, save_dir=save_dir, category=ml.Category.CONFIRM)
-    training_features, training_labels = ml.split_into_data_and_label_raw(record.all_training_points)
+    training_features, training_labels = data.prep_dataset(record.all_training_points)
     visualise_predictions(model=record.model, validation_features=training_features, validation_labels=training_labels, save_dir=save_dir, category=ml.Category.TRAIN)
     plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
     plt.ylabel("Training time in seconds")
@@ -297,16 +297,17 @@ def visualise_predictions(model, validation_features, validation_labels, save_di
     plt.savefig(plot_dir / 'all.svg', bbox_inches='tight')
     plt.close('all')
     for index, scenario in enumerate(Scenario):
-        scenario_index = (validation_features['combination.scenarios.0'] == scenario.name) | (validation_features['combination.scenarios.0'] == index) 
-        predictions = model.predict(validation_features[scenario_index])
-        truth = validation_labels[scenario_index]
-        plt.scatter(truth, predictions, s=0.5)
-        plt.plot([lowest, highest], [lowest, highest], color='red')
-        plt.xlabel('True Values')
-        plt.ylabel('Model Predictions')
-        plt.title(f'Performance of the Model on the {category.value} Set')
-        plt.savefig(plot_dir / f'{scenario.name}.svg', bbox_inches='tight')
-        plt.close('all')
+        scenario_index: pandas.Series = (validation_features['combination.scenarios.0'] == scenario.name) | (validation_features['combination.scenarios.0'] == index) 
+        if scenario_index.any():
+            predictions = model.predict(validation_features[scenario_index])
+            truth = validation_labels[scenario_index]
+            plt.scatter(truth, predictions, s=0.5)
+            plt.plot([lowest, highest], [lowest, highest], color='red')
+            plt.xlabel('True Values')
+            plt.ylabel('Model Predictions')
+            plt.title(f'Performance of the Model on the {category.value} Set')
+            plt.savefig(plot_dir / f'{scenario.name}.svg', bbox_inches='tight')
+            plt.close('all')
 
 def visualise_metric(record: ml.TrainingRecord, save_dir: Path, metric: str) -> None:
     datasets = next(iter(record.scores[ml.Category.TRAIN].dataset_scores.values())).scores.keys()
@@ -348,7 +349,6 @@ def visualise_interval_diagnostic(scenario_scores: ml.ScenarioScores, training_s
 
     _, diff = zip(*[(score.std, score.maximum - score.minimum) for score in scenario_scores.combined])
     plt.plot(training_sizes, diff, label=f"All Scenarios Combined Prediction Interval")
-
     plt.title(f"{metric} Prediction Interval Diagnostics on {dataset} {category.value} data".title())
     plt.xlabel("Trained Data Points")
     plt.ylabel(f"{metric} score".title())
