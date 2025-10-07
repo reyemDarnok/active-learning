@@ -3,6 +3,7 @@ import json
 import math
 import tempfile
 import textwrap
+import joblib
 import numpy
 import numpy.typing as npt
 from dataclasses import asdict, dataclass, field
@@ -16,10 +17,10 @@ from sys import path
 
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import  StandardScaler
+path.append(str(Path(__file__).parent.parent.parent))
 from focusStepsPelmo.ioTypes.scenario import Scenario
 from focusStepsPelmo.pelmo.local import run_local
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder, flatten, flatten_to_keys
-path.append(str(Path(__file__).parent.parent.parent))
 from focusStepsPelmo.ioTypes.combination import Combination
 from focusStepsPelmo.pelmo.generation_definition import Definition
 from modAL.models.base import BaseCommittee
@@ -35,7 +36,13 @@ class PartialScaler:
     def fit(self, X: pandas.DataFrame, *args, **kwargs):
         self.scaler.fit(X.drop(columns=self.to_exclude), *args, **kwargs)
         return self
+    
+    def save(self, location: Path):
+        joblib.dump(self.scaler, location)
 
+    @classmethod
+    def load(cls, location):
+        return joblib.load(location)
 
     def transform(self, X: pandas.DataFrame, *args, **kwargs):
         passthrough_columns = {name: X[name] for name in self.to_exclude}

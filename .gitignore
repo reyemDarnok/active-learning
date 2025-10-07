@@ -1,3 +1,6 @@
+models
+models.zip
+
 # custom excludes
 **/test.py
 workdir/
