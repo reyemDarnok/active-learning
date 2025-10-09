@@ -39,12 +39,6 @@ from active_learning_pelmo_oracle import *
 def main():
     args = parse_args_predict()
     model: CommitteeRegressor = load_model(args)
-    model_path = Path('models')
-    model_path.mkdir(exist_ok=True, parents=True)
-    for i, learner in enumerate(model.learner_list):
-        steps = learner.estimator.steps
-        steps[1][1].save(model_path / f"{i}.gz")
-        steps[2][1].save_model(model_path / f"{i}.cbm")
     data = load_data(args)
     result = predict(model, data)
     save_data(args, result)
@@ -53,24 +47,6 @@ def save_data(args: Namespace, data: pandas.DataFrame):
     data.to_csv(args.output)
 
 def load_model(args: Namespace) -> CommitteeRegressor:
-    with ZipFile(args.model) as model_zip:
-        model_num = 0
-        for file in model_zip.infolist():
-            file_ref = int(file.filename.split('.')[0])
-            if file_ref > model_num:
-                model_num = file_ref
-        learners = []
-        for i in range(model_num + 1):
-            scaler = ml.PartialScaler.load(model_zip.open(f"{i}.gz"))
-            catboost = CatBoostRegressor()
-            catboost.load_model(model_zip.open(f'{i}.cbm'))
-            pipeline = make_pipeline(FunctionTransformer(data.transform), scaler, catboost)
-            learners.append(ActiveLearner(pipeline))
-        model = ml.ThreadPoolCommitteeRegressor(
-        learner_list = learners,
-        query_strategy=ml.skewed_std_sampling, 
-    )
-        return model
 
     with open(args.model, 'rb') as model_file:
         return pickle.load(model_file)
