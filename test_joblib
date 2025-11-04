@@ -1,0 +1,11 @@
+from sklearn.preprocessing import StandardScaler
+import joblib
+
+data = [
+    [1,2,3,4],
+    [-1,-2,-3,-4]
+]
+
+sc = StandardScaler()
+sc.fit(data)
+joblib.dump(sc, "")

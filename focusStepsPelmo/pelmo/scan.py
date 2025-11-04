@@ -1,19 +1,22 @@
 """File for methods relating to scanning parameter matrices"""
 import asyncio
 import csv
+from itertools import product
 import json
 import logging
 import math
 from argparse import ArgumentParser, Namespace
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
-from dataclasses import replace
+from dataclasses import asdict, replace
 from os import cpu_count
 from pathlib import Path
 from shutil import rmtree
-from typing import Dict, Generator, Iterable, Optional, Set, Tuple, Union, Sequence, FrozenSet
+from typing import Any, Dict, Generator, Hashable, Iterable, Mapping, Optional, Set, Tuple, Union, Sequence, FrozenSet
 
 from sys import path
+
+from sklearn import base
 path.append(str(Path(__file__).parent.parent.parent))
 from focusStepsPelmo.bhpc.commands import BHPC
 from focusStepsPelmo.ioTypes.combination import Combination
@@ -137,18 +140,16 @@ def create_input_samples(args, combination_dir, compound_dir, gap_dir, sample_cr
                                              sample_size=args.sample_size,
                                              test_set_path=test_set_location, test_set_buffer=args.test_set_buffer)
         elif args.input_format == 'csv':
-            with args.template_gap.open() as gap_file:
-                template_gap = GAP.parse(**json.load(gap_file))
-            with args.template_compound.open() as compound_file:
-                template_compound = Compound(**json.load(compound_file))
+            template_gap = next(GAP.from_file(args.template_gap))
+            template_compound = next(Compound.from_file(args.template_compound))
             rows = csv.reader(input_file)
             file_span_params = {row[0]: [x.strip() for x in row[1:]] for row in rows}
-            sample_creation_tasks.append(asyncio.create_task(
-                span_to_dir_async(template_gap=template_gap, template_compound=template_compound,
+            sample_creation_tasks.append(
+                span_to_dir(template_gap=template_gap, template_compound=template_compound,
                                   compound_dir=compound_dir,
                                   gap_dir=gap_dir,
-                                  **file_span_params)
-            ))
+                                  span_rules=file_span_params)
+            )
         else:
             raise ValueError("Cannot infer input format, please specify explicitly")
 
@@ -332,9 +333,7 @@ def create_samples(definition: Definition) -> Generator[Combination, None, None]
 
 
 def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Path, gap_dir: Optional[Path] = None,
-                bbch: Sequence[int] = [], rate: Sequence[float] = [],
-                dt50: Sequence[float] = [], koc: Sequence[float] = [], freundlich: Sequence[float] = [],
-                plant_uptake: Sequence[float] = []) -> None:
+                span_rules: Mapping[str, Sequence[str]] = {}) -> None:
     """Creates compound and gap jsons for a parameter matrix
     :param template_gap: The gap to use as a template for parameters that are not in the matrix
     :param template_compound: The compound to use as a template for parameters that are not in the matrix
@@ -354,33 +353,17 @@ def span_to_dir(template_gap: GAP, template_compound: Compound, compound_dir: Pa
         rmtree(compound_dir)
     gap_dir.mkdir(parents=True)
     compound_dir.mkdir(parents=True)
-    for gap in span_gap(template_gap, bbch, rate):
+    for gap in span_gap(template_gap, {k: v for k, v in span_rules.items() if k.startswith('gap.')}):
         with (gap_dir / f"gap-{hash(gap)}.json").open('w') as fp:
             json.dump(gap, fp, cls=EnhancedJSONEncoder)
-    for compound in span_compounds(template_compound, dt50, koc, freundlich, plant_uptake):
+    for compound in span_compounds(template_compound, {k: v for k, v in span_rules.items() if k.startswith('compound.')}):
         with (compound_dir / f"compound-{hash(compound)}.json").open('w') as fp:
             json.dump(compound, fp, cls=EnhancedJSONEncoder)
 
 
-async def span_to_dir_async(**kwargs):
-    """Creates compound and gap jsons for a parameter matrix
-    :param template_gap: The gap to use as a template for parameters that are not in the matrix
-    :param template_compound: The compound to use as a template for parameters that are not in the matrix
-    :param compound_dir: The directory to write the resulting compound files to
-    :param gap_dir: The directory to write the resulting gap files to. Defaults to compound_dir if not set
-    :param bbch: The BBCH values in the matrix
-    :param rate: The application rate values in the matrix
-    :param dt50: The DT50 values in the matrix
-    :param koc: The koc values in the matrix
-    :param freundlich: The freundlich values in the matrix
-    :param plant_uptake: The plant uptake values in the matrix"""
-    span_to_dir(**kwargs)
-
 
 def span(template_gap: GAP, template_compound: Compound,
-         bbch: Sequence[int] = [], rate: Sequence[float] = [],
-         dt50: Sequence[float] = [], koc: Sequence[float] = [], freundlich: Sequence[float] = [],
-         plant_uptake: Sequence[float] = []) -> Generator[Tuple[GAP, Compound], None, None]:
+         span_rules: Mapping[str, Sequence[str]] = {}) -> Generator[Tuple[GAP, Compound], None, None]:
     """Creates compound and gap combinations from a matrix
     :param template_gap: The gap to use as a template for parameters that are not in the matrix
     :param template_compound: The compound to use as a template for parameters that are not in the matrix
@@ -391,13 +374,13 @@ def span(template_gap: GAP, template_compound: Compound,
     :param freundlich: The freundlich values in the matrix
     :param plant_uptake: The plant uptake values in the matrix
     :return: A generator that lazily creates compound/gap combinations"""
-    for gap in span_gap(template_gap, bbch, rate):
-        for compound in span_compounds(template_compound, dt50, koc, freundlich, plant_uptake):
-            yield gap, compound
+    for gap, compound in product(
+            span_gap(template_gap, {k: v for k, v in span_rules.items() if k.startswith('gap.')}), 
+            span_compounds(template_compound, {k: v for k, v in span_rules.items() if k.startswith('compound.')})):
+        yield gap, compound
 
 
-def span_gap(template_gaps: Union[GAP, Sequence[GAP]], bbch: Optional[Sequence[int]],
-             rate: Optional[Sequence[float]]) -> Generator[GAP, None, None]:
+def span_gap(template_gaps: Union[GAP, Iterable[GAP]], span_rules: Mapping[str, Sequence[str]] = {}) -> Generator[GAP, None, None]:
     """Creates gaps from a template and a matrix
     :param template_gaps: The gaps to use as templates. If an iterable, the matrix will be applied to each element
     :param bbch: The BBCH values in the matrix
@@ -407,68 +390,65 @@ def span_gap(template_gaps: Union[GAP, Sequence[GAP]], bbch: Optional[Sequence[i
     # Do nothing if template_gaps is iterable, make it a single item list if it's a single gap
     try:
         _ = iter(template_gaps) # type: ignore - this might fail because of the type - thats why it's in the try block
-        gaps_gen: Generator[GAP, None, None] = (gap for gap in template_gaps) # type: ignore - this might fail because of the type - thats why it's in the try block
+        gaps_gen: Generator[GAP, None, None] = template_gaps # type: ignore
     except TypeError:
         gaps_gen: Generator[GAP, None, None] = (template_gaps for _ in range(1)) # type: ignore - only reached if template_gaps wasn't a sequence
     logger = logging.getLogger()
-    if bbch:
-        logger.info('Spanning over bbch values')
-        gaps_gen = span_bbch(gaps_gen, bbch)
-    if rate:
-        logger.info('Spanning over rate values')
-        gaps_gen = span_rate(gaps_gen, rate)
-    return gaps_gen
+    if span_rules:
+        working_rules = dict(**span_rules)
+        key, values = next(span_rules.items().__iter__())
+        working_rules.pop(key)
+        gaps_from_working_rules = span_gap(gaps_gen, working_rules)
+        for gap in gaps_from_working_rules:
+            base_dict = gap.asdict()
+            for value in values:
+                set_add_path(value, base_dict, *key.split('.')[1:])
+                yield GAP.parse(base_dict)
+    else:
+        yield from gaps_gen
 
 
-def span_bbch(gaps: Iterable[GAP], bbchs: Sequence[int]) -> Generator[GAP, None, None]:
-    """Creates gaps with different bbchs
-    :param gaps: The gaps to change the bbchs in
-    :param bbchs: The range of bbch to use
-    :return: A generator for every gap/bbch combination"""
-    for gap in gaps:
-        for bbch in bbchs:
-            new_gap = RelativeGAP(modelCrop=gap.modelCrop, rate=gap.rate,
-                                  apply_every_n_years=gap.apply_every_n_years,
-                                  number_of_applications=gap.number_of_applications, interval=gap.interval,
-                                  model_specific_data=gap.model_specific_data,
-                                  bbch=bbch)
-            yield new_gap
+def set_add_path(value: Any, map, *keys: Hashable):
+    keys: List[Hashable] = list(keys)
+    if len(keys) == 1:
+        map[keys[0]] = value
+        return
+    if isinstance(map, (tuple, list)):
+        keys[0] = int(keys[0])
+    if isinstance(map[keys[0]], tuple):
+        mutable = list(map[keys[0]])
+        set_add_path(value, mutable, *keys[1:])
+        map[keys[0]] = tuple(mutable)
+    else:
+        if isinstance(map, dict) and keys[0] not in map:
+            map[keys[0]] = {}
+        elif isinstance(map, list) and keys[0] >= len(map):
+            map.extend([None] * (keys[0] - len(map)))
+            map.append({})
+        set_add_path(value, map[keys[0]], *keys[1:])
 
 
-def span_rate(gaps: Iterable[GAP], rates: Sequence[float]) -> Generator[GAP, None, None]:
-    """Creates gaps with different application rates
-    :param gaps: The gaps to change the application rate in
-    :param rates: The rates over which to span
-    :return: A generator for every gap/application rate combination"""
-    for gap in gaps:
-        for rate in rates:
-            yield replace(gap, rate=rate)
-
-
-def span_compounds(template_compounds: Union[Compound, Iterable[Compound]], dt50: Optional[Sequence[float]] = None,
-                   koc: Optional[Sequence[float]] = None, freundlich: Optional[Sequence[float]] = None,
-                   plant_uptake: Optional[Sequence[float]] = None) -> Generator[Compound, None, None]:
+def span_compounds(template_compounds: Union[Compound, Iterable[Compound]], span_rules: Mapping[str, Sequence[str]] = {}) -> Generator[Compound, None, None]:
     """Create all elements of a matrix from a template compound and lists of values for the individual features"""
     # Do nothing if template_compounds is iterable, make it a single item list if it's a single compound
     logger = logging.getLogger()
     try:
         _ = iter(template_compounds) # type: ignore - this might fail because of the type - thats why it's in the try block
-        compound_gen: Generator[Compound, None, None] = (compound for compound in template_compounds) # type: ignore - this might fail because of the type - thats why it's in the try block
+        compound_gen: Generator[Compound, None, None] = template_compounds # type: ignore - this might fail because of the type - thats why it's in the try block
     except TypeError:
         compound_gen: Generator[Compound, None, None] = (template_compounds for _ in range(1)) # type: ignore only reachable if template_compounds isnt a list
-    if dt50:
-        logger.info('Spanning over dt50 values')
-        compound_gen = span_dt50(compound_gen, dt50)
-    if koc:
-        logger.info('Spanning over koc values')
-        compound_gen = span_koc(compound_gen, koc)
-    if freundlich:
-        logger.info('Spanning over freundlich values')
-        compound_gen = span_freundlich(compound_gen, freundlich)
-    if plant_uptake:
-        logger.info('Spanning over plant uptake values')
-        compound_gen = span_plant_uptake(compound_gen, plant_uptake)
-    return compound_gen
+    if span_rules:
+        working_rules = dict(**span_rules)
+        key, values = next(span_rules.items().__iter__())
+        working_rules.pop(key)
+        compound_from_working_rules = span_compounds(compound_gen, working_rules)
+        for compound in compound_from_working_rules:
+            base_dict = asdict(compound)
+            for value in values:
+                set_add_path(value, base_dict, *key.split('.')[1:])
+                yield Compound(**base_dict)
+    else:
+        yield from compound_gen
 
 
 def span_dt50(compounds: Iterable[Compound], dt50s: Sequence[float]) -> Generator[Compound, None, None]:

@@ -1,0 +1,9 @@
+compound.dt50.soil,10,30,60
+compound.koc,500,1000,1500
+compound.freundlich,0.8,0.9
+compound.metabolites.0.metabolite.dt50.soil,20,30
+compound.metabolites.0.metabolite.koc,10,30,100
+compound.metabolites.0.metabolite.freundlich,0.9
+compound.metabolites.0.metabolite.metabolites.0.metabolite.dt50.soil,40,60,100,300
+compound.metabolites.0.metabolite.metabolites.0.metabolite.koc,50,100,200
+compound.metabolites.0.metabolite.metabolites.0.metabolite.freundlich,0.8,0.9

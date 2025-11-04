@@ -1,0 +1,11 @@
+{
+    "type": "relative",
+    "arguments": {
+      "modelCrop": "VI",
+      "number_of_applications": 2,
+      "interval": 14,
+      "rate": 150,
+      "bbch": 53,
+      "apply_every_n_years": 1
+    }
+  }
