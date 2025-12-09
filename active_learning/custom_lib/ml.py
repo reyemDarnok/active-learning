@@ -78,6 +78,7 @@ class PartialOneHot:
         encoded = pandas.DataFrame(self.onehot.transform(X[transforming_columns]))
         passthrough = X[passthrough_columns]
         res = pandas.concat([passthrough, encoded], axis=1)
+        print(res.info())
         return res
     
 class ThreadPoolCommitteeRegressor(CommitteeRegressor):
