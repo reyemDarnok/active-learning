@@ -61,7 +61,7 @@ class PartialOneHot:
 
     def fit(self, X: pandas.DataFrame, *args, **kwargs):
         print(X.info())
-        self.onehot.fit(X.drop(columns=self.to_encode), *args, **kwargs)
+        self.onehot.fit(X[self.to_encode], *args, **kwargs)
         return self
 
     def save(self, location: Path):
