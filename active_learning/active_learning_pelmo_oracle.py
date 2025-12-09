@@ -14,6 +14,8 @@ import pandas
 import xgboost
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression
+
+from active_learning.custom_lib.ml import PartialOneHot
 from custom_lib import data, ml, stats, vis
 from pathlib import Path
 import numpy as np
@@ -117,7 +119,9 @@ def make_pd(X, y=None):
 
 def one_hot_encoding(X: pandas.DataFrame, y=None):
     cat_columns = ['scenario', 'gap.arguments.modelCrop']
-    X.concat(X.get_dummies(columns=cat_columns))
+    cat_frame = X[cat_columns]
+
+    pandas.concat([X, X.get_dummies(columns=cat_columns)], axis=1)
     X.drop(columns=cat_columns, inplace=True)
     return X
 
@@ -146,7 +150,7 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
             #### END   XGBOOST PARAMS
         )
 
-        pipeline = make_pipeline(FunctionTransformer(data.transform), FunctionTransformer(one_hot_encoding), FunctionTransformer(mechanistic_preprocessing), ml.PartialScaler(to_exclude=cat_features, copy=False), model)
+        pipeline = make_pipeline(FunctionTransformer(data.transform), PartialOneHot(['scenario', 'gap.arguments.modelCrop']), FunctionTransformer(mechanistic_preprocessing), ml.PartialScaler(to_exclude=cat_features, copy=False), model)
         while True:
             combinations, _ = ml.generate_features(template=template, number=bootstrap_size)
             evaluated = ml.evaluate_features(features=combinations)

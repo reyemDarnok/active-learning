@@ -16,7 +16,8 @@ import pandas
 from sys import path
 
 from sklearn.base import BaseEstimator
-from sklearn.preprocessing import  StandardScaler
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+
 path.append(str(Path(__file__).parent.parent.parent))
 from focusStepsPelmo.ioTypes.scenario import Scenario
 from focusStepsPelmo.pelmo.local import run_local
@@ -50,6 +51,31 @@ class PartialScaler:
         res = pandas.DataFrame(self.scaler.transform(X.drop(columns=self.to_exclude), *args, **kwargs), columns=transforming_columns)
         for name, column in passthrough_columns.items():
             res[name] =[int(x) for x in column]
+        return res
+
+
+class PartialOneHot:
+    def __init__(self, to_encode: Sequence[str], **scaler_kwargs):
+        self.onehot = OneHotEncoder(**scaler_kwargs)
+        self.to_encode = to_encode
+
+    def fit(self, X: pandas.DataFrame, *args, **kwargs):
+        self.onehot.fit(X.drop(columns=self.to_encode), *args, **kwargs)
+        return self
+
+    def save(self, location: Path):
+        joblib.dump(self.onehot, location)
+
+    @classmethod
+    def load(cls, location):
+        return joblib.load(location)
+
+    def transform(self, X: pandas.DataFrame):
+        passthrough_columns = {name: X[name] for name in X.columns if name not in self.to_encode}
+        transforming_columns = [name for name in self.to_encode]
+        encoded = pandas.DataFrame(self.onehot.transform(X[transforming_columns]))
+        passthrough = X[passthrough_columns]
+        res = pandas.concat([passthrough, encoded], axis=1)
         return res
     
 class ThreadPoolCommitteeRegressor(CommitteeRegressor):
