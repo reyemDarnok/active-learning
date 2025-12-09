@@ -54,7 +54,7 @@ class PartialScaler:
         transforming_columns = [name for name in X.columns if name not in self.to_exclude]
         res = pandas.DataFrame(self.scaler.transform(X.drop(columns=self.to_exclude), *args, **kwargs), columns=transforming_columns)
         for name, column in passthrough_columns.items():
-            res[name] =[int(x) for x in column]
+            res[name] = column
         return res
 
 onehot_train = pd.DataFrame({"scenario": [s.name for s in Scenario] * len(list(FOCUSCrop)),
@@ -78,6 +78,7 @@ class PartialOneHot:
 
     def transform(self, X: pandas.DataFrame):
         print(X.info())
+        print(X)
         passthrough_columns = {name: X[name] for name in X.columns if name not in self.to_encode}
         transforming_columns = [name for name in self.to_encode]
         encoded = pandas.DataFrame(self.onehot.transform(X[transforming_columns]))
