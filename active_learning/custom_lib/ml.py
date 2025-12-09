@@ -60,6 +60,7 @@ class PartialOneHot:
         self.to_encode = to_encode
 
     def fit(self, X: pandas.DataFrame, *args, **kwargs):
+        print(X.info())
         self.onehot.fit(X.drop(columns=self.to_encode), *args, **kwargs)
         return self
 
@@ -71,6 +72,7 @@ class PartialOneHot:
         return joblib.load(location)
 
     def transform(self, X: pandas.DataFrame):
+        print(X.info())
         passthrough_columns = {name: X[name] for name in X.columns if name not in self.to_encode}
         transforming_columns = [name for name in self.to_encode]
         encoded = pandas.DataFrame(self.onehot.transform(X[transforming_columns]))
