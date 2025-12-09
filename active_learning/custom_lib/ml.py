@@ -15,8 +15,11 @@ from concurrent.futures import ThreadPoolExecutor
 import pandas
 from sys import path
 
+import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+
+from focusStepsPelmo.ioTypes.gap import FOCUSCrop
 
 path.append(str(Path(__file__).parent.parent.parent))
 from focusStepsPelmo.ioTypes.scenario import Scenario
@@ -53,7 +56,8 @@ class PartialScaler:
             res[name] =[int(x) for x in column]
         return res
 
-
+onehot_train = pd.DataFrame({"scenario": [s.name for s in Scenario] * len(list(FOCUSCrop)),
+                             'gap.arguments.modelCrop': [f.name for f in FOCUSCrop] * len(list(Scenario))})
 class PartialOneHot:
     def __init__(self, to_encode: Sequence[str], **scaler_kwargs):
         self.onehot = OneHotEncoder(**scaler_kwargs)
@@ -61,7 +65,7 @@ class PartialOneHot:
 
     def fit(self, X: pandas.DataFrame, *args, **kwargs):
         print(X.info())
-        self.onehot.fit(X[self.to_encode], *args, **kwargs)
+        self.onehot.fit(onehot_train, *args, **kwargs)
         return self
 
     def save(self, location: Path):
