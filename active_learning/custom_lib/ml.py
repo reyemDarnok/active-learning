@@ -63,7 +63,7 @@ onehot_train = pd.DataFrame({"scenario": [i for i in range(len(list(Scenario)))]
                              'gap.arguments.modelCrop': [i for i in range(len(list(FOCUSCrop)))] * len(list(Scenario))})
 class PartialOneHot:
     def __init__(self, to_encode: Sequence[str], **scaler_kwargs):
-        self.onehot = OneHotEncoder(**scaler_kwargs)
+        self.onehot = OneHotEncoder(sparse_output=False, **scaler_kwargs)
         self.to_encode = to_encode
 
     def fit(self, X: pandas.DataFrame, *args, **kwargs):
