@@ -32,6 +32,7 @@ from modAL.models.base import BaseCommittee
 from modAL.utils.selection import multi_argmax
 from modAL.models import CommitteeRegressor
 
+pd.set_option('display.max_columns', 500)
 
 class PartialScaler:
     def __init__(self, to_exclude: Sequence[str], **scaler_kwargs):
@@ -77,12 +78,19 @@ class PartialOneHot:
         return joblib.load(location)
 
     def transform(self, X: pandas.DataFrame):
-        print(X)
+        print("pre")
+        print(X.info)
         passthrough_columns = {name: X[name] for name in X.columns if name not in self.to_encode}
         transforming_columns = [name for name in self.to_encode]
         encoded = pandas.DataFrame(self.onehot.transform(X[transforming_columns]))
+        print("encoded")
+        print(encoded.info())
         passthrough = X[passthrough_columns]
+        print("passthrough")
+        print(passthrough.info())
         res = pandas.concat([passthrough, encoded], axis=1)
+        print("res")
+        print(res.info())
         return res
     
 class ThreadPoolCommitteeRegressor(CommitteeRegressor):
