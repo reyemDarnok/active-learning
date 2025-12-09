@@ -82,7 +82,7 @@ class PartialOneHot:
         print(X.info)
         passthrough_columns = {name: X[name] for name in X.columns if name not in self.to_encode}
         transforming_columns = [name for name in self.to_encode]
-        encoded = numpy.transpose(self.onehot.transform(X[transforming_columns]))
+        encoded = pandas.DataFrame(numpy.transpose(self.onehot.transform(X[transforming_columns])))
         print("encoded")
         print(encoded)
         passthrough = X[passthrough_columns]
