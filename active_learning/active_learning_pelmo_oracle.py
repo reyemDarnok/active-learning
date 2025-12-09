@@ -11,6 +11,7 @@ import tempfile
 import math
 from uuid import uuid4
 import pandas
+import xgboost
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression
 from custom_lib import data, ml, stats, vis
@@ -114,6 +115,12 @@ def make_pd(X, y=None):
     res =  pandas.DataFrame(X, columns=['parent.dt50.sediment', 'parent.dt50.soil', 'parent.dt50.surfaceWater', 'parent.dt50.system', 'parent.freundlich', 'parent.henry', 'parent.koc', 'parent.molarMass', 'parent.plant_uptake', 'parent.reference_temperature', 'parent.vapor_pressure', 'parent.water_solubility', 'gap.arguments.apply_every_n_years', 'gap.arguments.bbch', 'gap.arguments.interval', 'gap.arguments.modelCrop', 'gap.arguments.number_of_applications', 'gap.arguments.rate', 'gap.arguments.season', 'scenario', 'parent.log_henry'])
     return res
 
+def one_hot_encoding(X: pandas.DataFrame, y=None):
+    cat_columns = ['scenario', 'gap.arguments.modelCrop']
+    X.concat(X.get_dummies(columns=cat_columns))
+    X.drop(columns=cat_columns, inplace=True)
+    return X
+
 @ignore_warnings()
 def setup_learner(template: Definition, models_in_committee: int, bootstrap_size: int, name: str, result_dir: Path, catboost_iter: int) -> BaseCommittee:
    
@@ -126,17 +133,20 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
         cat_features = ['scenario', 'gap.arguments.modelCrop']
         cpus_available = cpu_count() - 1 if cpu_count() is not None else 1 # type: ignore
         metrics = [ "R2", "RMSE"]
-        model = CatBoostRegressor(iterations=catboost_iter, thread_count=math.ceil(cpus_available / models_in_committee), 
-                                  cat_features=cat_features,name=f"Committee Member {index}", 
-                                  train_dir=catboost_base / str(index),
-                                  #save_snapshot=True,
-                                  #snapshot_file=catboost_base / str(index) / "snapshot",
-                                  one_hot_max_size=25,
-                                  #eval_metric=metrics,
-                                  custom_metric=metrics,
-                                  #silent=True,
-                                  loss_function="RMSE")
-        pipeline = make_pipeline(FunctionTransformer(data.transform), FunctionTransformer(mechanistic_preprocessing), ml.PartialScaler(to_exclude=cat_features, copy=False), model)
+        model = xgboost.XGBRegressor(
+            #### BEGIN XGBOOST PARAMS
+            #n_estimators=100,
+            #max_depth=50,
+            #max_leaves=0,
+            #max_bin=100,
+            #gamma=0.01,
+            #reg_lambda=0.2,
+            base_score=-1,
+
+            #### END   XGBOOST PARAMS
+        )
+
+        pipeline = make_pipeline(FunctionTransformer(data.transform), FunctionTransformer(one_hot_encoding), FunctionTransformer(mechanistic_preprocessing), ml.PartialScaler(to_exclude=cat_features, copy=False), model)
         while True:
             combinations, _ = ml.generate_features(template=template, number=bootstrap_size)
             evaluated = ml.evaluate_features(features=combinations)
@@ -151,7 +161,7 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
         committee_member.bootstrap_evaluated = evaluated # type: ignore
         learner_list.append(committee_member)
         print(f"created committee member {index} at", datetime.now(), f" with {features.shape[0]} bootstrap points")
-    return ml.ThreadPoolCommitteeRegressor(
+    return CommitteeRegressor(
         learner_list = learner_list,
         query_strategy=ml.skewed_std_sampling, 
     ) # type: ignore 
@@ -226,7 +236,7 @@ def train_learner(learner: BaseCommittee,
         end_score = datetime.now()
         score_time += end_score - end_teach
         save_training(result, save_dir=save_dir, save_name=save_name, validation_features=validation_features, validation_labels=validation_labels)
-        print(result.training_sizes[-1])
+        print(result.training_sizes[-1], datetime.now())
 
     return result
 

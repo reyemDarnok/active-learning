@@ -132,7 +132,7 @@ def evaluate_features(features: Iterable[Combination]) -> pandas.DataFrame:
             return result_df
     except FileNotFoundError:
         # something went wrong while calculating - I don't know why the context manager files and not something else but thats the error
-        with open('erroring.json', w) as errorfile:
+        with open('erroring.json', 'w') as errorfile:
             json.dump([x.asdict() for x in feature_tuple], errorfile)
         raise
 

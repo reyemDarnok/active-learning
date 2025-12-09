@@ -10,8 +10,9 @@
       <excludeFolder url="file://$MODULE_DIR$/ArGUSIIData2Run-work-csv" />
       <excludeFolder url="file://$MODULE_DIR$/ArGUSIIData2Run-work-csv/submit" />
       <excludeFolder url="file://$MODULE_DIR$/ArGUSIIData2Run-work/submit" />
+      <excludeFolder url="file://$MODULE_DIR$/.venv" />
     </content>
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="Python 3.10 (eEnSa-active-learning-pelmo)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
   <component name="PyDocumentationSettings">
