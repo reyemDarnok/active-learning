@@ -50,6 +50,7 @@ class PartialScaler:
         return joblib.load(location)
 
     def transform(self, X: pandas.DataFrame, *args, **kwargs):
+        print(X)
         passthrough_columns = {name: X[name] for name in self.to_exclude}
         transforming_columns = [name for name in X.columns if name not in self.to_exclude]
         res = pandas.DataFrame(self.scaler.transform(X.drop(columns=self.to_exclude), *args, **kwargs), columns=transforming_columns)
@@ -77,15 +78,12 @@ class PartialOneHot:
         return joblib.load(location)
 
     def transform(self, X: pandas.DataFrame):
-        print(X.info())
         print(X)
         passthrough_columns = {name: X[name] for name in X.columns if name not in self.to_encode}
         transforming_columns = [name for name in self.to_encode]
         encoded = pandas.DataFrame(self.onehot.transform(X[transforming_columns]))
-        print(encoded.info())
         passthrough = X[passthrough_columns]
         res = pandas.concat([passthrough, encoded], axis=1)
-        print(res.info())
         return res
     
 class ThreadPoolCommitteeRegressor(CommitteeRegressor):
