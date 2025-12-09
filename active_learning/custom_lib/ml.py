@@ -58,8 +58,8 @@ class PartialScaler:
             res[name] = column
         return res
 
-onehot_train = pd.DataFrame({"scenario": [s.name for s in Scenario] * len(list(FOCUSCrop)),
-                             'gap.arguments.modelCrop': [f.name for f in FOCUSCrop] * len(list(Scenario))})
+onehot_train = pd.DataFrame({"scenario": [i for i in range(len(list(Scenario)))] * len(list(FOCUSCrop)),
+                             'gap.arguments.modelCrop': [i for i in range(len(list(FOCUSCrop)))] * len(list(Scenario))})
 class PartialOneHot:
     def __init__(self, to_encode: Sequence[str], **scaler_kwargs):
         self.onehot = OneHotEncoder(**scaler_kwargs)
