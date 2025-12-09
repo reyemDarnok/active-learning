@@ -55,7 +55,7 @@ class PartialScaler:
         transforming_columns = [name for name in X.columns if name not in self.to_exclude]
         res = pandas.DataFrame(self.scaler.transform(X.drop(columns=self.to_exclude), *args, **kwargs), columns=transforming_columns)
         for name, column in passthrough_columns.items():
-            res[name] = column
+            res[name] = [int(i) for i in column]
         return res
 
 onehot_train = pd.DataFrame({"scenario": [i for i in range(len(list(Scenario)))] * len(list(FOCUSCrop)),
