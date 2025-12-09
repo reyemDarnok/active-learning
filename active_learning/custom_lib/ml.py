@@ -19,9 +19,10 @@ import pandas as pd
 from sklearn.base import BaseEstimator
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
-from focusStepsPelmo.ioTypes.gap import FOCUSCrop
 
 path.append(str(Path(__file__).parent.parent.parent))
+from focusStepsPelmo.ioTypes.gap import FOCUSCrop
+
 from focusStepsPelmo.ioTypes.scenario import Scenario
 from focusStepsPelmo.pelmo.local import run_local
 from focusStepsPelmo.util.conversions import EnhancedJSONEncoder, flatten, flatten_to_keys
