@@ -15,7 +15,9 @@ import xgboost
 from sklearn.compose import ColumnTransformer
 from sklearn.linear_model import LinearRegression
 
-from active_learning.custom_lib.ml import PartialOneHot
+
+
+from custom_lib.ml import PartialOneHot
 from custom_lib import data, ml, stats, vis
 from pathlib import Path
 import numpy as np
