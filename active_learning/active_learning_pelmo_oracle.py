@@ -152,7 +152,7 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
             #### END   XGBOOST PARAMS
         )
 
-        pipeline = make_pipeline(FunctionTransformer(data.transform), PartialOneHot(['scenario', 'gap.arguments.modelCrop']), FunctionTransformer(mechanistic_preprocessing), ml.PartialScaler(to_exclude=cat_features, copy=False), model)
+        pipeline = make_pipeline(FunctionTransformer(data.transform), FunctionTransformer(mechanistic_preprocessing), ml.PartialScaler(to_exclude=cat_features, copy=False), PartialOneHot(to_encode=cat_features, copy=False), model)
         while True:
             combinations, _ = ml.generate_features(template=template, number=bootstrap_size)
             evaluated = ml.evaluate_features(features=combinations)
