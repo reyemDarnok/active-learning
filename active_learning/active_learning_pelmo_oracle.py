@@ -298,6 +298,7 @@ def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path, val
     plt.close('all')
 
     for metric in record.scores[ml.Category.TRAIN].dataset_scores.keys():
+        print("saving", metric)
         visualise_metric(record=record, save_dir=save_dir, metric=metric)
 
 def visualise_predictions(model, validation_features, validation_labels, save_dir: Path, category: ml.Category):
@@ -329,7 +330,9 @@ def visualise_predictions(model, validation_features, validation_labels, save_di
 def visualise_metric(record: ml.TrainingRecord, save_dir: Path, metric: str) -> None:
     datasets = next(iter(record.scores[ml.Category.TRAIN].dataset_scores.values())).scores.keys()
     for dataset, category in product(datasets, list(ml.Category)):
+        print(dataset, ", score, ", end="")
         visualise_metric_dataset(record=record, save_dir=save_dir, metric=metric, dataset=dataset, category=category)
+        print("diagnostics, ", end="")
         visualise_model_diagnostics(record=record, save_dir=save_dir, metric=metric, dataset=dataset, category=category)
    
 
@@ -461,10 +464,14 @@ def visualise_model_diagnostics(record: ml.TrainingRecord, category: ml.Category
     scenario_scores = record.scores[category].dataset_scores[metric].scores[dataset]
     selection_path = save_dir / category.value / dataset / metric / 'diagnostics'
     selection_path.mkdir(exist_ok=True, parents=True)
+    print("std, ", end="")
     visualise_std_diagnostic(scenario_scores=scenario_scores, training_sizes=record.training_sizes, selection_path=selection_path, metric=metric, dataset=dataset, category=category)
+    print("interval, ", end="")
     visualise_interval_diagnostic(scenario_scores=scenario_scores, training_sizes=record.training_sizes, selection_path=selection_path, metric=metric, dataset=dataset, category=category)
+    print("progression, ", end="")
     visualise_progression_diagnostics(scenario_scores=scenario_scores, training_sizes=record.training_sizes, selection_path=selection_path, metric=metric, dataset=dataset, category=category)
     for slope_length in (5, 10, 20):
+        print("slope", slope_length, ", ", end="")
         visualise_slope_diagnostics(scenario_scores=scenario_scores, training_sizes=record.training_sizes, selection_path=selection_path, metric=metric, dataset=dataset, category=category, slope_length=slope_length)
 
 
