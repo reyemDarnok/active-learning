@@ -291,6 +291,7 @@ def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path, val
 
     print("saving predictions")
     visualise_predictions(model=record.model, validation_features=validation_features, validation_labels=validation_labels, save_dir=save_dir, category=ml.Category.CONFIRM)
+    print("Saving training predictions")
     training_features, training_labels = data.prep_dataset(record.all_training_points)
     visualise_predictions(model=record.model, validation_features=training_features, validation_labels=training_labels, save_dir=save_dir, category=ml.Category.TRAIN)
     plt.plot( record.training_sizes,[x.total_seconds() for x in record.training_times],)
