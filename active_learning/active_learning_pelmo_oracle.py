@@ -287,7 +287,8 @@ def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path, val
         pickle.dump(record.model, picklefile)
     with open(save_dir / "record.json", 'w') as json_out:
         json.dump(record.to_json(), json_out)
-    
+
+    print("saving predictions")
     visualise_predictions(model=record.model, validation_features=validation_features, validation_labels=validation_labels, save_dir=save_dir, category=ml.Category.CONFIRM)
     training_features, training_labels = data.prep_dataset(record.all_training_points)
     visualise_predictions(model=record.model, validation_features=training_features, validation_labels=training_labels, save_dir=save_dir, category=ml.Category.TRAIN)
@@ -300,6 +301,7 @@ def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path, val
     for metric in record.scores[ml.Category.TRAIN].dataset_scores.keys():
         print("saving", metric)
         visualise_metric(record=record, save_dir=save_dir, metric=metric)
+    print("saved all graphics")
 
 def visualise_predictions(model, validation_features, validation_labels, save_dir: Path, category: ml.Category):
     plot_dir = save_dir / 'predictions' / category.value
