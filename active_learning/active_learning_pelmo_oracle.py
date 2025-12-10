@@ -242,8 +242,9 @@ def train_learner(learner: BaseCommittee,
 
         end_score = datetime.now()
         score_time += end_score - end_teach
-        save_training(result, save_dir=save_dir, save_name=save_name, validation_features=validation_features, validation_labels=validation_labels)
         print(result.training_sizes[-1], datetime.now())
+    save_training(result, save_dir=save_dir, save_name=save_name, validation_features=validation_features,
+                  validation_labels=validation_labels)
 
     return result
 
