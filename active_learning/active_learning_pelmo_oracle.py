@@ -242,6 +242,8 @@ def train_learner(learner: BaseCommittee,
 
         end_score = datetime.now()
         score_time += end_score - end_teach
+        save_training_no_vis(result, save_dir=save_dir, save_name=save_name, validation_features=validation_features,
+                      validation_labels=validation_labels)
         print(result.training_sizes[-1], datetime.now())
     save_training(result, save_dir=save_dir, save_name=save_name, validation_features=validation_features,
                   validation_labels=validation_labels)
@@ -275,6 +277,17 @@ def make_training_data(learner, batchsize, oversampling_factor, template, total_
     return features,labels
     
     
+def save_training_no_vis(record: ml.TrainingRecord, save_name: str, save_dir: Path, validation_features, validation_labels):
+    catboost_dir = save_dir / save_name / "catboost"
+    save_dir = save_dir / save_name / "results"
+    save_dir.mkdir(exist_ok=True, parents=True)
+    if record.all_training_points is not None:
+        record.all_training_points.to_csv(save_dir / 'training_data.csv')
+    print(f"Writing results to {save_dir}")
+    with (catboost_dir / "model.pkl").open('wb') as picklefile:
+        pickle.dump(record.model, picklefile)
+    with open(save_dir / "record.json", 'w') as json_out:
+        json.dump(record.to_json(), json_out)
 
 
 def save_training(record: ml.TrainingRecord, save_name: str, save_dir: Path, validation_features, validation_labels):
