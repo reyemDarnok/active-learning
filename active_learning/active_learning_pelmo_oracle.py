@@ -141,12 +141,13 @@ def setup_learner(template: Definition, models_in_committee: int, bootstrap_size
         metrics = [ "R2", "RMSE"]
         model = xgboost.XGBRegressor(
             #### BEGIN XGBOOST PARAMS
-            #n_estimators=100,
-            #max_depth=50,
-            #max_leaves=0,
-            #max_bin=100,
-            #gamma=0.01,
-            #reg_lambda=0.2,
+            n_estimators=603,
+            max_depth=3,
+            max_leaves=0,
+            max_bin=162,
+            gamma=0.002,
+            reg_alpha=0.041,
+            reg_lambda=82.499,
             base_score=-1,
 
             #### END   XGBOOST PARAMS
